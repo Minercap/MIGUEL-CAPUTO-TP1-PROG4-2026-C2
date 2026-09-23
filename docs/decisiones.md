@@ -71,3 +71,68 @@ de los componentes con una estrategia y la mitad con otra.
 (`this.lista.update(prev => [...prev, nuevo])`), nunca con `push`.
 
 **Clase de origen:** 2 (signals) y 3 (inmutabilidad).
+
+---
+
+## D-05 · Distribución de las filas accesibles J y K · 22/09
+
+**Elegido:** las filas **J y K** siguen existiendo como **dos** filas accesibles, con una
+distribución de 2, 10 y 2 butacas, es decir 14 por fila. Las otras 18 filas mantienen 4,
+20 y 4, es decir 28. **Total: 532 butacas por sala.**
+
+**Por qué:** el mail del 12/02 se contradice dentro del mismo texto. Primero dice que las
+dos filas del medio se quitaron "para dar espacio a *una* fila de butacas para personas
+con discapacidad", y en el párrafo siguiente habla de "las butacas accesibles (**filas J y
+K** adaptadas)". Se adopta la segunda lectura porque es la única que mantiene consistentes
+los tres mails a la vez: las 20 filas del 01/01, el resaltado de J y K del 12/02 y las
+butacas VIP en R, S y T del 10/03.
+
+**Descartado:** interpretar que hay **una sola** fila accesible, que es lo que dice
+literalmente la primera parte del mail del 12/02. Se descarta porque eliminar una letra
+corre todas las siguientes, y entonces las últimas tres filas ya no serían R, S y T. Eso
+contradice el mail del 10/03, que nombra esas tres letras para las butacas VIP.
+
+**Requisito:** R-13. Condiciona también R-14 (VIP en R, S y T) y R-15 (resaltado de las
+accesibles).
+
+---
+
+## D-06 · Modelo de cupones · 22/09
+
+**Elegido:** un **modelo único de cupón**, con un porcentaje y una condición de aplicación
+("primera compra" o "mayor de 50 años"). El cupón de bienvenida nace con 20% como valor
+inicial, editable desde el panel de administración.
+
+**Por qué:** el mail del 01/01 fija el cupón de bienvenida en 20%, y el del 30/01 pide
+poder cambiar ese porcentaje cuando quiera y además crear cupones que apliquen solo a
+mayores de 50 años. El mail posterior pisa al anterior, así que el 20% pasa a ser un valor
+por defecto y no una regla fija. Un modelo único cubre los dos casos con una sola tabla y
+un solo ABM, en lugar de duplicar la lógica de descuento.
+
+**Descartado:** dejar el cupón de bienvenida fijo en 20%, tal como lo fija el mail del
+01/01, y tratar los cupones por edad como un mecanismo aparte. Se descarta porque
+contradice el pedido expreso del 30/01 de poder editar el porcentaje, y porque obliga a
+mantener dos caminos distintos para algo que es el mismo descuento.
+
+**Requisitos:** R-23 y R-24.
+
+---
+
+## D-07 · Control de edad en la compra anónima · 22/09
+
+**Elegido:** cuando la función tiene restricción de edad, el formulario de **compra
+anónima** pide la fecha de nacimiento del comprador y valida contra ella.
+
+**Por qué:** el mail del 01/01 habilita comprar sin cuenta y el del 12/02 exige que no se
+vendan entradas a menores de 18 o de 13 según la película. Sin cuenta no hay fecha de
+nacimiento registrada contra la cual validar, así que la única forma de cumplir los dos
+pedidos es pedirla en el momento de la compra. Es una declaración del comprador, no es
+verificable, pero cumple los dos requisitos sin recortar ninguno.
+
+**Descartado:** exigir cuenta registrada para comprar entradas de funciones con
+restricción de edad. Es más confiable, porque la fecha ya está validada en el registro,
+pero se descarta porque elimina la compra anónima para esas funciones, que el cliente
+pidió expresamente en el mail del 01/01.
+
+**Requisito:** R-25. Se relaciona con R-02 (compra anónima) y R-26 (aviso de acompañante
+adulto).
