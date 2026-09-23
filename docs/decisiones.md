@@ -74,7 +74,7 @@ de los componentes con una estrategia y la mitad con otra.
 
 ---
 
-## D-05 · Distribución de las filas accesibles J y K · 22/09
+## D-04 · Distribución de las filas accesibles J y K · 22/09
 
 **Elegido:** las filas **J y K** siguen existiendo como **dos** filas accesibles, con una
 distribución de 2, 10 y 2 butacas, es decir 14 por fila. Las otras 18 filas mantienen 4,
@@ -97,7 +97,7 @@ accesibles).
 
 ---
 
-## D-06 · Modelo de cupones · 22/09
+## D-05 · Modelo de cupones · 22/09
 
 **Elegido:** un **modelo único de cupón**, con un porcentaje y una condición de aplicación
 ("primera compra" o "mayor de 50 años"). El cupón de bienvenida nace con 20% como valor
@@ -118,7 +118,7 @@ mantener dos caminos distintos para algo que es el mismo descuento.
 
 ---
 
-## D-07 · Control de edad en la compra anónima · 22/09
+## D-06 · Control de edad en la compra anónima · 22/09
 
 **Elegido:** cuando la función tiene restricción de edad, el formulario de **compra
 anónima** pide la fecha de nacimiento del comprador y valida contra ella.

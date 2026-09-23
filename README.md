@@ -1,59 +1,63 @@
-# TP1
+# Olympia Cinema
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 21.2.21.
+Aplicación web de un cine: cartelera, compra de entradas, candy bar y panel de
+administración. TP 1 de Programación IV, 2026 C2.
 
-## Development server
+**Producción:** https://olympiacinema.vercel.app/
 
-To start a local development server, run:
+## Stack
+
+Angular 22 · Supabase · PWA · desplegado en Vercel.
+
+## Cómo correrlo en local
 
 ```bash
+npm install
 ng serve
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+Queda en `http://localhost:4200/`.
 
-## Code scaffolding
+### Probar la PWA
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
-
-```bash
-ng generate component component-name
-```
-
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
-
-```bash
-ng generate --help
-```
-
-## Building
-
-To build the project run:
+El service worker **no se sirve con `ng serve`**: la opción `serviceWorker` es del build,
+así que el `ngsw-worker.js` no existe en el servidor de desarrollo. Para probarlo hay que
+compilar y servir el resultado con un servidor estático:
 
 ```bash
 ng build
+npx http-server dist/TP1/browser -p 8080
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+El navegador solo registra un service worker en un contexto seguro: `localhost` o HTTPS.
+Por eso sirve tanto el servidor estático local como la URL de producción, pero no una IP
+de red por HTTP.
 
-## Running unit tests
+## Estructura
 
-To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
-
-```bash
-ng test
+```
+src/app/
+  pages/          páginas con ruta propia, cargadas con lazy loading
+  components/     componentes reutilizables
+  services/       acceso a datos y lógica compartida
+  interfaces/     tipos del dominio
+  guards/         guards funcionales de ruta
+  pipes/          pipes propios
+  directives/     directivas propias
+  interceptors/   interceptors de HttpClient
+src/environments/ configuración por entorno, incluidas las claves de Supabase
 ```
 
-## Running end-to-end tests
+Salvo `pages/`, las carpetas están creadas y todavía vacías: se llenan a medida que avanza
+el desarrollo.
 
-For end-to-end (e2e) testing, run:
+## Documentación
 
-```bash
-ng e2e
-```
+- [Requerimientos](docs/requerimientos.md) — qué pidió el cliente, mail por mail, con las
+  interpretaciones adoptadas.
+- [Decisiones](docs/decisiones.md) — registro de decisiones técnicas (D-01 en adelante),
+  con lo elegido, lo descartado y el porqué.
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## Arquitectura y decisiones técnicas
 
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+Se completa a medida que avanza el desarrollo.

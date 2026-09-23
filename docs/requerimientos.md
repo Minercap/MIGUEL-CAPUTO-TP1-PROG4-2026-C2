@@ -123,7 +123,7 @@ es decir 14 por fila.
 
 **Total: 532 butacas por sala.**
 
-> **Interpretación adoptada (D-05).** El mail del 12/02 dice que las dos filas del medio
+> **Interpretación adoptada (D-04).** El mail del 12/02 dice que las dos filas del medio
 > se quitaron "para dar espacio a *una* fila de butacas para personas con discapacidad",
 > pero en el párrafo siguiente se refiere a "las butacas accesibles (**filas J y K**
 > adaptadas)". Se adopta la segunda lectura: J y K siguen existiendo como dos filas
@@ -192,7 +192,7 @@ porcentaje es **configurable** por el administrador.
 
 El administrador puede crear cupones que apliquen solo a usuarios de **más de 50 años**.
 
-> **Interpretación adoptada (D-06).** El mail del 01/01 fija el cupón de bienvenida en 20%;
+> **Interpretación adoptada (D-05).** El mail del 01/01 fija el cupón de bienvenida en 20%;
 > el del 30/01 pide poder cambiar ese porcentaje cuando quiera y además crear cupones por
 > edad. Se adopta un **modelo único de cupón** con porcentaje y condición de aplicación
 > ("primera compra" o "mayor de 50 años"). El cupón de bienvenida nace con 20% como valor
@@ -206,7 +206,7 @@ películas con esa restricción.
 En la compra **anónima**, cuando la función tiene restricción de edad, se solicita la fecha
 de nacimiento del comprador y se valida contra ella.
 
-> **Interpretación adoptada (D-07).** El mail del 01/01 habilita la compra anónima y el del
+> **Interpretación adoptada (D-06).** El mail del 01/01 habilita la compra anónima y el del
 > 12/02 exige control de edad. Sin cuenta no hay fecha de nacimiento registrada, así que se
 > adopta la **declaración de fecha de nacimiento en el formulario de compra** cuando la
 > función lo requiere. Es declarativo y no verificable, pero cumple los dos requisitos sin
@@ -335,8 +335,8 @@ adelante sin cambios estructurales.
 
 | Id | Tema | Interpretación |
 |---|---|---|
-| D-05 | Filas J y K | Dos filas accesibles de 14 butacas. 532 butacas por sala |
-| D-06 | Cupones | Modelo único con porcentaje configurable y condición de aplicación |
-| D-07 | Edad en compra anónima | Declaración de fecha de nacimiento en el formulario cuando la función lo exige |
+| D-04 | Filas J y K | Dos filas accesibles de 14 butacas. 532 butacas por sala |
+| D-05 | Cupones | Modelo único con porcentaje configurable y condición de aplicación |
+| D-06 | Edad en compra anónima | Declaración de fecha de nacimiento en el formulario cuando la función lo exige |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
