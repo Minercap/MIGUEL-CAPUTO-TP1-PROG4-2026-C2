@@ -55,6 +55,8 @@ el desarrollo.
 
 - [Requerimientos](docs/requerimientos.md) — qué pidió el cliente, mail por mail, con las
   interpretaciones adoptadas.
+- [Modelo de datos](docs/modelo-datos.md) — las tablas, sus campos y qué requisito cubre
+  cada una.
 - [Decisiones](docs/decisiones.md) — registro de decisiones técnicas (D-01 en adelante),
   con lo elegido, lo descartado y el porqué.
 

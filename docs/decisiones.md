@@ -5,7 +5,7 @@ descartó y por qué. Alimenta el README y sirve de guion para el oral.
 
 ---
 
-## D-01 · Ruteo de la SPA en Vercel · 22/09
+## D-01 · Ruteo de la SPA en Vercel · 20/09
 
 **Elegido:** un `vercel.json` en la raíz con un rewrite de todas las rutas a `/index.html`.
 
@@ -136,3 +136,66 @@ pidió expresamente en el mail del 01/01.
 
 **Requisito:** R-25. Se relaciona con R-02 (compra anónima) y R-26 (aviso de acompañante
 adulto).
+
+---
+
+## D-07 · Persistencia de butacas: solo las vendidas · 22/09
+
+**Elegido:** no se persiste el mapa completo de butacas por función. La distribución de la
+sala es fija y conocida (20 filas, 28 butacas salvo J y K con 14, total 532), así que el
+mapa se calcula en el cliente. En la base solo quedan las butacas **efectivamente
+vendidas**, como filas asociadas a la compra y a la función.
+
+**Por qué:** una butaca sin vender no tiene información propia que guardar: su fila, su
+número y si es VIP o accesible se deducen de la posición. Guardar solo lo vendido mantiene
+la tabla chica, hace que la consulta de ocupación de una función sea directa y simplifica
+el Realtime de R-16, porque cada `INSERT` es exactamente una butaca que se acaba de ocupar.
+
+**Descartado:** generar las **532 filas por función** al crearla, cada una con su estado.
+Se descarta por el volumen: cada función agrega 532 filas de las cuales la enorme mayoría
+nunca cambia de estado, y una cartelera de varias salas y varios horarios por día multiplica
+eso muy rápido, sin aportar ningún dato que no se pueda deducir.
+
+**Requisitos:** R-13 (distribución), R-16 (mapa en tiempo real). Condiciona R-14 (VIP en R,
+S y T) y R-15 (accesibles), que pasan a ser reglas de posición y no columnas de una tabla.
+
+---
+
+## D-08 · Ítems de la compra en dos tablas · 22/09
+
+**Elegido:** una compra tiene sus ítems separados en dos tablas, **`Entradas`** e
+**`ItemsCandy`**, cada una con las columnas que su tipo necesita.
+
+**Por qué:** los dos tipos de ítem casi no comparten atributos. Una entrada se ata a una
+función y a una butaca; un producto del candy bar se ata a un producto y a una cantidad.
+Separarlos permite que cada tabla tenga sus columnas obligatorias y sus claves foráneas
+reales, en lugar de columnas que solo aplican a la mitad de las filas.
+
+**Descartado:** una **tabla única de ítems con un campo `tipo`**. Se descarta porque obliga
+a que las columnas de entrada queden nulas en las filas de candy y viceversa: ninguna
+columna específica puede ser `NOT NULL`, ninguna clave foránea puede ser obligatoria, y la
+consistencia pasa a depender de validaciones en el código en vez de la estructura.
+
+**Requisitos:** R-20 (entrada), R-21 (candy bar), R-22 (combos), R-28 (canje por puntos).
+
+---
+
+## D-09 · Código de compra y marcas de validación · 22/09
+
+**Elegido:** cada compra lleva un **código único propio** con formato **`OLY-XXXX-XXXX`**,
+distinto de su id. Ese código es el que va al QR. La validación se registra con **dos
+marcas independientes**: una para la entrada del cine y otra para el retiro del candy bar.
+
+**Por qué:** el mismo QR sirve para las dos cosas (R-21), pero se consumen por separado y
+en momentos distintos: alguien puede retirar los pochoclos y entrar a la sala después. Dos
+marcas independientes permiten que cada una se invalide por su lado y que R-33 se cumpla
+sin que validar una cosa anule la otra. El formato agrupado en bloques de cuatro es para
+que se pueda **dictar y tipear a mano** cuando el lector no funciona, que es justo lo que
+pide R-32.
+
+**Descartado:** usar el **id de la compra** como código. Se descarta por dos motivos: es
+adivinable, porque un id correlativo deja probar el de al lado, y es incómodo de dictar y
+cargar a mano, sea un número largo o un uuid.
+
+**Requisitos:** R-20 (QR), R-31 (validación por QR), R-32 (carga manual), R-33 (un solo
+uso), R-21 (mismo QR para el candy bar).
