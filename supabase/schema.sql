@@ -535,6 +535,16 @@ grant update (nombre, apellido, fecha_nacimiento, tipo_sangre,
               color_ojos, dias_vacaciones)
   on public."Usuarios" to authenticated;
 
+-- Lo mismo al crear la fila en el registro: la política "usuario crea
+-- su perfil" solo chequea el id. Sin esto, alguien podría registrarse
+-- insertando rol 'admin'. Así rol, puntos y credito toman su default.
+
+revoke insert on public."Usuarios" from authenticated;
+
+grant insert (id, email, nombre, apellido, fecha_nacimiento, tipo_sangre,
+              color_ojos, dias_vacaciones)
+  on public."Usuarios" to authenticated;
+
 -- El admin sí puede cambiar roles: lo hace desde el panel, y su
 -- permiso viene de la política, no de este grant.
 -- (Ver punto abierto 1 al final de este archivo.)
