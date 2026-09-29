@@ -1,7 +1,7 @@
 # Requerimientos — Olympia Cinema
 
 **TP 1 · Programación IV · 2026 C2**
-Documento de requerimientos v1 · 22/09/2026
+Documento de requerimientos v1 · 20/09/2026
 
 Este documento resume todo lo pedido por el cliente en el intercambio de diez mails de la
 consigna. Cada requisito tiene un identificador (`R-nn`) que se usa como referencia en los
