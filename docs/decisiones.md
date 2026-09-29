@@ -199,3 +199,92 @@ cargar a mano, sea un número largo o un uuid.
 
 **Requisitos:** R-20 (QR), R-31 (validación por QR), R-32 (carga manual), R-33 (un solo
 uso), R-21 (mismo QR para el candy bar).
+
+---
+
+## D-10 · Clave de Supabase: anon legacy · 29/09
+
+**Elegido:** la app se conecta a Supabase con la **clave `anon` legacy** (el JWT), cargada
+en `environment.ts` como `SUPABASE_KEY`.
+
+**Por qué:** es la clave que se usa del lado del cliente y funciona con cualquier versión
+de `supabase-js`. Las claves legacy se deprecan a fin de 2026, después de la entrega, así
+que no afectan al TP.
+
+**Descartado:** la clave **publishable** (`sb_publishable_...`). Se descarta porque
+necesita una versión de `supabase-js` que no pude confirmar.
+
+**Nota:** la clave `anon` es pública por diseño: lo que protege los datos es RLS. La
+`service_role` saltea RLS y nunca va en el código.
+
+**Clase de origen:** 5 (cliente de Supabase con `environment`).
+
+---
+
+## D-11 · Tablas creadas con un script SQL versionado · 29/09
+
+**Elegido:** las tablas, las funciones, RLS, las políticas y los permisos se crean con un
+único script, [`supabase/schema.sql`](../supabase/schema.sql), que se corre completo desde
+el SQL Editor de Supabase y queda versionado en el repo.
+
+**Por qué:** son 19 tablas con sus políticas: un script lo resuelve en una sola corrida y
+queda como respaldo, para rehacer la base si hace falta y para mostrar en el oral qué
+políticas tiene cada tabla.
+
+**Descartado:** crear las tablas a mano desde el panel de Supabase. Se descarta por
+tiempo y porque no deja respaldo de lo creado.
+
+**Requisitos:** todos los que persisten datos. Deriva de `docs/modelo-datos.md`.
+
+---
+
+## D-12 · Rol en la tabla Usuarios, leído con `rol_actual()` · 29/09
+
+**Elegido:** el rol (`admin`, `empleado` o `cliente`) vive en la tabla **`Usuarios`**. Las
+políticas lo leen con la función **`rol_actual()`**, que es `security definer`, y con los
+atajos `es_admin()` y `es_empleado()`. Además, **permisos por columna** sobre `Usuarios`
+impiden que un usuario se edite `rol`, `puntos` o `credito`.
+
+**Por qué:**
+
+- `rol_actual()` es `security definer` para evitar la **recursión de la política de
+  `Usuarios` sobre sí misma**: sin eso, para decidir si alguien puede leer `Usuarios` la
+  política tendría que leer `Usuarios`, y Postgres corta con un error de recursión
+  infinita. Con `security definer` la función corre con los permisos de quien la creó y
+  saltea RLS.
+- RLS decide **qué filas** se pueden tocar; los permisos de columna deciden **qué
+  campos**. La política "usuario edita su perfil" deja editar la propia fila, pero esa fila
+  tiene rol, puntos y crédito. El `revoke update` más el `grant update (...)` sobre los
+  campos personales cierran ese hueco.
+
+Las funciones de Postgres y los permisos por columna no se vieron en clase (🟡). Quedan
+aprobados y registrados acá.
+
+**Descartado:** guardar el rol en los metadatos de auth (`options.data` del `signUp`, como
+el ejemplo del profe). Se descarta porque esos metadatos los puede editar el propio
+usuario desde el navegador, y cualquiera podría ponerse rol `admin`.
+
+**Consecuencia:** hoy nadie puede cambiar un rol desde la app; el admin y el empleado se
+crean cambiando el rol a mano desde el panel de Supabase.
+
+**Clase de origen:** 6 (RLS) y 7 (tabla `Usuarios`). **Requisitos:** R-31 a R-33 (acciones
+del empleado), R-34 a R-38 (acciones del admin) y R-30 (crédito, que el cliente no puede
+editarse).
+
+---
+
+## D-13 · Guards async que esperan el perfil · 29/09
+
+**Elegido:** los guards (`logueadoGuard`, `adminGuard`, `empleadoGuard`) son **`async`** y
+esperan a que el servicio `Auth` termine de cargar el perfil antes de decidir.
+
+**Por qué:** Supabase restaura la sesión de forma asíncrona. Al recargar la página en
+`/admin`, el guard se ejecuta antes de que llegue la sesión y el perfil: si decidiera en
+ese momento, vería `perfil()` en `null` y mandaría al login a alguien que tiene sesión. Un
+`CanActivateFn` puede devolver una `Promise`, así que el guard espera y recién después
+chequea el rol. Es Angular estándar, pero no se vio en clase (🟡).
+
+**Descartado:** guards sincrónicos, como el `logueadoGuard` de la clase 5. Funcionan
+navegando dentro de la app, pero fallan al recargar.
+
+**Clase de origen:** 5 (guards funcionales).

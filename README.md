@@ -57,6 +57,8 @@ el desarrollo.
   interpretaciones adoptadas.
 - [Modelo de datos](docs/modelo-datos.md) — las tablas, sus campos y qué requisito cubre
   cada una.
+- [Esquema de la base](supabase/schema.sql) — script SQL con las tablas, RLS, las
+  políticas y los permisos. Se corre completo desde el SQL Editor de Supabase.
 - [Decisiones](docs/decisiones.md) — registro de decisiones técnicas (D-01 en adelante),
   con lo elegido, lo descartado y el porqué.
 
