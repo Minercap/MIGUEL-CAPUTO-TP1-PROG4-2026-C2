@@ -1,0 +1,13 @@
+/* Estilo mínimo para que el menú se lea. El estilo visual del cine se
+   trabaja aparte. */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  padding-bottom: 1rem;
+}
+
+.error {
+  color: #b00020;
+}

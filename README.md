@@ -48,8 +48,7 @@ src/app/
 src/environments/ configuración por entorno, incluidas las claves de Supabase
 ```
 
-Salvo `pages/`, las carpetas están creadas y todavía vacías: se llenan a medida que avanza
-el desarrollo.
+Las carpetas que todavía no tienen archivos se llenan a medida que avanza el desarrollo.
 
 ## Documentación
 
@@ -65,3 +64,17 @@ el desarrollo.
 ## Arquitectura y decisiones técnicas
 
 Se completa a medida que avanza el desarrollo.
+
+### Autenticación y roles
+
+- `SupabaseService` es el único que crea el cliente de Supabase; el resto de la app accede
+  a través de servicios.
+- `Auth` guarda en signals el usuario de Supabase Auth y su fila de la tabla `Usuarios`,
+  que es donde vive el rol: `admin`, `empleado` o `cliente` (D-12).
+- Al registrarse se crea el usuario en Supabase Auth y después su fila en `Usuarios`, con el
+  mismo id. Rol, puntos y crédito toman su valor por defecto: la base no deja cargarlos
+  desde la app.
+- Tres guards funcionales protegen las rutas: `logueadoGuard` (`/mi-cuenta`),
+  `empleadoGuard` (`/empleado`, también para el admin) y `adminGuard` (`/admin`). Son
+  async y esperan a que se restaure la sesión antes de decidir (D-13).
+- El menú cambia según haya sesión y según el rol.

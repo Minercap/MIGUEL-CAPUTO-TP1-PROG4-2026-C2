@@ -1,0 +1,8 @@
+<h1>Mi cuenta</h1>
+
+@if (auth.perfil(); as perfil) {
+  <p>Hola, {{ perfil.nombre }} {{ perfil.apellido }}.</p>
+  <p>Rol: {{ perfil.rol }}</p>
+} @else {
+  <p>No encontramos los datos de tu perfil.</p>
+}
