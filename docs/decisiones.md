@@ -455,3 +455,33 @@ iniciales en `fb.group` y guardado en un signal que arranca en `null`. Usa solo 
 pero envuelve todo el template en un `@if` y complica los getters de cada campo.
 
 **Clase de origen:** 4 (formularios reactivos).
+
+---
+
+## D-22 · Géneros del seed con `insert ... select` · 01/10
+
+**Elegido:** [`supabase/seed.sql`](../supabase/seed.sql) carga las películas iniciales y
+les asigna los géneros con **`insert ... select`**, buscando la película y el género
+**por nombre**:
+
+```sql
+insert into public."PeliculasGeneros" (pelicula_id, genero_id)
+select p.id, g.id
+from public."Peliculas" p, public."Generos" g
+where p.nombre = 'The Godfather'
+  and g.nombre in ('Crimen', 'Drama');
+```
+
+**Por qué:** los ids los genera la base (`identity`), así que no se conocen antes de
+insertar. `insert ... select` inserta las filas que devuelve la consulta: las dos tablas en
+el `from` arman todas las combinaciones de película y género, y el `where` deja solo las
+pedidas. No se vio en clase (🟡).
+
+**Descartado:** escribir los ids a mano (`values (1, 4), (1, 9)`). Se descarta porque
+dependen del orden en que se cargaron los datos y cambian si la base se reconstruye: el
+mismo script asignaría géneros equivocados sin dar ningún error.
+
+**Consecuencia:** el seed se corre una sola vez, y depende de que no haya otra película
+con el mismo nombre; si la hubiera, también recibiría los géneros.
+
+**Requisito:** R-07. Se apoya en D-11 (base versionada en SQL) y D-15 (géneros fijos).
