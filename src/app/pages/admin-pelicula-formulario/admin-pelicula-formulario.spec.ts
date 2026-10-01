@@ -1,19 +1,19 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
-import { Registro } from './registro';
+import { AdminPeliculaFormulario } from './admin-pelicula-formulario';
 
-describe('Registro', () => {
-  let component: Registro;
-  let fixture: ComponentFixture<Registro>;
+describe('AdminPeliculaFormulario', () => {
+  let component: AdminPeliculaFormulario;
+  let fixture: ComponentFixture<AdminPeliculaFormulario>;
 
   beforeEach(async () => {
     await TestBed.configureTestingModule({
-      imports: [Registro],
-      // El template usa routerLink, que necesita el router para crearse.
+      imports: [AdminPeliculaFormulario],
+      // El componente lee la ruta activa y su template usa routerLink.
       providers: [provideRouter([])],
     }).compileComponents();
 
-    fixture = TestBed.createComponent(Registro);
+    fixture = TestBed.createComponent(AdminPeliculaFormulario);
     component = fixture.componentInstance;
     await fixture.whenStable();
   });

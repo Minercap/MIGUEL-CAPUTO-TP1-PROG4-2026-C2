@@ -1,0 +1,63 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<header class="encabezado">
+  <h1>Películas</h1>
+  <a routerLink="/admin/peliculas/nueva">Nueva película</a>
+</header>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando las películas…</p>
+} @else {
+  <ul class="listado">
+    @for (pelicula of peliculas(); track pelicula.id) {
+      <li class="pelicula">
+        @if (pelicula.imagen_url) {
+          <img class="poster" [src]="pelicula.imagen_url" [alt]="'Póster de ' + pelicula.nombre" />
+        } @else {
+          <div class="poster sin-poster">Sin póster</div>
+        }
+
+        <div class="datos">
+          <strong>{{ pelicula.nombre }}</strong>
+          <span>{{ pelicula.duracion_minutos }} min</span>
+
+          <div class="etiquetas">
+            @if (pelicula.en_cartelera) {
+              <span class="etiqueta">En cartelera</span>
+            }
+            @if (pelicula.proximamente) {
+              <span class="etiqueta">Próximamente</span>
+            }
+            @if (pelicula.preventa_habilitada) {
+              <span class="etiqueta">Preventa</span>
+            }
+            @if (pelicula.restriccion_edad) {
+              <span class="etiqueta edad">+{{ pelicula.restriccion_edad }}</span>
+            }
+          </div>
+        </div>
+
+        <div class="acciones">
+          @if (idPorBorrar() === pelicula.id) {
+            <span>¿Borrar esta película?</span>
+            <button type="button" [disabled]="borrando()" (click)="borrar(pelicula)">
+              {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+            </button>
+            <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+              Cancelar
+            </button>
+          } @else {
+            <a [routerLink]="['/admin/peliculas', pelicula.id]">Editar</a>
+            <button type="button" (click)="pedirConfirmacion(pelicula.id)">Borrar</button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li>Todavía no hay películas cargadas.</li>
+    }
+  </ul>
+}

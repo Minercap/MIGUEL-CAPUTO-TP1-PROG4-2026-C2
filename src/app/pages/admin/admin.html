@@ -1,2 +1,22 @@
 <h1>Administración</h1>
-<p>Panel de administración en construcción.</p>
+
+<ul class="accesos">
+  @for (acceso of accesos; track acceso.nombre) {
+    <li>
+      @if (acceso.ruta) {
+        <a class="acceso" [routerLink]="acceso.ruta">
+          <strong>{{ acceso.nombre }}</strong>
+          <span>{{ acceso.descripcion }}</span>
+        </a>
+      } @else {
+        <!-- Sin ruta todavía: no es un link, así no se puede navegar ni
+             con el teclado. -->
+        <div class="acceso deshabilitado" aria-disabled="true">
+          <strong>{{ acceso.nombre }}</strong>
+          <span>{{ acceso.descripcion }}</span>
+          <small>Próximamente</small>
+        </div>
+      }
+    </li>
+  }
+</ul>

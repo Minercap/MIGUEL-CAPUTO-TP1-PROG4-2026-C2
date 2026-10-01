@@ -39,6 +39,9 @@ testem.log
 /typings
 __screenshots__/
 
+# Instrucciones locales de trabajo: no van al repo
+/CLAUDE.md
+
 # System files
 .DS_Store
 Thumbs.db

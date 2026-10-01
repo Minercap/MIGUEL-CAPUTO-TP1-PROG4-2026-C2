@@ -1,0 +1,104 @@
+<p><a routerLink="/admin/peliculas">← Películas</a></p>
+
+<h1>{{ id === null ? 'Nueva película' : 'Editar película' }}</h1>
+
+@if (cargando()) {
+  <p>Cargando…</p>
+} @else if (errorCarga()) {
+  <p class="error" role="alert">{{ errorCarga() }}</p>
+} @else {
+  <form [formGroup]="formulario" (ngSubmit)="guardar()">
+    <label for="nombre">Nombre</label>
+    <input id="nombre" type="text" formControlName="nombre" />
+    @if (nombre?.touched && nombre?.errors?.['required']) {
+      <small class="error">El nombre es obligatorio.</small>
+    }
+
+    <label for="sinopsis">Sinopsis</label>
+    <textarea id="sinopsis" rows="4" formControlName="sinopsis"></textarea>
+
+    <label for="duracion_minutos">Duración (minutos)</label>
+    <input id="duracion_minutos" type="number" min="1" formControlName="duracion_minutos" />
+    @if (duracionMinutos?.touched) {
+      @if (duracionMinutos?.errors?.['required']) {
+        <small class="error">La duración es obligatoria.</small>
+      } @else if (duracionMinutos?.errors?.['min']) {
+        <small class="error">La duración tiene que ser de al menos 1 minuto.</small>
+      } @else if (duracionMinutos?.errors?.['pattern']) {
+        <small class="error">Tiene que ser un número entero de minutos.</small>
+      }
+    }
+
+    <label for="restriccion_edad">Restricción de edad</label>
+    <select id="restriccion_edad" formControlName="restriccion_edad">
+      <option value="">Ninguna</option>
+      <option value="13">Mayores de 13</option>
+      <option value="18">Mayores de 18</option>
+    </select>
+
+    <label for="fecha_estreno">Fecha de estreno</label>
+    <input id="fecha_estreno" type="date" formControlName="fecha_estreno" />
+
+    <fieldset formArrayName="generos">
+      <legend>Géneros</legend>
+      @for (genero of generos(); track genero.id; let i = $index) {
+        <label class="opcion">
+          <input type="checkbox" [formControlName]="i" />
+          {{ genero.nombre }}
+        </label>
+      }
+    </fieldset>
+    @if (generosForm.dirty && generosForm.errors?.['sinGeneros']) {
+      <small class="error">Elegí al menos un género.</small>
+    }
+
+    <fieldset>
+      <legend>Estado</legend>
+      <label class="opcion">
+        <input type="checkbox" formControlName="en_cartelera" />
+        En cartelera
+      </label>
+      <label class="opcion">
+        <input type="checkbox" formControlName="proximamente" />
+        Próximamente
+      </label>
+      <label class="opcion">
+        <input type="checkbox" formControlName="preventa_habilitada" />
+        Preventa habilitada
+      </label>
+    </fieldset>
+
+    <label for="precio_preventa">Precio de preventa</label>
+    <input id="precio_preventa" type="number" min="0" step="0.01" formControlName="precio_preventa" />
+    <!-- Este error es del formulario entero, no del campo (D-17). -->
+    @if (formulario.errors?.['precioDePreventaObligatorio']) {
+      <small class="error">Con la preventa habilitada, el precio de preventa es obligatorio.</small>
+    } @else if (precioPreventa?.errors?.['min']) {
+      <small class="error">El precio no puede ser negativo.</small>
+    }
+
+    <label for="poster">Póster</label>
+    @if (posterActual(); as url) {
+      <img class="poster" [src]="url" alt="Póster actual" />
+    }
+    <!-- Un input de archivo no se puede atar con formControlName: el archivo
+         se toma del evento (clase 7). -->
+    <input id="poster" type="file" accept="image/*" (input)="cargarPoster($event)" />
+    @if (posterActual()) {
+      <small>Si no elegís otro archivo, se conserva el póster actual.</small>
+    }
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (aviso()) {
+      <p class="error" role="alert">
+        {{ aviso() }} <a routerLink="/admin/peliculas">Volver al listado</a>
+      </p>
+    }
+
+    <button type="submit" [disabled]="!formulario.valid || enviando() || bloqueado()">
+      {{ enviando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </form>
+}

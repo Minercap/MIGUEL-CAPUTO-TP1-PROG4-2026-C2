@@ -294,3 +294,194 @@ chequea el rol. Es Angular estándar, pero no se vio en clase (🟡).
 navegando dentro de la app, pero fallan al recargar.
 
 **Clase de origen:** 5 (guards funcionales).
+
+---
+
+## D-14 · Log de actividad escrito desde un servicio · 01/10
+
+**Elegido:** un servicio **`LogActividad`** con un método **`registrar(accion, entidad,
+entidadId, detalle)`** que inserta una fila en la tabla `LogActividad`. Cada servicio del
+admin lo llama **después** de cada alta, edición o baja que salió bien. Si el insert del
+log falla, `registrar()` devuelve el error para que la pantalla lo muestre.
+
+**Por qué:** el log queda a la vista en el código de la app: leyendo `crear()` en el
+servicio de películas se ve la línea que registra la acción. Es un insert común, como los
+de la clase 6, y el usuario que lo hizo sale del servicio `Auth` que ya existe.
+
+**Descartado:** **triggers de Postgres** sobre cada tabla (🟡). Registran aunque el front
+se olvide de llamar al log, pero esconden la lógica en la base, y el admin tiene pocas
+pantallas: son pocos llamados para mantener a mano.
+
+**Consecuencia:** el log depende de que cada servicio nuevo se acuerde de llamar a
+`registrar()`. Y como la acción y el log son dos pedidos separados, puede pasar que la
+acción se guarde y el log no: en ese caso la pantalla avisa, no lo oculta.
+
+**Clase de origen:** 3 (servicios e inyección) y 6 (insert). **Requisito:** R-38.
+
+---
+
+## D-15 · Géneros como lista fija cargada con SQL · 01/10
+
+**Elegido:** los géneros son una **lista fija** de 15, cargada con un `insert` en
+[`supabase/schema.sql`](../supabase/schema.sql). El formulario de películas los lee de la
+tabla `Generos` y los muestra como checkboxes.
+
+**Por qué:** los mails piden que una película tenga varios géneros, no que el cine pueda
+administrarlos. La tabla `Generos` sigue existiendo, así que agregar uno es un insert más
+y no hay ninguna lista escrita a mano en el front.
+
+**Descartado:** un **ABM de géneros** en el panel del admin. Se descarta porque ningún
+mail lo pide: es una pantalla más para hacer, probar y explicar sin requisito que la
+respalde.
+
+**Requisito:** R-07.
+
+---
+
+## D-16 · `traerUna` con dos consultas · 01/10
+
+**Elegido:** `traerUna(id)` del servicio de películas hace **dos consultas**: una a
+`Peliculas` con `.eq('id', id).single()` y otra a `PeliculasGeneros` con
+`.eq('pelicula_id', id)`. Con el resultado arma la película con la lista de ids de sus
+géneros.
+
+**Por qué:** las dos son consultas del patrón de la clase 6, y cada una se lee y se
+explica por separado.
+
+**Descartado:** el **select anidado** de Supabase (`select('*, PeliculasGeneros(genero_id)')`),
+que trae todo en un solo pedido (🟡). Se descarta porque no se vio en clase.
+
+**Clase de origen:** 6 (CRUD). **Requisito:** R-07.
+
+---
+
+## D-17 · Precio de preventa validado a nivel del formulario · 01/10
+
+**Elegido:** la regla "el precio de preventa es obligatorio solo si la preventa está
+habilitada" se valida con un **`ValidatorFn` propio aplicado al `FormGroup`**, no a un
+control. El validador recibe el grupo entero, lee los dos campos y devuelve un error del
+formulario si la preventa está marcada y el precio está vacío.
+
+**Por qué:** la regla depende de **dos** campos, y un validador puesto en el control del
+precio solo ve su propio valor. Es el mismo `ValidatorFn` de la clase 4; lo único que
+cambia es dónde se cuelga (🟡: en clase se usó sobre un control). El mismo criterio se
+usa para "al menos un género": un `ValidatorFn` colgado del `FormArray` de checkboxes,
+porque la regla es sobre la lista entera y no sobre un checkbox.
+
+**Descartado:** escuchar los cambios del checkbox y **cambiar los validadores en runtime**
+con `setValidators`. Se descarta porque no se vio en clase y reparte la regla entre el
+formulario y un callback.
+
+**Clase de origen:** 4 (validadores propios). **Requisito:** R-11.
+
+---
+
+## D-18 · Id de la película nueva con `insert().select().single()` · 01/10
+
+**Elegido:** al crear una película, el insert se encadena con **`.select().single()`** para
+que Supabase devuelva la fila recién creada, con el `id` que le asignó la base.
+
+**Por qué:** ese `id` hace falta enseguida para guardar las filas de `PeliculasGeneros` y
+para el log de actividad, y lo genera la base (`identity`), así que el front no lo conoce
+de antemano. `select()` y `single()` se vieron en la clase 6; lo que no se vio es
+encadenarlos después de un insert (🟡).
+
+**Descartado:** insertar y después volver a leer todas las películas para quedarse con la
+de `id` más alto. Usa solo lo visto, pero son dos pedidos y, con dos altas simultáneas,
+puede tomar el `id` de la otra y asociar los géneros y el log a la película equivocada.
+
+**Clase de origen:** 6 (CRUD). **Requisitos:** R-07 y R-38.
+
+---
+
+## D-19 · Limitaciones conocidas del ABM de películas · 01/10
+
+Dos cosas que el ABM no resuelve, a sabiendas. Se dejan así y se explican en el oral.
+
+**1. El guardado no es atómico.** Crear o editar una película son varios pedidos
+separados: la fila de `Peliculas`, las filas de `PeliculasGeneros` y el log. Si falla uno
+de los últimos, los anteriores ya quedaron guardados: puede haber una película sin
+géneros, o un cambio sin su línea en el log. El servicio lo informa con
+`ResultadoAccion` (`hecho: true` con un `error`) y la pantalla lo muestra.
+
+**Por qué se deja así:** hacerlo atómico exige una **función de Postgres llamada por RPC**
+que haga todo en una transacción (🟡), que es justo lo que D-14 descartó: esconder la
+lógica en la base. Para un panel que usa un solo administrador, el riesgo es bajo y el
+arreglo es volver a guardar.
+
+**2. Los pósters viejos quedan en el bucket.** Al cambiar el póster de una película o al
+borrarla, el archivo anterior no se elimina de Storage: queda huérfano.
+
+**Por qué se deja así:** borrarlo necesita `remove()` de Storage, que no se vio en clase
+(🟡), y ningún mail lo pide. Lo único que se pierde es espacio, y para el volumen del TP
+es despreciable. La política de borrado para el admin ya está en `schema.sql`, así que
+agregarlo después no toca la base.
+
+**Requisitos:** R-34 y R-38.
+
+---
+
+## D-20 · Id de la URL con `ActivatedRoute` · 01/10
+
+**Elegido:** el formulario de películas lee el `:id` de `/admin/peliculas/:id` con
+**`inject(ActivatedRoute).snapshot.paramMap.get('id')`**. Si no hay `id`, es un alta.
+
+**Por qué:** `ActivatedRoute` es el servicio del router que describe la ruta activa. Se
+inyecta con `inject()`, igual que `Router`, y `snapshot` da los parámetros tal como están
+al crear el componente, que es todo lo que hace falta: el formulario no cambia de película
+sin volver a crearse. Leer parámetros de ruta no se vio en clase (🟡).
+
+**Descartado:**
+- `input()` completado por el router con `withComponentInputBinding()`: usa `input()` de la
+  clase 3, pero obliga a tocar `app.config.ts` con una opción que no se vio.
+- Cortar `Router.url` con `split('/')`: no usa nada nuevo, pero se rompe si la ruta cambia
+  de forma.
+
+**Clase de origen:** 1 y 2 (ruteo).
+
+---
+
+## D-21 · Carga del formulario de edición con `patchValue` · 01/10
+
+**Elegido:** al editar, la película traída de la base se vuelca en el formulario con
+**`formulario.patchValue({ ... })`**.
+
+**Por qué:** el formulario se declara una sola vez, igual que el de registro, y sirve para
+alta y edición. `patchValue` es un método del `FormGroup` que escribe los valores que se
+le pasan y deja el resto como está. No se vio en clase (🟡).
+
+**Descartado:** crear el formulario recién cuando llegan los datos, con los valores
+iniciales en `fb.group` y guardado en un signal que arranca en `null`. Usa solo lo visto,
+pero envuelve todo el template en un `@if` y complica los getters de cada campo.
+
+**Clase de origen:** 4 (formularios reactivos).
+
+---
+
+## D-22 · Géneros del seed con `insert ... select` · 01/10
+
+**Elegido:** [`supabase/seed.sql`](../supabase/seed.sql) carga las películas iniciales y
+les asigna los géneros con **`insert ... select`**, buscando la película y el género
+**por nombre**:
+
+```sql
+insert into public."PeliculasGeneros" (pelicula_id, genero_id)
+select p.id, g.id
+from public."Peliculas" p, public."Generos" g
+where p.nombre = 'The Godfather'
+  and g.nombre in ('Crimen', 'Drama');
+```
+
+**Por qué:** los ids los genera la base (`identity`), así que no se conocen antes de
+insertar. `insert ... select` inserta las filas que devuelve la consulta: las dos tablas en
+el `from` arman todas las combinaciones de película y género, y el `where` deja solo las
+pedidas. No se vio en clase (🟡).
+
+**Descartado:** escribir los ids a mano (`values (1, 4), (1, 9)`). Se descarta porque
+dependen del orden en que se cargaron los datos y cambian si la base se reconstruye: el
+mismo script asignaría géneros equivocados sin dar ningún error.
+
+**Consecuencia:** el seed se corre una sola vez, y depende de que no haya otra película
+con el mismo nombre; si la hubiera, también recibiría los géneros.
+
+**Requisito:** R-07. Se apoya en D-11 (base versionada en SQL) y D-15 (géneros fijos).

@@ -10,6 +10,8 @@
 --   2. Función de rol (D-12), después de las tablas porque lee Usuarios
 --   3. RLS y políticas
 --   4. Permisos de columna sobre Usuarios
+--   5. Datos iniciales (géneros, D-15)
+--   6. Storage: bucket de pósters y sus políticas
 -- ============================================================
 
 -- ============================================================
@@ -548,6 +550,73 @@ grant insert (id, email, nombre, apellido, fecha_nacimiento, tipo_sangre,
 -- El admin sí puede cambiar roles: lo hace desde el panel, y su
 -- permiso viene de la política, no de este grant.
 -- (Ver punto abierto 1 al final de este archivo.)
+
+
+-- ============================================================
+-- 5. DATOS INICIALES
+-- ============================================================
+
+-- ---------- Géneros (R-07, decisión D-15) ----------
+-- Lista fija: no hay pantalla para administrarlos porque ningún mail
+-- la pide. Si hace falta un género nuevo, se agrega con otro insert.
+-- El id lo genera la base (identity), por eso solo se carga el nombre.
+
+insert into public."Generos" (nombre) values
+  ('Acción'),
+  ('Animación'),
+  ('Aventura'),
+  ('Bélica'),
+  ('Ciencia ficción'),
+  ('Comedia'),
+  ('Crimen'),
+  ('Documental'),
+  ('Drama'),
+  ('Familiar'),
+  ('Fantasía'),
+  ('Musical'),
+  ('Romance'),
+  ('Suspenso'),
+  ('Terror');
+
+
+-- ============================================================
+-- 6. STORAGE: BUCKET DE PÓSTERS  (clase 7)
+-- ============================================================
+-- Los buckets son filas de la tabla storage.buckets, y los archivos son
+-- filas de storage.objects. Por eso el bucket se crea con un insert y
+-- los permisos se escriben como políticas, igual que en cualquier tabla.
+--
+-- El bucket es público: el póster se muestra con la URL pública
+-- (.../storage/v1/object/public/peliculas/<ruta>), que no pasa por RLS.
+-- La cartelera la ve cualquiera, incluso sin sesión (R-02).
+
+insert into storage.buckets (id, name, public)
+values ('peliculas', 'peliculas', true);
+
+-- Todas las políticas filtran por bucket_id: storage.objects es una
+-- sola tabla para todos los buckets del proyecto, y sin ese filtro la
+-- política valdría para cualquier otro bucket que se cree después.
+
+-- La URL pública no necesita esta política, pero sí la necesitan las
+-- operaciones que pasan por la API: listar el bucket y reemplazar un
+-- archivo, que primero tiene que poder leerlo.
+create policy "posters: lectura publica"
+  on storage.objects for select to anon, authenticated
+  using (bucket_id = 'peliculas');
+
+-- Subir, reemplazar y borrar: solo el admin (R-34).
+create policy "posters: sube admin"
+  on storage.objects for insert to authenticated
+  with check (bucket_id = 'peliculas' and public.es_admin());
+
+create policy "posters: reemplaza admin"
+  on storage.objects for update to authenticated
+  using (bucket_id = 'peliculas' and public.es_admin())
+  with check (bucket_id = 'peliculas' and public.es_admin());
+
+create policy "posters: borra admin"
+  on storage.objects for delete to authenticated
+  using (bucket_id = 'peliculas' and public.es_admin());
 
 
 -- ============================================================

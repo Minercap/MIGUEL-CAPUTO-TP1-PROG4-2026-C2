@@ -1,0 +1,88 @@
+/* Estilo mínimo para que el listado se lea. El estilo visual del cine se
+   trabaja aparte. */
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.listado {
+  list-style: none;
+  padding: 0;
+}
+
+/* En pantalla ancha cada película es un renglón: póster, datos y acciones. */
+.pelicula {
+  display: grid;
+  grid-template-columns: 3.5rem 1fr auto;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.poster {
+  width: 3.5rem;
+  height: 5.25rem;
+  object-fit: cover;
+  border-radius: 0.25rem;
+}
+
+.sin-poster {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #ddd;
+  color: #555;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.etiquetas,
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.etiqueta {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid #999;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.edad {
+  border-color: #b00020;
+  color: #b00020;
+}
+
+.error {
+  color: #b00020;
+}
+
+/* En celular cada película es una tarjeta: las acciones bajan a un
+   renglón propio, a todo el ancho. */
+@media (max-width: 600px) {
+  .pelicula {
+    grid-template-columns: 3.5rem 1fr;
+    align-items: start;
+    margin-bottom: 1rem;
+    padding: 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 0.5rem;
+  }
+
+  .acciones {
+    grid-column: 1 / -1;
+  }
+}

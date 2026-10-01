@@ -1,9 +1,30 @@
 import { Component } from '@angular/core';
+import { RouterLink } from '@angular/router';
 
+// Un acceso del panel. Si ruta es null, la sección todavía no está hecha
+// y se muestra deshabilitada.
+interface AccesoAdmin {
+  nombre: string;
+  descripcion: string;
+  ruta: string | null;
+}
+
+// Panel de administración (R-34): la puerta de entrada a cada sección.
 @Component({
-  imports: [],
+  imports: [RouterLink],
   selector: 'app-admin',
   styleUrl: './admin.css',
   templateUrl: './admin.html',
 })
-export class Admin {}
+export class Admin {
+  // Lista fija, recorrida con @for en el template. No es un signal porque
+  // nunca cambia mientras la pantalla está abierta.
+  accesos: AccesoAdmin[] = [
+    { nombre: 'Películas', descripcion: 'Cartelera, próximamente y preventa', ruta: '/admin/peliculas' },
+    { nombre: 'Salas y funciones', descripcion: 'Horarios, formatos y precios', ruta: null },
+    { nombre: 'Candy', descripcion: 'Productos y combos', ruta: null },
+    { nombre: 'Cupones', descripcion: 'Descuentos y condiciones', ruta: null },
+    { nombre: 'Reportes', descripcion: 'Facturación y más vendidos', ruta: null },
+    { nombre: 'Log', descripcion: 'Quién hizo qué y cuándo', ruta: null },
+  ];
+}
