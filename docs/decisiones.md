@@ -294,3 +294,44 @@ chequea el rol. Es Angular estándar, pero no se vio en clase (🟡).
 navegando dentro de la app, pero fallan al recargar.
 
 **Clase de origen:** 5 (guards funcionales).
+
+---
+
+## D-14 · Log de actividad escrito desde un servicio · 01/10
+
+**Elegido:** un servicio **`LogActividad`** con un método **`registrar(accion, entidad,
+entidadId, detalle)`** que inserta una fila en la tabla `LogActividad`. Cada servicio del
+admin lo llama **después** de cada alta, edición o baja que salió bien. Si el insert del
+log falla, `registrar()` devuelve el error para que la pantalla lo muestre.
+
+**Por qué:** el log queda a la vista en el código de la app: leyendo `crear()` en el
+servicio de películas se ve la línea que registra la acción. Es un insert común, como los
+de la clase 6, y el usuario que lo hizo sale del servicio `Auth` que ya existe.
+
+**Descartado:** **triggers de Postgres** sobre cada tabla (🟡). Registran aunque el front
+se olvide de llamar al log, pero esconden la lógica en la base, y el admin tiene pocas
+pantallas: son pocos llamados para mantener a mano.
+
+**Consecuencia:** el log depende de que cada servicio nuevo se acuerde de llamar a
+`registrar()`. Y como la acción y el log son dos pedidos separados, puede pasar que la
+acción se guarde y el log no: en ese caso la pantalla avisa, no lo oculta.
+
+**Clase de origen:** 3 (servicios e inyección) y 6 (insert). **Requisito:** R-38.
+
+---
+
+## D-15 · Géneros como lista fija cargada con SQL · 01/10
+
+**Elegido:** los géneros son una **lista fija** de 15, cargada con un `insert` en
+[`supabase/schema.sql`](../supabase/schema.sql). El formulario de películas los lee de la
+tabla `Generos` y los muestra como checkboxes.
+
+**Por qué:** los mails piden que una película tenga varios géneros, no que el cine pueda
+administrarlos. La tabla `Generos` sigue existiendo, así que agregar uno es un insert más
+y no hay ninguna lista escrita a mano en el front.
+
+**Descartado:** un **ABM de géneros** en el panel del admin. Se descarta porque ningún
+mail lo pide: es una pantalla más para hacer, probar y explicar sin requisito que la
+respalde.
+
+**Requisito:** R-07.
