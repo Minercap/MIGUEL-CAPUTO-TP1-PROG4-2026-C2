@@ -242,8 +242,9 @@ tiempo y porque no deja respaldo de lo creado.
 
 **Elegido:** el rol (`admin`, `empleado` o `cliente`) vive en la tabla **`Usuarios`**. Las
 políticas lo leen con la función **`rol_actual()`**, que es `security definer`, y con los
-atajos `es_admin()` y `es_empleado()`. Además, **permisos por columna** sobre `Usuarios`
-impiden que un usuario se edite `rol`, `puntos` o `credito`.
+atajos `es_admin()` y `es_empleado()`. Además, **permisos por columna** sobre `Usuarios`,
+tanto para `insert` como para `update`, impiden que un usuario se cargue o se edite `rol`,
+`puntos` o `credito`.
 
 **Por qué:**
 
@@ -256,6 +257,11 @@ impiden que un usuario se edite `rol`, `puntos` o `credito`.
   campos**. La política "usuario edita su perfil" deja editar la propia fila, pero esa fila
   tiene rol, puntos y crédito. El `revoke update` más el `grant update (...)` sobre los
   campos personales cierran ese hueco.
+- Lo mismo pasa al crear la fila: la política "usuario crea su perfil" solo chequea que el
+  `id` sea el propio, así que sin más restricción alguien podría registrarse insertando
+  `rol: 'admin'` desde la consola del navegador. El `revoke insert` más el
+  `grant insert (...)` sobre las columnas del registro obligan a que rol, puntos y crédito
+  tomen su valor por defecto.
 
 Las funciones de Postgres y los permisos por columna no se vieron en clase (🟡). Quedan
 aprobados y registrados acá.

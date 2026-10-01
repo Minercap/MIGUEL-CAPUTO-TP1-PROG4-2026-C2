@@ -1,1 +1,31 @@
+<nav>
+  <a routerLink="/">Inicio</a>
+
+  @if (auth.usuarioActual()) {
+    <a routerLink="/mi-cuenta">Mi cuenta</a>
+
+    @switch (auth.perfil()?.rol) {
+      @case ('admin') {
+        <a routerLink="/empleado">Validación</a>
+        <a routerLink="/admin">Administración</a>
+      }
+      @case ('empleado') {
+        <a routerLink="/empleado">Validación</a>
+      }
+    }
+
+    <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
+  } @else {
+    <a routerLink="/login">Ingresar</a>
+    <a routerLink="/registro">Crear cuenta</a>
+  }
+</nav>
+
+@if (auth.errorPerfil()) {
+  <p class="error" role="alert">{{ auth.errorPerfil() }}</p>
+}
+@if (errorSesion()) {
+  <p class="error" role="alert">{{ errorSesion() }}</p>
+}
+
 <router-outlet />
