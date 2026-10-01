@@ -364,7 +364,9 @@ formulario si la preventa está marcada y el precio está vacío.
 
 **Por qué:** la regla depende de **dos** campos, y un validador puesto en el control del
 precio solo ve su propio valor. Es el mismo `ValidatorFn` de la clase 4; lo único que
-cambia es dónde se cuelga (🟡: en clase se usó sobre un control).
+cambia es dónde se cuelga (🟡: en clase se usó sobre un control). El mismo criterio se
+usa para "al menos un género": un `ValidatorFn` colgado del `FormArray` de checkboxes,
+porque la regla es sobre la lista entera y no sobre un checkbox.
 
 **Descartado:** escuchar los cambios del checkbox y **cambiar los validadores en runtime**
 con `setValidators`. Se descarta porque no se vio en clase y reparte la regla entre el
@@ -389,3 +391,67 @@ de `id` más alto. Usa solo lo visto, pero son dos pedidos y, con dos altas simu
 puede tomar el `id` de la otra y asociar los géneros y el log a la película equivocada.
 
 **Clase de origen:** 6 (CRUD). **Requisitos:** R-07 y R-38.
+
+---
+
+## D-19 · Limitaciones conocidas del ABM de películas · 01/10
+
+Dos cosas que el ABM no resuelve, a sabiendas. Se dejan así y se explican en el oral.
+
+**1. El guardado no es atómico.** Crear o editar una película son varios pedidos
+separados: la fila de `Peliculas`, las filas de `PeliculasGeneros` y el log. Si falla uno
+de los últimos, los anteriores ya quedaron guardados: puede haber una película sin
+géneros, o un cambio sin su línea en el log. El servicio lo informa con
+`ResultadoAccion` (`hecho: true` con un `error`) y la pantalla lo muestra.
+
+**Por qué se deja así:** hacerlo atómico exige una **función de Postgres llamada por RPC**
+que haga todo en una transacción (🟡), que es justo lo que D-14 descartó: esconder la
+lógica en la base. Para un panel que usa un solo administrador, el riesgo es bajo y el
+arreglo es volver a guardar.
+
+**2. Los pósters viejos quedan en el bucket.** Al cambiar el póster de una película o al
+borrarla, el archivo anterior no se elimina de Storage: queda huérfano.
+
+**Por qué se deja así:** borrarlo necesita `remove()` de Storage, que no se vio en clase
+(🟡), y ningún mail lo pide. Lo único que se pierde es espacio, y para el volumen del TP
+es despreciable. La política de borrado para el admin ya está en `schema.sql`, así que
+agregarlo después no toca la base.
+
+**Requisitos:** R-34 y R-38.
+
+---
+
+## D-20 · Id de la URL con `ActivatedRoute` · 01/10
+
+**Elegido:** el formulario de películas lee el `:id` de `/admin/peliculas/:id` con
+**`inject(ActivatedRoute).snapshot.paramMap.get('id')`**. Si no hay `id`, es un alta.
+
+**Por qué:** `ActivatedRoute` es el servicio del router que describe la ruta activa. Se
+inyecta con `inject()`, igual que `Router`, y `snapshot` da los parámetros tal como están
+al crear el componente, que es todo lo que hace falta: el formulario no cambia de película
+sin volver a crearse. Leer parámetros de ruta no se vio en clase (🟡).
+
+**Descartado:**
+- `input()` completado por el router con `withComponentInputBinding()`: usa `input()` de la
+  clase 3, pero obliga a tocar `app.config.ts` con una opción que no se vio.
+- Cortar `Router.url` con `split('/')`: no usa nada nuevo, pero se rompe si la ruta cambia
+  de forma.
+
+**Clase de origen:** 1 y 2 (ruteo).
+
+---
+
+## D-21 · Carga del formulario de edición con `patchValue` · 01/10
+
+**Elegido:** al editar, la película traída de la base se vuelca en el formulario con
+**`formulario.patchValue({ ... })`**.
+
+**Por qué:** el formulario se declara una sola vez, igual que el de registro, y sirve para
+alta y edición. `patchValue` es un método del `FormGroup` que escribe los valores que se
+le pasan y deja el resto como está. No se vio en clase (🟡).
+
+**Descartado:** crear el formulario recién cuando llegan los datos, con los valores
+iniciales en `fb.group` y guardado en un signal que arranca en `null`. Usa solo lo visto,
+pero envuelve todo el template en un `@if` y complica los getters de cada campo.
+
+**Clase de origen:** 4 (formularios reactivos).

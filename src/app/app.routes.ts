@@ -31,10 +31,11 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/empleado/empleado').then((m) => m.Empleado),
   },
   {
+    // /admin y todas sus rutas hijas (admin.routes.ts). El guard va acá, en
+    // el padre: se ejecuta antes de entrar a cualquiera de las hijas.
     path: 'admin',
-    title: 'Administración · Olympia Cinema',
     canActivate: [adminGuard],
-    loadComponent: () => import('./pages/admin/admin').then((m) => m.Admin),
+    loadChildren: () => import('./pages/admin.routes'),
   },
   {
     path: '**',

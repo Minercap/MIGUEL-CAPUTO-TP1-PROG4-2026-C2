@@ -1,0 +1,27 @@
+/* Estilo mínimo para que el panel se lea. El estilo visual del cine se
+   trabaja aparte. */
+.accesos {
+  /* Tantas columnas como entren de 14rem: en celular queda una sola. */
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
+  gap: 1rem;
+  list-style: none;
+  padding: 0;
+}
+
+.acceso {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 100%;
+  box-sizing: border-box;
+  padding: 1rem;
+  border: 1px solid #999;
+  border-radius: 0.5rem;
+  color: inherit;
+  text-decoration: none;
+}
+
+.deshabilitado {
+  opacity: 0.5;
+}
