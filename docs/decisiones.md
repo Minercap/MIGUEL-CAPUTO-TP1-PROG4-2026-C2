@@ -385,7 +385,7 @@ de antemano. `select()` y `single()` se vieron en la clase 6; lo que no se vio e
 encadenarlos después de un insert (🟡).
 
 **Descartado:** insertar y después volver a leer todas las películas para quedarse con la
-de `id` más alto. Usa solo lo visto, pero son dos pedidos y, si dos administradores crean
-a la vez, puede tomar el `id` de la película del otro.
+de `id` más alto. Usa solo lo visto, pero son dos pedidos y, con dos altas simultáneas,
+puede tomar el `id` de la otra y asociar los géneros y el log a la película equivocada.
 
 **Clase de origen:** 6 (CRUD). **Requisitos:** R-07 y R-38.
