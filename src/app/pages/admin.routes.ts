@@ -9,6 +9,12 @@ const rutas: Routes = [
     title: 'Administración · Olympia Cinema',
     loadComponent: () => import('./admin/admin').then((m) => m.Admin),
   },
+  {
+    path: 'peliculas',
+    title: 'Películas · Administración',
+    loadComponent: () =>
+      import('./admin-peliculas/admin-peliculas').then((m) => m.AdminPeliculas),
+  },
 ];
 
 export default rutas;
