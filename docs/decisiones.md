@@ -335,3 +335,57 @@ mail lo pide: es una pantalla más para hacer, probar y explicar sin requisito q
 respalde.
 
 **Requisito:** R-07.
+
+---
+
+## D-16 · `traerUna` con dos consultas · 01/10
+
+**Elegido:** `traerUna(id)` del servicio de películas hace **dos consultas**: una a
+`Peliculas` con `.eq('id', id).single()` y otra a `PeliculasGeneros` con
+`.eq('pelicula_id', id)`. Con el resultado arma la película con la lista de ids de sus
+géneros.
+
+**Por qué:** las dos son consultas del patrón de la clase 6, y cada una se lee y se
+explica por separado.
+
+**Descartado:** el **select anidado** de Supabase (`select('*, PeliculasGeneros(genero_id)')`),
+que trae todo en un solo pedido (🟡). Se descarta porque no se vio en clase.
+
+**Clase de origen:** 6 (CRUD). **Requisito:** R-07.
+
+---
+
+## D-17 · Precio de preventa validado a nivel del formulario · 01/10
+
+**Elegido:** la regla "el precio de preventa es obligatorio solo si la preventa está
+habilitada" se valida con un **`ValidatorFn` propio aplicado al `FormGroup`**, no a un
+control. El validador recibe el grupo entero, lee los dos campos y devuelve un error del
+formulario si la preventa está marcada y el precio está vacío.
+
+**Por qué:** la regla depende de **dos** campos, y un validador puesto en el control del
+precio solo ve su propio valor. Es el mismo `ValidatorFn` de la clase 4; lo único que
+cambia es dónde se cuelga (🟡: en clase se usó sobre un control).
+
+**Descartado:** escuchar los cambios del checkbox y **cambiar los validadores en runtime**
+con `setValidators`. Se descarta porque no se vio en clase y reparte la regla entre el
+formulario y un callback.
+
+**Clase de origen:** 4 (validadores propios). **Requisito:** R-11.
+
+---
+
+## D-18 · Id de la película nueva con `insert().select().single()` · 01/10
+
+**Elegido:** al crear una película, el insert se encadena con **`.select().single()`** para
+que Supabase devuelva la fila recién creada, con el `id` que le asignó la base.
+
+**Por qué:** ese `id` hace falta enseguida para guardar las filas de `PeliculasGeneros` y
+para el log de actividad, y lo genera la base (`identity`), así que el front no lo conoce
+de antemano. `select()` y `single()` se vieron en la clase 6; lo que no se vio es
+encadenarlos después de un insert (🟡).
+
+**Descartado:** insertar y después volver a leer todas las películas para quedarse con la
+de `id` más alto. Usa solo lo visto, pero son dos pedidos y, si dos administradores crean
+a la vez, puede tomar el `id` de la película del otro.
+
+**Clase de origen:** 6 (CRUD). **Requisitos:** R-07 y R-38.
