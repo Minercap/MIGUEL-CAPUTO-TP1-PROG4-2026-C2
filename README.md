@@ -79,6 +79,8 @@ Se completa a medida que avanza el desarrollo.
   mismo id. Rol, puntos y crédito toman su valor por defecto: la base no deja cargarlos
   desde la app.
 - Tres guards funcionales protegen las rutas: `logueadoGuard` (`/mi-cuenta`),
-  `empleadoGuard` (`/empleado`, también para el admin) y `adminGuard` (`/admin`). Son
-  async y esperan a que se restaure la sesión antes de decidir (D-13).
+  `empleadoGuard` (`/empleado`, solo el empleado) y `adminGuard` (`/admin`, solo el admin).
+  Son async y esperan a que se restaure la sesión antes de decidir (D-13).
+- Admin y empleado son roles separados: el admin no valida entradas ni entrega candy
+  (D-24). La misma separación está en las políticas de la base.
 - El menú cambia según haya sesión y según el rol.
