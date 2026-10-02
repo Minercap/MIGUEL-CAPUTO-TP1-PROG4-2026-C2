@@ -3,15 +3,16 @@ import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Auth } from '../../services/auth';
 import { CuentaDePrueba } from '../../interfaces/cuenta-de-prueba';
+import { email, normalizarEmail, obligatorio } from '../../validadores/validadores';
 
 // Cuentas de demostración para la evaluación: una por rol, para que la
 // cátedra pueda entrar sin registrarse (corrección del 01/10, punto 2.2).
 // Las contraseñas quedan a la vista en el código del front a propósito:
 // son cuentas de prueba y su contraseña no se usa en ningún otro lado.
 const CUENTAS_DE_PRUEBA: CuentaDePrueba[] = [
-  { etiqueta: 'Admin', email: 'ubamjc@gmail.com', password: 'migue314' },
-  { etiqueta: 'Empleado', email: 'miguelcaputo96@gmail.com', password: 'migue314' },
-  { etiqueta: 'Cliente', email: 'roosariov@gmail.com', password: 'migue314' },
+  { etiqueta: 'Admin', email: 'admin@olympia.test', password: 'Olympia2026!' },
+  { etiqueta: 'Empleado', email: 'empleado@olympia.test', password: 'Olympia2026!' },
+  { etiqueta: 'Cliente', email: 'cliente@olympia.test', password: 'Olympia2026!' },
 ];
 
 // Inicio de sesión con formulario reactivo (clase 4) y Supabase Auth (clase 5).
@@ -33,8 +34,10 @@ export class Login {
   cuentasDePrueba = CUENTAS_DE_PRUEBA;
 
   formulario = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required]],
+    email: ['', [obligatorio(), email()]],
+    // Sin mínimo de largo (docs/validaciones.md, 3.2): si la contraseña está
+    // mal, el mensaje es siempre el mismo y no da pistas de por qué.
+    password: ['', [Validators.required, Validators.maxLength(72)]],
   });
 
   get email() {
@@ -52,13 +55,13 @@ export class Login {
   }
 
   async iniciarSesion() {
-    if (this.formulario.invalid) return;
+    if (this.formulario.invalid || this.enviando()) return;
 
     this.error.set(null);
     this.enviando.set(true);
 
     const v = this.formulario.getRawValue();
-    const mensaje = await this.auth.iniciarSesion(v.email ?? '', v.password ?? '');
+    const mensaje = await this.auth.iniciarSesion(normalizarEmail(v.email ?? ''), v.password ?? '');
 
     this.enviando.set(false);
     if (mensaje) {
