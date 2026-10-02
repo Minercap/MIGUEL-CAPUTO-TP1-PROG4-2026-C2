@@ -93,9 +93,9 @@ dos falló.
 | Duración | Obligatoria · `entero(30, 300)` minutos |
 | Géneros | Al menos 1 · como máximo 4 |
 | Restricción de edad | Obligatoria · ninguna, 13 o 18 |
-| Fecha de estreno | Obligatoria · `fecha` · entre 1 año atrás y 1 año adelante |
+| Fecha de estreno | Obligatoria · `fecha` · entre 1 año atrás y 1 año adelante. El rango se exige en el alta; en la edición, solo si se cambió la fecha (D-26) |
 | En cartelera / Próximamente | No pueden estar las dos marcadas a la vez, salvo que la película esté en preventa **(a decidir con la cartelera)** |
-| Preventa habilitada | Solo si la fecha de estreno es futura |
+| Preventa habilitada | Solo si la fecha de estreno es futura. Se exige al habilitarla; si la película ya la tenía habilitada, la edición no la bloquea (D-26) |
 | Precio de preventa | Obligatorio si hay preventa · `precio` |
 
 ### 3.4 Sala

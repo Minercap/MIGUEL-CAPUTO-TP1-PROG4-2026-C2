@@ -15,8 +15,6 @@ import {
   cantidadMarcados,
   entero,
   fechaATexto,
-  fechaDesde,
-  fechaHasta,
   fechaReal,
   hoy,
   imagen,
@@ -72,11 +70,19 @@ export class AdminPeliculaFormulario implements OnInit {
   restricciones = ['ninguna', '13', '18'];
 
   // Rango de la fecha de estreno: entre un año atrás y un año adelante.
-  // Con las mismas dos fechas se arma la lista de años del desplegable.
+  // Con las mismas dos fechas se arma la lista de años del desplegable. Son
+  // signals porque en la edición la lista se amplía para incluir el año que
+  // ya tenía la película, y el template las lee.
   private estrenoMinimo = sumarAnios(hoy(), -1);
   private estrenoMaximo = sumarAnios(hoy(), 1);
-  anioDesde = this.estrenoMinimo.getFullYear();
-  anioHasta = this.estrenoMaximo.getFullYear();
+  anioDesde = signal(this.estrenoMinimo.getFullYear());
+  anioHasta = signal(this.estrenoMaximo.getFullYear());
+
+  // Lo que la película tenía guardado al abrir la edición (D-26). En el alta
+  // quedan así: sin fecha y sin preventa. No son signals porque el template
+  // no los lee: solo los consultan los validadores.
+  private estrenoOriginal: string | null = null;
+  private preventaOriginal = false;
 
   formulario = this.fb.group(
     {
@@ -96,11 +102,7 @@ export class AdminPeliculaFormulario implements OnInit {
           anio: ['', [Validators.required]],
         },
         {
-          validators: [
-            fechaReal(),
-            fechaDesde(this.estrenoMinimo),
-            fechaHasta(this.estrenoMaximo),
-          ],
+          validators: [fechaReal(), this.estrenoEnRango()],
         },
       ),
       en_cartelera: [false],
@@ -136,14 +138,32 @@ export class AdminPeliculaFormulario implements OnInit {
     };
   }
 
-  // La preventa solo tiene sentido antes del estreno: no se puede habilitar
-  // si la fecha de estreno es hoy o ya pasó. Mira dos campos, así que
-  // también va en el grupo.
+  // Validador del grupo { dia, mes, anio }: la fecha de estreno tiene que
+  // estar entre un año atrás y un año adelante. Es una regla del momento de
+  // la carga (D-26): en la edición, si la fecha es la que la película ya
+  // tenía, no se vuelve a exigir. Si no, una película estrenada hace más de
+  // un año no se podría editar nunca más.
+  estrenoEnRango(): ValidatorFn {
+    return (grupo: AbstractControl) => {
+      const estreno = armarFecha(grupo.value);
+      if (estreno === null) return null;
+      if (fechaATexto(grupo.value) === this.estrenoOriginal) return null;
+      if (estreno < this.estrenoMinimo) return { fechaMinima: true };
+      return estreno > this.estrenoMaximo ? { fechaMaxima: true } : null;
+    };
+  }
+
+  // La preventa solo se puede habilitar antes del estreno. La regla se
+  // aplica al habilitarla (D-26): si la película ya la tenía habilitada, la
+  // edición no la bloquea aunque el estreno haya pasado. Que el precio
+  // vuelva al normal después del estreno lo resuelve el sistema con la
+  // fecha (R-11), sin que el admin tenga que destildar nada.
+  // Mira dos campos, así que va en el grupo.
   preventaSoloConEstrenoFuturo(): ValidatorFn {
     return (grupo: AbstractControl) => {
       const habilitada: boolean = grupo.get('preventa_habilitada')?.value;
       const estreno = armarFecha(grupo.get('fecha_estreno')?.value);
-      if (!habilitada || estreno === null) return null;
+      if (!habilitada || this.preventaOriginal || estreno === null) return null;
       return estreno > hoy() ? null : { preventaSinEstrenoFuturo: true };
     };
   }
@@ -211,9 +231,17 @@ export class AdminPeliculaFormulario implements OnInit {
       }
       const pelicula = resultado.datos;
 
-      // El póster guardado se anota antes de cargar el formulario: el
-      // validador posterObligatorio lo lee, y patchValue vuelve a validar.
+      // Lo que ya estaba guardado se anota antes de cargar el formulario:
+      // los validadores lo leen, y patchValue vuelve a validar.
       this.posterActual.set(pelicula.imagen_url);
+      this.estrenoOriginal = pelicula.fecha_estreno;
+      this.preventaOriginal = pelicula.preventa_habilitada;
+
+      // Si la película es de un año que el desplegable no ofrece, se amplía
+      // la lista para que su fecha se vea elegida.
+      const anioOriginal = Number(textoAFecha(pelicula.fecha_estreno).anio);
+      if (anioOriginal < this.anioDesde()) this.anioDesde.set(anioOriginal);
+      if (anioOriginal > this.anioHasta()) this.anioHasta.set(anioOriginal);
 
       // Vuelca la película en el formulario ya creado (D-21). Los géneros
       // se pasan como una lista de true/false, uno por checkbox, y la fecha

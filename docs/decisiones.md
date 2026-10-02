@@ -618,3 +618,49 @@ nombre escrito en otro alfabeto (cirílico, griego, chino).
 aceptando cualquier cosa.
 
 **Requisitos:** R-01 y R-04. Se apoya en D-11 (base versionada en SQL).
+
+---
+
+## D-26 · Reglas de carga de la película: se exigen al cargar, no en cada edición · 01/10
+
+**Elegido:** dos reglas del formulario de película se aplican **en el momento en que el
+admin carga el dato**, y no cada vez que se guarda la película:
+
+- **Fecha de estreno entre un año atrás y un año adelante:** se exige en el alta. En la
+  edición, solo si la fecha se cambió. Si queda la que la película ya tenía, no se vuelve
+  a validar.
+- **Preventa solo con estreno futuro:** se exige al **habilitar** la preventa. Si la
+  película ya la tenía habilitada al abrir la edición, el formulario no la bloquea aunque
+  el estreno ya haya pasado.
+
+Para eso el formulario guarda, al abrir la edición, la fecha de estreno y el estado de la
+preventa que la película tenía, y los dos validadores los comparan con lo que hay en
+pantalla. En el alta no hay valores anteriores, así que las dos reglas se aplican siempre.
+
+**Por qué:** las dos reglas comparan contra **hoy**, y hoy cambia. Una fecha de estreno
+que era válida al cargarla deja de serlo sola cuando la película cumple un año; una
+preventa bien habilitada queda "mal" al día siguiente del estreno. Si se exigieran en cada
+guardado, esas películas no se podrían volver a editar, ni para sacarlas de cartelera.
+
+Sobre la preventa, el mail del 08/03 dice que pasada la fecha de preventa el precio vuelve
+al normal (R-11). Eso lo resuelve **el sistema con la fecha de estreno**, en el momento de
+la compra: el admin no tiene que acordarse de destildar nada. La casilla dice "esta
+película tiene preventa"; si la preventa está vigente o no, lo dice la fecha.
+
+**Descartado:**
+
+- Aplicar las dos reglas en cada guardado, que es como estaban. Bloquea la edición de
+  películas viejas y de las que tuvieron preventa.
+- Sacar las reglas del todo. Dejaría cargar una fecha de estreno de 1990 por un error de
+  tipeo, o habilitar la preventa de una película ya estrenada.
+
+**Consecuencia:** son reglas solo del formulario. En la base no tienen `check` por el mismo
+motivo: un check se vuelve a evaluar en cada update (D-25). Y "preventa habilitada" pasa a
+significar "tiene preventa", no "la preventa está abierta hoy": el bloque de compra tiene
+que mirar la fecha de estreno, no solo la casilla.
+
+Es el mismo tipo de validador que D-17 (un `ValidatorFn` colgado de un grupo), pero como
+método del componente, porque necesita leer los valores originales.
+
+**Clase de origen:** 4 (validadores propios). **Requisitos:** R-04 y R-11. Se apoya en D-17
+y D-25.

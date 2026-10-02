@@ -75,8 +75,8 @@
     <app-campo-fecha
       etiqueta="Fecha de estreno"
       [grupo]="fechaEstreno"
-      [anioDesde]="anioDesde"
-      [anioHasta]="anioHasta"
+      [anioDesde]="anioDesde()"
+      [anioHasta]="anioHasta()"
     >
       @if (fechaEstreno.touched) {
         @if (fechaEstreno.errors?.['fechaImposible']) {
