@@ -1,18 +1,31 @@
 import { Component, inject, signal } from '@angular/core';
-import {
-  AbstractControl,
-  FormBuilder,
-  ReactiveFormsModule,
-  ValidatorFn,
-  Validators,
-} from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Auth } from '../../services/auth';
+import { CampoFecha } from '../../components/campo-fecha/campo-fecha';
+import {
+  camposIguales,
+  email,
+  entero,
+  fechaATexto,
+  fechaDesde,
+  fechaHasta,
+  fechaReal,
+  hoy,
+  largo,
+  normalizarEmail,
+  obligatorio,
+  sumarAnios,
+  textoPersona,
+  unoDe,
+} from '../../validadores/validadores';
 
 // Registro de clientes (R-01) con formulario reactivo (clase 4). Pide los
-// datos que enumeró el cliente en el mail del 01/01.
+// datos que enumeró el cliente en el mail del 01/01. Las reglas de cada
+// campo son las de docs/validaciones.md, sección 3.1, y se repiten como
+// constraints en la base (D-25).
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, CampoFecha],
   selector: 'app-registro',
   styleUrl: './registro.css',
   templateUrl: './registro.html',
@@ -22,36 +35,53 @@ export class Registro {
   private auth = inject(Auth);
   private router = inject(Router);
 
-  // Opciones de los select, recorridas con @for en el template.
+  // Opciones de los select, recorridas con @for en el template. Son las
+  // mismas listas que tienen los check de la base: si se agrega una opción
+  // acá, hay que agregarla en supabase/schema.sql.
   tiposSangre = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'];
   coloresOjos = ['Marrón', 'Negro', 'Verde', 'Azul', 'Gris', 'Otro'];
+
+  // Rango de la fecha de nacimiento: no futura y no más de 120 años atrás.
+  // Con las mismas dos fechas se arma la lista de años del desplegable.
+  private fechaMaxima = hoy();
+  private fechaMinima = sumarAnios(this.fechaMaxima, -120);
+  anioDesde = this.fechaMinima.getFullYear();
+  anioHasta = this.fechaMaxima.getFullYear();
 
   // Estado que lee el template: va en signals (D-03).
   error = signal<string | null>(null);
   enviando = signal(false);
 
-  formulario = this.fb.group({
-    email: ['', [Validators.required, Validators.email]],
-    password: ['', [Validators.required, Validators.minLength(6)]],
-    nombre: ['', [Validators.required]],
-    apellido: ['', [Validators.required]],
-    fecha_nacimiento: ['', [Validators.required, this.fechaNoFutura()]],
-    tipo_sangre: ['', [Validators.required]],
-    color_ojos: ['', [Validators.required]],
-    dias_vacaciones: [
-      null as number | null,
-      [Validators.required, Validators.min(0), Validators.max(365), Validators.pattern(/^\d+$/)],
-    ],
-  });
-
-  // Validador propio (clase 4): nadie puede haber nacido en el futuro.
-  // El input date entrega 'AAAA-MM-DD'; con 'T00:00' se lee en hora local.
-  fechaNoFutura(): ValidatorFn {
-    return (control: AbstractControl) => {
-      if (!control.value) return null;
-      return new Date(control.value + 'T00:00') > new Date() ? { fechaFutura: true } : null;
-    };
-  }
+  formulario = this.fb.group(
+    {
+      email: ['', [obligatorio(), email()]],
+      // La contraseña no se recorta ni se valida por contenido: de 8 a 72
+      // caracteres, sin exigir mayúsculas ni símbolos (NIST SP 800-63B). 72
+      // es el máximo que admite Supabase Auth.
+      password: ['', [Validators.required, Validators.minLength(8), Validators.maxLength(72)]],
+      confirmar_password: ['', [Validators.required]],
+      nombre: ['', [obligatorio(), largo(2, 50), textoPersona()]],
+      apellido: ['', [obligatorio(), largo(2, 50), textoPersona()]],
+      // Grupo anidado para el componente campo-fecha (D-23). Cada
+      // desplegable es obligatorio, y las reglas que miran la fecha entera
+      // van como validadores del grupo.
+      fecha_nacimiento: this.fb.group(
+        {
+          dia: ['', [Validators.required]],
+          mes: ['', [Validators.required]],
+          anio: ['', [Validators.required]],
+        },
+        {
+          validators: [fechaReal(), fechaHasta(this.fechaMaxima), fechaDesde(this.fechaMinima)],
+        },
+      ),
+      tipo_sangre: ['', [Validators.required, unoDe(this.tiposSangre)]],
+      color_ojos: ['', [Validators.required, unoDe(this.coloresOjos)]],
+      dias_vacaciones: [null as number | null, [Validators.required, entero(0, 60)]],
+    },
+    // Validador del formulario entero, porque compara dos campos (D-17).
+    { validators: [camposIguales('password', 'confirmar_password')] },
+  );
 
   // Getters para leer cada campo desde el template (clase 4).
   get email() {
@@ -60,14 +90,18 @@ export class Registro {
   get password() {
     return this.formulario.get('password');
   }
+  get confirmarPassword() {
+    return this.formulario.get('confirmar_password');
+  }
   get nombre() {
     return this.formulario.get('nombre');
   }
   get apellido() {
     return this.formulario.get('apellido');
   }
+  // Con .controls devuelve el FormGroup, que es lo que recibe campo-fecha.
   get fechaNacimiento() {
-    return this.formulario.get('fecha_nacimiento');
+    return this.formulario.controls.fecha_nacimiento;
   }
   get tipoSangre() {
     return this.formulario.get('tipo_sangre');
@@ -80,18 +114,25 @@ export class Registro {
   }
 
   async registrar() {
-    if (this.formulario.invalid) return;
+    // enviando() evita el doble envío si se aprieta Enter dos veces.
+    if (this.formulario.invalid || this.enviando()) return;
 
     this.error.set(null);
     this.enviando.set(true);
 
+    // Se normaliza antes de enviar: los textos sin espacios en los extremos
+    // y el mail en minúsculas. Es lo mismo que miraron los validadores.
     const v = this.formulario.getRawValue();
     const mensaje = await this.auth.registrar({
-      email: v.email ?? '',
+      email: normalizarEmail(v.email ?? ''),
       password: v.password ?? '',
-      nombre: v.nombre ?? '',
-      apellido: v.apellido ?? '',
-      fecha_nacimiento: v.fecha_nacimiento ?? '',
+      nombre: (v.nombre ?? '').trim(),
+      apellido: (v.apellido ?? '').trim(),
+      fecha_nacimiento: fechaATexto({
+        dia: v.fecha_nacimiento.dia ?? '',
+        mes: v.fecha_nacimiento.mes ?? '',
+        anio: v.fecha_nacimiento.anio ?? '',
+      }),
       tipo_sangre: v.tipo_sangre ?? '',
       color_ojos: v.color_ojos ?? '',
       dias_vacaciones: Number(v.dias_vacaciones),

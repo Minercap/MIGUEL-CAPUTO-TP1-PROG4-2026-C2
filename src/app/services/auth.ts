@@ -117,7 +117,7 @@ export class Auth {
       case 'email_exists':
         return 'Ya existe una cuenta con ese mail.';
       case 'weak_password':
-        return 'La contraseña es muy débil: usá al menos 6 caracteres.';
+        return 'La contraseña es muy débil: usá al menos 8 caracteres.';
       case 'email_address_invalid':
         return 'El mail no es válido.';
       case 'email_not_confirmed':
