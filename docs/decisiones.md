@@ -549,3 +549,49 @@ entradas, que no le corresponde.
 
 **Corrige:** D-12. **Requisitos:** R-31 a R-33 (validación, solo el empleado) y R-34 a R-38
 (administración y reportes, solo el admin).
+
+---
+
+## D-25 · Reglas de contenido repetidas como constraints `check` · 01/10
+
+**Elegido:** las reglas de largo, rango y obligatoriedad del registro y de la película se
+validan en el formulario **y además** en la base, con constraints `check` y `not null`
+(sección 7 de [`supabase/schema.sql`](../supabase/schema.sql)):
+
+- `Usuarios`: nombre y apellido de 2 a 50 caracteres, fecha de nacimiento no futura y no
+  más de 120 años atrás, días de vacaciones de 0 a 60.
+- `Peliculas`: `sinopsis` e `imagen_url` pasan a `not null`; nombre de 1 a 100 caracteres,
+  sinopsis de 20 a 1000, imagen no vacía, duración de 30 a 300 minutos.
+
+**Por qué:** el formulario se puede saltear desde la consola del navegador, llamando a
+Supabase directo; la base no. Lo marcó la cátedra en la corrección del 01/10, que además
+permitió expresamente funciones, triggers y constraints de Postgres.
+
+Lo que no se vio en clase (🟡) y se usa acá:
+
+- **`check`**: una condición que la fila tiene que cumplir para guardarse. Se evalúa en cada
+  insert y en cada update.
+- **`btrim()` y `char_length()`**: sacar los espacios de los extremos y contar caracteres.
+  Juntas resuelven "no puede ser solo espacios": un texto de puros espacios queda con
+  largo 0 y no llega al mínimo.
+- **`current_date - interval '120 years'`**: la fecha de hoy corrida 120 años atrás.
+- **`alter policy`** y **`alter table ... add constraint`**: cambian una política o una
+  tabla que ya existe, sin borrarla y crearla de nuevo.
+
+**Límites conocidos:**
+
+- "Al menos un género" **no se puede expresar** como `check`: un check solo ve la fila que
+  se está guardando, y los géneros están en otra tabla. Haría falta un trigger. Queda
+  validado solo en el formulario.
+- El rango de la fecha de nacimiento usa `current_date`, así que se evalúa **al guardar**:
+  la base no vuelve a revisar las filas viejas con el paso del tiempo. Para una fecha de
+  nacimiento alcanza.
+- El servidor está en UTC y Argentina en UTC-3: de 21 a 24 hs la base ya está en el día
+  siguiente. El efecto es que acepta una fecha un día "en el futuro" durante esas tres
+  horas; nunca rechaza una fecha válida.
+- "Solo letras" en nombre y apellido queda validado solo en el formulario.
+
+**Descartado:** validar solo en el formulario. Es lo visto en clase, pero deja la base
+aceptando cualquier cosa.
+
+**Requisitos:** R-01 y R-04. Se apoya en D-11 (base versionada en SQL).

@@ -12,6 +12,8 @@
 --   4. Permisos de columna sobre Usuarios
 --   5. Datos iniciales (géneros, D-15)
 --   6. Storage: bucket de pósters y sus políticas
+--   7. Correcciones del 01/10: roles separados (D-24), campos
+--      obligatorios de la película y constraints check
 -- ============================================================
 
 -- ============================================================
@@ -256,6 +258,8 @@ as $$
 $$;
 
 -- Atajos, para que las políticas se lean solas.
+-- OJO: es_empleado() se redefine en la sección 7.1 (D-24) para que sea
+-- verdadero solo con el rol 'empleado'. La de acá es la versión original.
 create or replace function public.es_admin()
 returns boolean
 language sql
@@ -396,8 +400,9 @@ create policy "recompensas: escritura admin"
 
 
 -- ---------- Compras ----------
--- El cliente ve las suyas. El empleado y el admin ven todas, porque
--- tienen que validar entradas (R-31).
+-- El cliente ve las suyas. El empleado ve todas porque tiene que validar
+-- entradas (R-31), y el admin porque las necesita para los reportes: a
+-- él se lo agrega la sección 7.1 (D-24).
 -- El anónimo puede insertar: es la compra sin cuenta (R-02).
 
 create policy "cliente lee sus compras"
@@ -509,7 +514,8 @@ create policy "alertas: admin marca notificada"
 
 -- ---------- Log de actividad ----------
 -- Lo lee solo el admin (R-38). Lo escriben admin y empleado, que son
--- los que hacen las acciones que se auditan.
+-- los que hacen las acciones que se auditan. La condición de escritura
+-- se corrige en la sección 7.1 para nombrar a los dos (D-24).
 -- No hay política de update ni de delete: el log no se edita ni se borra.
 
 create policy "log: lectura admin"
@@ -617,6 +623,122 @@ create policy "posters: reemplaza admin"
 create policy "posters: borra admin"
   on storage.objects for delete to authenticated
   using (bucket_id = 'peliculas' and public.es_admin());
+
+
+-- ============================================================
+-- 7. CORRECCIONES DEL 01/10  (docs/correccion-01-10.md)
+-- ============================================================
+-- Esta sección cambia cosas que se crearon más arriba. Está aparte, y
+-- no mezclada con las secciones 1 a 3, porque la base ya existía cuando
+-- llegó la corrección: es exactamente lo que se corrió sobre la base
+-- viva. Corriendo el script completo desde cero se llega al mismo
+-- resultado, porque primero crea y después corrige.
+
+
+-- ---------- 7.1 Admin y empleado, roles separados (decisión D-24) ----------
+-- El admin no valida entradas ni entrega candy: lo hace solo el empleado.
+-- Antes es_empleado() devolvía verdadero también para el admin.
+--
+-- "create or replace" reemplaza el cuerpo de la función sin borrarla,
+-- así que las políticas que ya la usan siguen en pie y toman la regla
+-- nueva sin tocarlas. Por eso NO hace falta modificar:
+--   "empleado lee usuarios"      queda solo para el empleado; el admin ya
+--                                lee Usuarios por "usuario lee su perfil",
+--                                que lo nombra con es_admin().
+--   "cliente cancela su compra"  el update de Compras queda para el dueño
+--                                de la compra (cancelar, R-29) y para el
+--                                empleado (validar, R-31 y R-33). El admin
+--                                queda afuera.
+
+create or replace function public.es_empleado()
+returns boolean
+language sql
+stable
+as $ select public.rol_actual() = 'empleado'; $;
+
+-- Las tres políticas que sí cambian son las que contaban con que
+-- es_empleado() incluía al admin. "alter policy" cambia la condición de
+-- una política que ya existe, sin tener que borrarla y crearla de nuevo.
+
+-- El admin lee todas las compras: las necesita para los reportes
+-- (R-35 a R-37). Leer no es validar.
+alter policy "cliente lee sus compras"
+  on public."Compras"
+  using (usuario_id = auth.uid() or public.es_empleado() or public.es_admin());
+
+-- Lo mismo con los ítems del candy: el reporte del producto más vendido
+-- (R-37) sale de acá.
+alter policy "items_candy: lectura"
+  on public."ItemsCandy"
+  using (
+    exists (
+      select 1 from public."Compras" c
+      where c.id = compra_id
+        and (c.usuario_id = auth.uid() or public.es_empleado() or public.es_admin())
+    )
+  );
+
+-- El log lo escriben los dos: el admin cuando crea o modifica algo y el
+-- empleado cuando valida un QR (R-38). Sin este cambio, el admin dejaba
+-- de poder registrar sus acciones.
+alter policy "log: escritura admin y empleado"
+  on public."LogActividad"
+  with check (public.es_admin() or public.es_empleado());
+
+
+-- ---------- 7.2 Sinopsis e imagen obligatorias (R-04) ----------
+-- "Toda película tiene una duración, una imagen, un nombre y una
+-- sinopsis" (mail del 01/01). nombre y duracion_minutos ya eran not null.
+-- Si alguna fila existente tiene null en estas columnas, el alter falla
+-- y no cambia nada: hay que completarla antes.
+
+alter table public."Peliculas"
+  alter column sinopsis   set not null,
+  alter column imagen_url set not null;
+
+
+-- ---------- 7.3 Reglas de contenido como constraints check ----------
+-- Son las mismas reglas que valida el formulario (punto 4 de la
+-- corrección). Se repiten acá porque el formulario se puede saltear
+-- desde la consola del navegador y la base no.
+--
+-- Un check es una condición que la fila tiene que cumplir para poder
+-- guardarse. Se evalúa en cada insert y en cada update. Si la columna
+-- es null, el check no la rechaza: de eso se ocupa el not null.
+--
+--   btrim(texto)        saca los espacios de adelante y de atrás.
+--   char_length(texto)  cuenta los caracteres.
+-- Combinadas resuelven dos reglas en una: un texto que es solo espacios
+-- queda con largo 0 después del btrim, y no llega al mínimo.
+
+alter table public."Usuarios"
+  add constraint usuarios_nombre_largo
+    check (char_length(btrim(nombre)) between 2 and 50),
+  add constraint usuarios_apellido_largo
+    check (char_length(btrim(apellido)) between 2 and 50),
+  -- No futura y no más de 120 años atrás. current_date es la fecha de hoy
+  -- en el servidor, y restarle un interval la corre hacia atrás.
+  -- Que la fecha exista (no 31/02) ya lo garantiza el tipo date.
+  add constraint usuarios_fecha_nacimiento_rango
+    check (fecha_nacimiento <= current_date
+           and fecha_nacimiento >= current_date - interval '120 years'),
+  add constraint usuarios_dias_vacaciones_rango
+    check (dias_vacaciones between 0 and 60);
+
+alter table public."Peliculas"
+  add constraint peliculas_nombre_largo
+    check (char_length(btrim(nombre)) between 1 and 100),
+  add constraint peliculas_sinopsis_largo
+    check (char_length(btrim(sinopsis)) between 20 and 1000),
+  add constraint peliculas_imagen_no_vacia
+    check (char_length(btrim(imagen_url)) > 0),
+  add constraint peliculas_duracion_rango
+    check (duracion_minutos between 30 and 300);
+
+-- Lo que NO está como check:
+--   "Al menos un género" no se puede expresar: un check solo ve la fila
+--   que se está guardando, y los géneros están en otra tabla
+--   (PeliculasGeneros). Queda validado solo en el formulario.
 
 
 -- ============================================================
