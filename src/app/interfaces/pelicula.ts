@@ -4,15 +4,16 @@ export interface Genero {
   nombre: string;
 }
 
-// Una fila de la tabla Peliculas (supabase/schema.sql).
+// Una fila de la tabla Peliculas (supabase/schema.sql). Sinopsis, imagen y
+// fecha de estreno son obligatorias desde la corrección del 01/10 (R-04, D-25).
 export interface Pelicula {
   id: number;
   nombre: string;
-  sinopsis: string | null;
-  imagen_url: string | null; // URL pública del póster en Storage (clase 7)
+  sinopsis: string;
+  imagen_url: string; // URL pública del póster en Storage (clase 7)
   duracion_minutos: number;
   restriccion_edad: 13 | 18 | null; // null = apta para todo público
-  fecha_estreno: string | null; // 'AAAA-MM-DD', como la devuelve Postgres
+  fecha_estreno: string; // 'AAAA-MM-DD', como la devuelve Postgres
   en_cartelera: boolean;
   proximamente: boolean;
   preventa_habilitada: boolean;
@@ -24,11 +25,11 @@ export interface Pelicula {
 // No lleva id ni creado_en: los pone la base.
 export interface PeliculaPorCrear {
   nombre: string;
-  sinopsis: string | null;
-  imagen_url: string | null;
+  sinopsis: string;
+  imagen_url: string;
   duracion_minutos: number;
   restriccion_edad: 13 | 18 | null;
-  fecha_estreno: string | null;
+  fecha_estreno: string;
   en_cartelera: boolean;
   proximamente: boolean;
   preventa_habilitada: boolean;
@@ -40,11 +41,11 @@ export interface PeliculaPorCrear {
 // en el .eq('id', id).
 export interface PeliculaPorModificar {
   nombre: string;
-  sinopsis: string | null;
-  imagen_url: string | null;
+  sinopsis: string;
+  imagen_url: string;
   duracion_minutos: number;
   restriccion_edad: 13 | 18 | null;
-  fecha_estreno: string | null;
+  fecha_estreno: string;
   en_cartelera: boolean;
   proximamente: boolean;
   preventa_habilitada: boolean;

@@ -140,6 +140,18 @@ export function unoDe(opciones: string[]): ValidatorFn {
   };
 }
 
+// Para un FormArray de checkboxes (clase 4): cuántos tienen que estar
+// marcados. La regla es sobre la lista entera, no sobre un checkbox, así
+// que se cuelga del FormArray (D-17).
+export function cantidadMarcados(minimo: number, maximo: number): ValidatorFn {
+  return (control: AbstractControl) => {
+    const marcados: boolean[] = control.value;
+    const cantidad = marcados.filter((marcado) => marcado).length;
+    if (cantidad < minimo) return { pocosMarcados: minimo };
+    return cantidad > maximo ? { demasiadosMarcados: maximo } : null;
+  };
+}
+
 // ---------- Código de compra (D-09) ----------
 
 const PATRON_CODIGO_COMPRA = /^OLY-[A-Z0-9]{4}-[A-Z0-9]{4}$/;

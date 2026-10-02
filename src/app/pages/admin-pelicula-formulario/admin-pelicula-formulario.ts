@@ -9,12 +9,32 @@ import {
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Peliculas } from '../../services/peliculas';
 import { Genero, PeliculaPorCrear } from '../../interfaces/pelicula';
+import { CampoFecha } from '../../components/campo-fecha/campo-fecha';
+import {
+  armarFecha,
+  cantidadMarcados,
+  entero,
+  fechaATexto,
+  fechaDesde,
+  fechaHasta,
+  fechaReal,
+  hoy,
+  imagen,
+  largo,
+  obligatorio,
+  precio,
+  sumarAnios,
+  textoAFecha,
+  textoLibre,
+  unoDe,
+} from '../../validadores/validadores';
 
 // Alta y edición de películas (R-34) en un solo formulario reactivo
 // (clase 4). La misma pantalla atiende /admin/peliculas/nueva y
 // /admin/peliculas/:id: lo que cambia es si la URL trae un id o no.
+// Las reglas de cada campo son las de docs/validaciones.md, sección 3.3.
 @Component({
-  imports: [ReactiveFormsModule, RouterLink],
+  imports: [ReactiveFormsModule, RouterLink, CampoFecha],
   selector: 'app-admin-pelicula-formulario',
   styleUrl: './admin-pelicula-formulario.css',
   templateUrl: './admin-pelicula-formulario.html',
@@ -41,42 +61,69 @@ export class AdminPeliculaFormulario implements OnInit {
   posterActual = signal<string | null>(null);
   // Un alta que salió bien a medias no se puede reenviar: crearía otra película.
   bloqueado = signal(false);
+  // El input de archivo no tiene "touched" porque no está atado al
+  // formulario: se anota acá si ya se usó, para mostrar su error recién ahí.
+  posterTocado = signal(false);
+
+  // Los valores del select de restricción. El select trabaja con texto y se
+  // convierte a número (o null) recién al guardar. "Ninguna" es una opción
+  // más, y no el valor vacío, para que haya que elegirla: el campo es
+  // obligatorio.
+  restricciones = ['ninguna', '13', '18'];
+
+  // Rango de la fecha de estreno: entre un año atrás y un año adelante.
+  // Con las mismas dos fechas se arma la lista de años del desplegable.
+  private estrenoMinimo = sumarAnios(hoy(), -1);
+  private estrenoMaximo = sumarAnios(hoy(), 1);
+  anioDesde = this.estrenoMinimo.getFullYear();
+  anioHasta = this.estrenoMaximo.getFullYear();
 
   formulario = this.fb.group(
     {
-      nombre: ['', [Validators.required]],
-      sinopsis: [''],
-      duracion_minutos: [
-        null as number | null,
-        [Validators.required, Validators.min(1), Validators.pattern(/^\d+$/)],
-      ],
-      // El select trabaja con texto: '' es "ninguna", y también '13' y '18'.
-      // Se convierte a número (o null) recién al guardar.
-      restriccion_edad: [''],
-      fecha_estreno: [''],
+      nombre: ['', [obligatorio(), largo(1, 100), textoLibre()]],
+      // textoLibre(true): la sinopsis es un área de texto y acepta saltos
+      // de línea.
+      sinopsis: ['', [obligatorio(), largo(20, 1000), textoLibre(true)]],
+      duracion_minutos: [null as number | null, [Validators.required, entero(30, 300)]],
+      restriccion_edad: ['', [Validators.required, unoDe(this.restricciones)]],
+      // Grupo anidado para el componente campo-fecha (D-23). Cada
+      // desplegable es obligatorio, y las reglas que miran la fecha entera
+      // van como validadores del grupo.
+      fecha_estreno: this.fb.group(
+        {
+          dia: ['', [Validators.required]],
+          mes: ['', [Validators.required]],
+          anio: ['', [Validators.required]],
+        },
+        {
+          validators: [
+            fechaReal(),
+            fechaDesde(this.estrenoMinimo),
+            fechaHasta(this.estrenoMaximo),
+          ],
+        },
+      ),
       en_cartelera: [false],
       proximamente: [false],
       preventa_habilitada: [false],
-      precio_preventa: [null as number | null, [Validators.min(0)]],
+      precio_preventa: [null as number | null, [precio()]],
       // Un checkbox por género. Arranca vacío: los controles se agregan con
       // push cuando llega la lista de géneros (FormArray, clase 4).
-      generos: this.fb.array<boolean>([], [this.alMenosUnGenero()]),
+      generos: this.fb.array<boolean>([], [cantidadMarcados(1, 4)]),
       // El archivo elegido. No está atado a un input con formControlName: lo
       // carga cargarPoster() (clase 7).
-      poster: this.fb.control<File | null>(null),
+      poster: this.fb.control<File | null>(null, [imagen(2)]),
     },
-    // Validador del grupo entero, porque mira dos campos a la vez (D-17).
-    { validators: [this.precioDePreventaObligatorio()] },
+    // Validadores del grupo entero, porque cada uno mira más de un campo, o
+    // algo que está fuera del formulario (D-17).
+    {
+      validators: [
+        this.precioDePreventaObligatorio(),
+        this.preventaSoloConEstrenoFuturo(),
+        this.posterObligatorio(),
+      ],
+    },
   );
-
-  // Validador propio sobre el FormArray: la regla es sobre la lista
-  // completa de checkboxes, no sobre uno en particular.
-  alMenosUnGenero(): ValidatorFn {
-    return (control: AbstractControl) => {
-      const marcados: boolean[] = control.value;
-      return marcados.some((marcado) => marcado) ? null : { sinGeneros: true };
-    };
-  }
 
   // Validador propio sobre el FormGroup (D-17): el precio de preventa es
   // obligatorio solo si la preventa está habilitada. El error queda en el
@@ -89,18 +136,54 @@ export class AdminPeliculaFormulario implements OnInit {
     };
   }
 
+  // La preventa solo tiene sentido antes del estreno: no se puede habilitar
+  // si la fecha de estreno es hoy o ya pasó. Mira dos campos, así que
+  // también va en el grupo.
+  preventaSoloConEstrenoFuturo(): ValidatorFn {
+    return (grupo: AbstractControl) => {
+      const habilitada: boolean = grupo.get('preventa_habilitada')?.value;
+      const estreno = armarFecha(grupo.get('fecha_estreno')?.value);
+      if (!habilitada || estreno === null) return null;
+      return estreno > hoy() ? null : { preventaSinEstrenoFuturo: true };
+    };
+  }
+
+  // Toda película tiene una imagen (R-04): hace falta un archivo elegido o
+  // un póster ya guardado. En el alta no hay póster guardado, así que hay
+  // que elegir uno; en la edición alcanza con el que ya tenía.
+  // Es un método del componente porque necesita leer posterActual.
+  posterObligatorio(): ValidatorFn {
+    return (grupo: AbstractControl) => {
+      const archivo: File | null = grupo.get('poster')?.value;
+      return archivo === null && this.posterActual() === null ? { posterObligatorio: true } : null;
+    };
+  }
+
   // Getters para leer cada campo desde el template (clase 4).
   get nombre() {
     return this.formulario.get('nombre');
   }
+  get sinopsis() {
+    return this.formulario.get('sinopsis');
+  }
   get duracionMinutos() {
     return this.formulario.get('duracion_minutos');
+  }
+  get restriccionEdad() {
+    return this.formulario.get('restriccion_edad');
+  }
+  // Con .controls devuelve el FormGroup, que es lo que recibe campo-fecha.
+  get fechaEstreno() {
+    return this.formulario.controls.fecha_estreno;
   }
   get precioPreventa() {
     return this.formulario.get('precio_preventa');
   }
   get generosForm() {
     return this.formulario.controls.generos;
+  }
+  get poster() {
+    return this.formulario.get('poster');
   }
 
   async ngOnInit() {
@@ -128,21 +211,26 @@ export class AdminPeliculaFormulario implements OnInit {
       }
       const pelicula = resultado.datos;
 
+      // El póster guardado se anota antes de cargar el formulario: el
+      // validador posterObligatorio lo lee, y patchValue vuelve a validar.
+      this.posterActual.set(pelicula.imagen_url);
+
       // Vuelca la película en el formulario ya creado (D-21). Los géneros
-      // se pasan como una lista de true/false, uno por checkbox.
+      // se pasan como una lista de true/false, uno por checkbox, y la fecha
+      // como sus tres partes.
       this.formulario.patchValue({
         nombre: pelicula.nombre,
-        sinopsis: pelicula.sinopsis ?? '',
+        sinopsis: pelicula.sinopsis,
         duracion_minutos: pelicula.duracion_minutos,
-        restriccion_edad: pelicula.restriccion_edad === null ? '' : String(pelicula.restriccion_edad),
-        fecha_estreno: pelicula.fecha_estreno ?? '',
+        restriccion_edad:
+          pelicula.restriccion_edad === null ? 'ninguna' : String(pelicula.restriccion_edad),
+        fecha_estreno: textoAFecha(pelicula.fecha_estreno),
         en_cartelera: pelicula.en_cartelera,
         proximamente: pelicula.proximamente,
         preventa_habilitada: pelicula.preventa_habilitada,
         precio_preventa: pelicula.precio_preventa,
         generos: generos.map((genero) => pelicula.generos_ids.includes(genero.id)),
       });
-      this.posterActual.set(pelicula.imagen_url);
     }
 
     this.cargando.set(false);
@@ -152,10 +240,12 @@ export class AdminPeliculaFormulario implements OnInit {
   cargarPoster(evento: Event) {
     const input = evento.target as HTMLInputElement;
     this.formulario.patchValue({ poster: input.files?.[0] ?? null });
+    this.posterTocado.set(true);
   }
 
   async guardar() {
-    if (this.formulario.invalid || this.bloqueado()) return;
+    // enviando() evita el doble envío si se aprieta Enter dos veces.
+    if (this.formulario.invalid || this.bloqueado() || this.enviando()) return;
 
     this.error.set(null);
     this.aviso.set(null);
@@ -164,7 +254,7 @@ export class AdminPeliculaFormulario implements OnInit {
     const v = this.formulario.getRawValue();
 
     // Primero el póster: si se eligió uno nuevo se sube y se usa su URL;
-    // si no, se conserva el que ya tenía la película (o ninguno).
+    // si no, se conserva el que ya tenía la película.
     let imagenUrl = this.posterActual();
     if (v.poster) {
       const subida = await this.peliculasSrv.subirPoster(v.poster);
@@ -180,19 +270,33 @@ export class AdminPeliculaFormulario implements OnInit {
       this.formulario.patchValue({ poster: null });
     }
 
+    // El validador posterObligatorio ya garantiza que haya póster. El
+    // chequeo queda para que imagenUrl sea un string y no un null.
+    if (imagenUrl === null) {
+      this.error.set('Elegí un póster para la película.');
+      this.enviando.set(false);
+      return;
+    }
+
+    // 'ninguna' queda en null: en la base, null es "sin restricción".
     let restriccionEdad: 13 | 18 | null = null;
     if (v.restriccion_edad === '13') restriccionEdad = 13;
     if (v.restriccion_edad === '18') restriccionEdad = 18;
 
     // Sirve para el alta y para la edición: PeliculaPorCrear y
-    // PeliculaPorModificar tienen los mismos campos.
+    // PeliculaPorModificar tienen los mismos campos. Los textos van sin
+    // espacios en los extremos, que es como los miraron los validadores.
     const pelicula: PeliculaPorCrear = {
-      nombre: v.nombre ?? '',
-      sinopsis: v.sinopsis || null,
+      nombre: (v.nombre ?? '').trim(),
+      sinopsis: (v.sinopsis ?? '').trim(),
       imagen_url: imagenUrl,
       duracion_minutos: Number(v.duracion_minutos),
       restriccion_edad: restriccionEdad,
-      fecha_estreno: v.fecha_estreno || null,
+      fecha_estreno: fechaATexto({
+        dia: v.fecha_estreno.dia ?? '',
+        mes: v.fecha_estreno.mes ?? '',
+        anio: v.fecha_estreno.anio ?? '',
+      }),
       en_cartelera: v.en_cartelera ?? false,
       proximamente: v.proximamente ?? false,
       preventa_habilitada: v.preventa_habilitada ?? false,
