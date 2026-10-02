@@ -26,4 +26,16 @@
   </button>
 </form>
 
+<!-- Accesos rápidos para la evaluación. Los botones son type="button" para
+     que no envíen el formulario: solo lo completan. -->
+<section class="accesos-rapidos">
+  <h2>Accesos rápidos</h2>
+  <p>Cuentas de demostración. Completan el formulario; después tocá "Ingresar".</p>
+  <div class="botones">
+    @for (cuenta of cuentasDePrueba; track cuenta.etiqueta) {
+      <button type="button" (click)="completar(cuenta)">{{ cuenta.etiqueta }}</button>
+    }
+  </div>
+</section>
+
 <p>¿No tenés cuenta? <a routerLink="/registro">Creá una</a></p>
