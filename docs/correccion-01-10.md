@@ -139,3 +139,4 @@ navegador; la base no.
 | — | Dónde vive el precio: hoy está en cada función y no en la película. Defenderlo o cambiarlo | 02/10, antes de funciones |
 | — | Alerta de Próximamente: aviso en la app, mail u otra opción | Bloque cliente |
 | — | Librerías concretas para QR (generar y leer), PDF, Excel y gráficos | Cada una en su bloque |
+| — | Hueco en el `update` de `Compras`: la política "cliente cancela su compra" filtra **filas**, no **columnas**. El cliente puede editar cualquier campo de su propia compra, incluidas las marcas `entrada_validada_en` y `candy_entregado_en`, así que podría marcarla como validada desde la consola del navegador. Hay que limitar qué columnas puede tocar cada rol (permisos de columna como en `Usuarios`, o una función de Postgres para cancelar y otra para validar) | Bloque de compra |

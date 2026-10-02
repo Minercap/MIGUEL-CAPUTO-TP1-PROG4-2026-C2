@@ -554,14 +554,19 @@ entradas, que no le corresponde.
 
 ## D-25 · Reglas de contenido repetidas como constraints `check` · 01/10
 
-**Elegido:** las reglas de largo, rango y obligatoriedad del registro y de la película se
-validan en el formulario **y además** en la base, con constraints `check` y `not null`
-(sección 7 de [`supabase/schema.sql`](../supabase/schema.sql)):
+**Elegido:** las reglas de largo, rango, formato y obligatoriedad se validan en el
+formulario **y además** en la base, con `not null` y constraints `check`, siguiendo la
+sección 4 de [`docs/validaciones.md`](validaciones.md). Por ahora cubre las dos tablas que
+ya tienen formulario (sección 7 de [`supabase/schema.sql`](../supabase/schema.sql)); las
+demás se completan en su bloque.
 
-- `Usuarios`: nombre y apellido de 2 a 50 caracteres, fecha de nacimiento no futura y no
-  más de 120 años atrás, días de vacaciones de 0 a 60.
-- `Peliculas`: `sinopsis` e `imagen_url` pasan a `not null`; nombre de 1 a 100 caracteres,
-  sinopsis de 20 a 1000, imagen no vacía, duración de 30 a 300 minutos.
+- `Usuarios`: `tipo_sangre`, `color_ojos` y `dias_vacaciones` pasan a `not null`. Mail de
+  hasta 254 caracteres, nombre y apellido de 2 a 50 y solo con letras, fecha de nacimiento
+  no futura y no más de 120 años atrás, tipo de sangre y color de ojos de la lista, días
+  de vacaciones de 0 a 60.
+- `Peliculas`: `sinopsis`, `imagen_url` y `fecha_estreno` pasan a `not null`. Nombre de 1 a
+  100 caracteres, sinopsis de 20 a 1000, duración de 30 a 300 minutos, precio de preventa
+  mayor a 0 y hasta 1.000.000, y obligatorio si la preventa está habilitada.
 
 **Por qué:** el formulario se puede saltear desde la consola del navegador, llamando a
 Supabase directo; la base no. Lo marcó la cátedra en la corrección del 01/10, que además
@@ -570,26 +575,44 @@ permitió expresamente funciones, triggers y constraints de Postgres.
 Lo que no se vio en clase (🟡) y se usa acá:
 
 - **`check`**: una condición que la fila tiene que cumplir para guardarse. Se evalúa en cada
-  insert y en cada update.
-- **`btrim()` y `char_length()`**: sacar los espacios de los extremos y contar caracteres.
+  insert y en cada update. Si la columna es null no la rechaza: de eso se ocupa `not null`.
+- **`trim()` y `char_length()`**: sacar los espacios de los extremos y contar caracteres.
   Juntas resuelven "no puede ser solo espacios": un texto de puros espacios queda con
   largo 0 y no llega al mínimo.
+- **`texto ~ 'patrón'`**: verdadero si el texto cumple la expresión regular. Es el
+  equivalente en la base de `Validators.pattern`.
 - **`current_date - interval '120 years'`**: la fecha de hoy corrida 120 años atrás.
+- **Check cruzado**: `not preventa_habilitada or precio_preventa is not null` mira dos
+  columnas de la misma fila. "No A, o B" se lee "si A, entonces B".
 - **`alter policy`** y **`alter table ... add constraint`**: cambian una política o una
   tabla que ya existe, sin borrarla y crearla de nuevo.
 
+**"Solo letras" en nombre y apellido.** El patrón `textoPersona` acepta letras, separadas
+por un solo espacio, apóstrofo o guion, y tiene que empezar y terminar con letra. Las
+letras son las **latinas con cualquier acento o diacrítico** (`A-Z`, `a-z`, `À-Ö`, `Ø-ö`,
+`ø-ɏ`), escritas como rangos. `validaciones.md` dice "letras de cualquier idioma", pero las
+expresiones regulares de Postgres no tienen una clase que signifique "cualquier letra" de
+forma confiable: depende de la configuración regional del servidor. Con los rangos
+explícitos, la base y el formulario aceptan **exactamente lo mismo**. Queda afuera un
+nombre escrito en otro alfabeto (cirílico, griego, chino).
+
 **Límites conocidos:**
 
-- "Al menos un género" **no se puede expresar** como `check`: un check solo ve la fila que
+- Géneros "entre 1 y 4" **no se puede expresar** como `check`: un check solo ve la fila que
   se está guardando, y los géneros están en otra tabla. Haría falta un trigger. Queda
   validado solo en el formulario.
-- El rango de la fecha de nacimiento usa `current_date`, así que se evalúa **al guardar**:
-  la base no vuelve a revisar las filas viejas con el paso del tiempo. Para una fecha de
-  nacimiento alcanza.
+- "Fecha de estreno entre 1 año atrás y 1 año adelante" y "preventa solo con estreno
+  futuro" **se pueden escribir pero no conviene**: un check se vuelve a evaluar en cada
+  update de la fila. Cuando la película cumpla un año de estrenada, o al día siguiente del
+  estreno de una que tuvo preventa, la base rechazaría cualquier cambio sobre ella. Son
+  reglas del momento de la carga: quedan en el formulario.
+- El rango de la fecha de nacimiento sí usa `current_date`. El mismo problema existe solo
+  para quien cumple 120 años.
 - El servidor está en UTC y Argentina en UTC-3: de 21 a 24 hs la base ya está en el día
-  siguiente. El efecto es que acepta una fecha un día "en el futuro" durante esas tres
-  horas; nunca rechaza una fecha válida.
-- "Solo letras" en nombre y apellido queda validado solo en el formulario.
+  siguiente. El efecto es que acepta una fecha de nacimiento un día "en el futuro" durante
+  esas tres horas; nunca rechaza una fecha válida.
+- Las listas de tipo de sangre y color de ojos quedan escritas en dos lugares, el
+  formulario y la base. Si se agrega una opción, hay que agregarla en los dos.
 
 **Descartado:** validar solo en el formulario. Es lo visto en clase, pero deja la base
 aceptando cualquier cosa.

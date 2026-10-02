@@ -13,7 +13,7 @@
 --   5. Datos iniciales (géneros, D-15)
 --   6. Storage: bucket de pósters y sus políticas
 --   7. Correcciones del 01/10: roles separados (D-24), campos
---      obligatorios de la película y constraints check
+--      obligatorios y constraints check (docs/validaciones.md)
 -- ============================================================
 
 -- ============================================================
@@ -686,59 +686,131 @@ alter policy "log: escritura admin y empleado"
   with check (public.es_admin() or public.es_empleado());
 
 
--- ---------- 7.2 Sinopsis e imagen obligatorias (R-04) ----------
--- "Toda película tiene una duración, una imagen, un nombre y una
--- sinopsis" (mail del 01/01). nombre y duracion_minutos ya eran not null.
+-- ---------- 7.2 Campos obligatorios (docs/validaciones.md, sección 4) ----------
+-- "not null en todos los campos obligatorios."
+--
+-- Usuarios: los tres datos del registro que habían quedado opcionales
+-- (R-01 los pide todos).
+-- Peliculas: "Toda película tiene una duración, una imagen, un nombre y
+-- una sinopsis" (R-04, mail del 01/01); nombre y duracion_minutos ya
+-- eran not null. Se suma la fecha de estreno, que el formulario exige.
+-- restriccion_edad sigue aceptando null: null es "sin restricción".
+--
 -- Si alguna fila existente tiene null en estas columnas, el alter falla
 -- y no cambia nada: hay que completarla antes.
 
+alter table public."Usuarios"
+  alter column tipo_sangre     set not null,
+  alter column color_ojos      set not null,
+  alter column dias_vacaciones set not null;
+
 alter table public."Peliculas"
-  alter column sinopsis   set not null,
-  alter column imagen_url set not null;
+  alter column sinopsis      set not null,
+  alter column imagen_url    set not null,
+  alter column fecha_estreno set not null;
 
 
--- ---------- 7.3 Reglas de contenido como constraints check ----------
--- Son las mismas reglas que valida el formulario (punto 4 de la
--- corrección). Se repiten acá porque el formulario se puede saltear
--- desde la consola del navegador y la base no.
+-- ---------- 7.3 Reglas de contenido como constraints check (D-25) ----------
+-- Son las mismas reglas que valida el formulario (docs/validaciones.md).
+-- Se repiten acá porque el formulario se puede saltear desde la consola
+-- del navegador y la base no.
 --
 -- Un check es una condición que la fila tiene que cumplir para poder
 -- guardarse. Se evalúa en cada insert y en cada update. Si la columna
 -- es null, el check no la rechaza: de eso se ocupa el not null.
 --
---   btrim(texto)        saca los espacios de adelante y de atrás.
+--   trim(texto)         saca los espacios de adelante y de atrás.
 --   char_length(texto)  cuenta los caracteres.
 -- Combinadas resuelven dos reglas en una: un texto que es solo espacios
--- queda con largo 0 después del btrim, y no llega al mínimo.
+-- queda con largo 0 después del trim, y no llega al mínimo.
+--
+--   texto ~ 'patrón'    es verdadero si el texto cumple la expresión
+--                       regular. Es el Validators.pattern de la base.
 
 alter table public."Usuarios"
+  -- 254 es el largo máximo de un mail (RFC 5321).
+  add constraint usuarios_email_largo
+    check (char_length(trim(email)) between 1 and 254),
+
   add constraint usuarios_nombre_largo
-    check (char_length(btrim(nombre)) between 2 and 50),
+    check (char_length(trim(nombre)) between 2 and 50),
   add constraint usuarios_apellido_largo
-    check (char_length(btrim(apellido)) between 2 and 50),
+    check (char_length(trim(apellido)) between 2 and 50),
+
+  -- Patrón textoPersona: solo letras, separadas por UN espacio, apóstrofo
+  -- o guion. Se lee así:
+  --   ^[letras]+                 empieza con una o más letras
+  --   ([ '-][letras]+)*          después, cero o más veces: un separador
+  --                              seguido de una o más letras
+  --   $                          y ahí termina
+  -- Como cada separador tiene que estar seguido de letras, no puede haber
+  -- dos seguidos ni uno al principio o al final.
+  -- Las letras son A-Z, a-z y las latinas con acento o diacrítico
+  -- (À-Ö, Ø-ö, ø-ɏ: incluye á, ñ, ü, ç). Los dos huecos dejan afuera a
+  -- × y ÷, que están en el medio de ese rango y no son letras.
+  -- El apóstrofo va escrito dos veces porque está dentro de un texto SQL.
+  add constraint usuarios_nombre_solo_letras
+    check (nombre ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$'),
+  add constraint usuarios_apellido_solo_letras
+    check (apellido ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$'),
+
   -- No futura y no más de 120 años atrás. current_date es la fecha de hoy
   -- en el servidor, y restarle un interval la corre hacia atrás.
   -- Que la fecha exista (no 31/02) ya lo garantiza el tipo date.
   add constraint usuarios_fecha_nacimiento_rango
     check (fecha_nacimiento <= current_date
            and fecha_nacimiento >= current_date - interval '120 years'),
+
+  -- Campos de lista: solo los valores que ofrece el desplegable del
+  -- registro. Si se agrega una opción en el front, se agrega acá.
+  add constraint usuarios_tipo_sangre_lista
+    check (tipo_sangre in ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-')),
+  add constraint usuarios_color_ojos_lista
+    check (color_ojos in ('Marrón', 'Negro', 'Verde', 'Azul', 'Gris', 'Otro')),
+
   add constraint usuarios_dias_vacaciones_rango
     check (dias_vacaciones between 0 and 60);
 
 alter table public."Peliculas"
   add constraint peliculas_nombre_largo
-    check (char_length(btrim(nombre)) between 1 and 100),
+    check (char_length(trim(nombre)) between 1 and 100),
   add constraint peliculas_sinopsis_largo
-    check (char_length(btrim(sinopsis)) between 20 and 1000),
-  add constraint peliculas_imagen_no_vacia
-    check (char_length(btrim(imagen_url)) > 0),
+    check (char_length(trim(sinopsis)) between 20 and 1000),
+  -- La URL del póster la arma la app, no la escribe nadie: el tope de
+  -- 2048 es solo para que el texto tenga un máximo, como todos.
+  add constraint peliculas_imagen_largo
+    check (char_length(trim(imagen_url)) between 1 and 2048),
   add constraint peliculas_duracion_rango
-    check (duracion_minutos between 30 and 300);
+    check (duracion_minutos between 30 and 300),
 
--- Lo que NO está como check:
---   "Al menos un género" no se puede expresar: un check solo ve la fila
---   que se está guardando, y los géneros están en otra tabla
---   (PeliculasGeneros). Queda validado solo en el formulario.
+  -- Patrón precio: mayor a 0 y hasta 1.000.000. Los dos decimales ya los
+  -- garantiza el tipo numeric(12,2).
+  add constraint peliculas_precio_preventa_rango
+    check (precio_preventa > 0 and precio_preventa <= 1000000),
+  -- Check cruzado, entre dos columnas de la misma fila: si la preventa
+  -- está habilitada, tiene que haber precio. "not A or B" se lee
+  -- "si A, entonces B".
+  add constraint peliculas_preventa_con_precio
+    check (not preventa_habilitada or precio_preventa is not null);
+
+-- Lo que NO está como check, y por qué:
+--
+--   Géneros, entre 1 y 4. Un check solo ve la fila que se está guardando,
+--   y los géneros están en otra tabla (PeliculasGeneros). Queda validado
+--   solo en el formulario.
+--
+--   Fecha de estreno entre 1 año atrás y 1 año adelante, y preventa solo
+--   con estreno futuro. Se podrían escribir con current_date, pero un
+--   check se vuelve a evaluar en CADA update de la fila: el día que la
+--   película cumpla un año de estrenada, o al día siguiente del estreno
+--   de una que tuvo preventa, la base rechazaría cualquier cambio sobre
+--   ella, aunque sea sacarla de cartelera. Son reglas del momento de la
+--   carga, no de la fila: quedan en el formulario.
+--   (En la fecha de nacimiento el mismo riesgo existe solo para alguien
+--   que cumple 120 años, así que ahí sí se usa.)
+--
+--   En cartelera y Próximamente a la vez. Está "a decidir con la
+--   cartelera" en docs/validaciones.md.
 
 
 -- ============================================================
