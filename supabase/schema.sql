@@ -14,6 +14,7 @@
 --   6. Storage: bucket de pósters y sus políticas
 --   7. Correcciones del 01/10: roles separados (D-24), campos
 --      obligatorios y constraints check (docs/validaciones.md)
+--   8. Estado de la película: una sola columna "visible" (D-27)
 -- ============================================================
 
 -- ============================================================
@@ -50,6 +51,8 @@ create table public."Peliculas" (
   duracion_minutos     int not null,
   restriccion_edad     int check (restriccion_edad in (13, 18)),
   fecha_estreno        date,
+  -- OJO: en_cartelera y proximamente se reemplazan por "visible" en la
+  -- sección 8 (D-27). Las de acá son las columnas originales.
   en_cartelera         boolean not null default false,
   proximamente         boolean not null default false,
   preventa_habilitada  boolean not null default false,
@@ -809,8 +812,41 @@ alter table public."Peliculas"
 --   (En la fecha de nacimiento el mismo riesgo existe solo para alguien
 --   que cumple 120 años, así que ahí sí se usa.)
 --
---   En cartelera y Próximamente a la vez. Está "a decidir con la
---   cartelera" en docs/validaciones.md.
+--   En cartelera y Próximamente a la vez. Dejó de ser una regla: las dos
+--   columnas se reemplazan por "visible" en la sección 8 (D-27).
+
+
+-- ============================================================
+-- 8. ESTADO DE LA PELÍCULA  (decisión D-27)
+-- ============================================================
+-- en_cartelera y proximamente se reemplazan por una sola columna,
+-- visible. El admin decide si la película aparece o no (R-05, mail del
+-- 01/01); en qué lugar aparece lo dice la fecha de estreno:
+--   visible y estreno futuro         -> Próximamente
+--   visible y estreno hoy o pasado   -> en cartelera
+--   no visible                       -> no aparece
+-- Así nadie tiene que pasar la película a cartelera a mano el día del
+-- estreno. El cálculo se hace en el front, comparando fecha_estreno con
+-- la fecha de hoy: la base solo guarda los dos datos.
+--
+-- Son tres pasos, en este orden:
+--   1. Se agrega la columna. Con el default, las filas que ya existen
+--      quedan en false.
+--   2. Se pasa lo que había: era visible la película que estaba en
+--      cartelera o en Próximamente. El update no lleva where a propósito:
+--      recorre todas las filas.
+--   3. Recién entonces se borran las dos columnas viejas. Si se borraran
+--      antes, el paso 2 no tendría de dónde leer.
+
+alter table public."Peliculas"
+  add column visible boolean not null default false;
+
+update public."Peliculas"
+  set visible = (en_cartelera or proximamente);
+
+alter table public."Peliculas"
+  drop column en_cartelera,
+  drop column proximamente;
 
 
 -- ============================================================

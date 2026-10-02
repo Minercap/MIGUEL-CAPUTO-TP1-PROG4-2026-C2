@@ -664,3 +664,50 @@ método del componente, porque necesita leer los valores originales.
 
 **Clase de origen:** 4 (validadores propios). **Requisitos:** R-04 y R-11. Se apoya en D-17
 y D-25.
+
+---
+
+## D-27 · El estado de la película sale de la fecha de estreno · 01/10
+
+**Elegido:** las columnas `en_cartelera` y `proximamente` se reemplazan por una sola,
+**`visible`**. El admin decide si la película aparece o no; **en qué lugar aparece lo
+dice la fecha de estreno**:
+
+| `visible` | Estreno | Dónde aparece |
+|---|---|---|
+| sí | futuro | Próximamente (R-10) |
+| sí | hoy o pasado | En cartelera (R-05) |
+| no | cualquiera | No aparece |
+
+El estado no se guarda en la base: se calcula en el front comparando `fecha_estreno` con
+la fecha de hoy, en el pipe `estadoPelicula` (clase 8).
+
+La **preventa** sigue siendo una casilla aparte, y solo se puede habilitar con estreno
+futuro (D-26).
+
+El campo del formulario pasa a llamarse **"Estreno en Olympia Cinema"**, con la ayuda
+"Fecha en que la película empieza a proyectarse en el cine, no la de su estreno original".
+Como de esa fecha depende dónde aparece la película, tiene que quedar claro que es la del
+cine: *The Godfather* es de 1972, pero su estreno en Olympia es el de la cartelera.
+
+**Por qué:** el mail del 01/01 pide que el admin elija **qué películas aparecen** al entrar
+a la página, no en qué sección. Con dos casillas el estado se podía contradecir (las dos
+marcadas, o "en cartelera" con un estreno futuro), y esa regla había quedado como "a
+decidir" en `docs/validaciones.md`. Con una sola casilla y la fecha no hay combinación
+inválida posible, así que la regla desaparece en vez de validarse.
+
+**Descartado:** un **selector manual de estado** (oculta, próximamente, en cartelera).
+Resuelve la contradicción, pero obliga a que alguien pase la película a cartelera a mano
+el día del estreno. Si se olvida, la película sigue figurando como próxima con el estreno
+ya pasado.
+
+**Migración:** `visible` toma `en_cartelera or proximamente` de cada fila antes de borrar
+las dos columnas (sección 8 de [`supabase/schema.sql`](../supabase/schema.sql)).
+`alter table ... add column` y `drop column` no se vieron en clase (🟡): agregan y quitan
+una columna de una tabla que ya existe, sin borrarla y crearla de nuevo.
+
+**Consecuencia:** la cartelera y Próximamente del cliente tienen que usar el mismo
+cálculo. Y como una película pasa sola de Próximamente a cartelera el día del estreno,
+para que se pueda comprar ese día ya tiene que tener funciones cargadas.
+
+**Clase de origen:** 8 (pipes propios). **Requisitos:** R-05, R-10 y R-11. Se apoya en D-26.
