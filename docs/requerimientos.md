@@ -44,7 +44,6 @@ Datos que se piden al registrarse, tal como los enumeró el cliente:
 mail, nombre, apellido, fecha de nacimiento, tipo de sangre, color de ojos y cantidad de
 días de vacaciones por año.
 
-> El cliente los describió como "nada muy invasivo". Se implementan todos tal cual.
 
 ### R-02 · Compra anónima
 
@@ -65,6 +64,10 @@ crédito disponible.
 Nombre, sinopsis, imagen, duración, uno o **varios** géneros, restricción de edad, formato
 y idioma.
 
+- **Obligatorias:** duración, imagen, nombre y sinopsis. El mail del 01/01 lo dice textual:
+  "Toda película tiene una duración, una imagen, un nombre y una sinopsis". No se puede
+  guardar una película a la que le falte alguna de las cuatro, ni desde el formulario ni
+  directo contra la base.
 - **Restricción de edad:** 18 años, 13 años o sin restricción.
 - **Formato:** 2D, 3D, 4D o 5D.
 - **Idioma:** castellano o subtitulada.
@@ -340,3 +343,38 @@ adelante sin cambios estructurales.
 | D-06 | Edad en compra anónima | Declaración de fecha de nacimiento en el formulario cuando la función lo exige |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
+
+---
+
+## 12. Aclaraciones de la cátedra (01/10)
+
+Surgen de la reunión de seguimiento del 01/10/2026. No son pedidos nuevos del cliente:
+precisan cómo se cumplen requisitos que ya estaban. Las notas completas de la reunión están
+en `docs/correccion-01-10.md`.
+
+### A-01 · Pago simulado (aclara R-20 a R-30)
+
+No se integra ninguna pasarela real, pero el flujo de pago tiene que estar completo:
+
+- **Resumen detallado** de todo lo que se compra: cada entrada con su fila, su butaca y si
+  es VIP; cada producto o combo del candy bar con su cantidad y su precio.
+- **Descuentos visibles** cuando aplican, cada uno en su línea: cupón, preventa, crédito y
+  puntos.
+- **Varios medios de pago** para elegir.
+- Al finalizar se **descarga un PDF**, a modo de ticket o factura, con todo ese detalle.
+
+### A-02 · Accesos rápidos en el login
+
+Debajo del formulario de login hay tres botones, **Admin**, **Empleado** y **Cliente**, que
+**autocompletan** el mail y la contraseña de la cuenta de prueba de cada rol, sin enviar el
+formulario. Son para agilizar la evaluación.
+
+Las contraseñas de esas tres cuentas quedan visibles en el código del front. Es aceptable
+porque son cuentas de demostración, y no coinciden con ninguna contraseña personal.
+
+### A-03 · Admin y empleado son roles separados (aclara R-31 a R-34)
+
+El administrador **no** valida entradas ni entrega candy: eso lo hace solo el empleado.
+Coincide con el mail del 06/02, que describe dos tipos de usuario distintos. El
+administrador conserva la lectura de las compras, porque la necesita para los reportes
+(R-35 a R-37). El detalle está en la decisión D-24.

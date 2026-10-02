@@ -273,6 +273,9 @@ usuario desde el navegador, y cualquiera podría ponerse rol `admin`.
 **Consecuencia:** hoy nadie puede cambiar un rol desde la app; el admin y el empleado se
 crean cambiando el rol a mano desde el panel de Supabase.
 
+**Corregido por D-24:** en esta versión `es_empleado()` devolvía verdadero también para el
+admin. Desde el 01/10 devuelve verdadero solo para el rol `empleado`.
+
 **Clase de origen:** 6 (RLS) y 7 (tabla `Usuarios`). **Requisitos:** R-31 a R-33 (acciones
 del empleado), R-34 a R-38 (acciones del admin) y R-30 (crédito, que el cliente no puede
 editarse).
@@ -485,3 +488,64 @@ mismo script asignaría géneros equivocados sin dar ningún error.
 con el mismo nombre; si la hubiera, también recibiría los géneros.
 
 **Requisito:** R-07. Se apoya en D-11 (base versionada en SQL) y D-15 (géneros fijos).
+
+---
+
+## D-23 · Fechas con tres desplegables, sin calendario · 01/10
+
+**Elegido:** las fechas se ingresan con **tres desplegables** (`<select>`): día, mes y año.
+En el formulario son un **`FormGroup` anidado** `{ dia, mes, anio }` dentro del formulario
+de la pantalla. Ese grupo lleva un **validador de grupo** que rechaza las fechas imposibles
+(31/02, 29/02 de un año no bisiesto). Los tres desplegables viven en un componente
+reutilizable, **`campo-fecha`**, que recibe el grupo con `input()`. Los meses se muestran
+con su nombre y los años van del más reciente al más viejo, con el rango que le indica
+quien lo usa.
+
+**Por qué:** el cliente rechazó expresamente el selector de calendario para fechas y horas
+(R-41, mail del 28/02), y hasta acá se usaba `input type="date"` en el registro y en el
+alta de película. Con tres desplegables no hay calendario ni scroll largo, y cada valor
+sale de una lista, así que no se puede tipear mal. La validez de la fecha depende de los
+**tres** campos a la vez, y por eso el validador va en el grupo y no en un control: es el
+mismo criterio de D-17. El componente sigue el patrón del campo reutilizable de la clase 4,
+que recibe un control con `input()`; acá recibe un grupo.
+
+**Descartado:** un **campo de texto `dd/mm/aaaa`**. Es más rápido de cargar con el teclado,
+pero admite errores de tipeo: el formato, las barras y el orden de día y mes quedan a cargo
+de quien escribe, y hay que validarlos y explicarlos con un mensaje.
+
+**Consecuencia:** la **hora** de las funciones va a seguir el mismo criterio, con dos
+desplegables: hora, y minutos de 15 en 15. Queda prohibido `input type="date"` y
+`input type="time"` en todo el proyecto.
+
+**Clase de origen:** 4 (grupos anidados con `formGroupName`, validadores propios y campo
+reutilizable con `input()`). **Requisito:** R-41. Afecta a R-01 (fecha de nacimiento), R-04
+y R-10 (fecha de estreno) y R-17 (día y hora de las funciones).
+
+---
+
+## D-24 · Admin y empleado son roles separados · 01/10
+
+**Elegido:** `admin` y `empleado` son dos roles **separados**, sin que uno incluya al otro.
+El admin **no** valida entradas ni entrega candy: eso lo hace solo el empleado.
+
+- En la base, `es_empleado()` devuelve verdadero **solo** para el rol `empleado`.
+- Donde el admin necesita **leer** (`Usuarios`, `Compras` e `ItemsCandy`, para los
+  reportes), la política lo nombra de forma explícita con `es_admin()`.
+- El `update` de `Compras` que marca la validación de la entrada y la entrega del candy
+  queda solo para el empleado. El cliente sigue pudiendo cancelar su propia compra.
+- `LogActividad` sigue aceptando inserts de los dos, porque los dos hacen acciones que se
+  auditan.
+- En el front, `empleadoGuard` deja pasar únicamente al empleado, y el menú del admin no
+  muestra "Validación".
+
+**Por qué:** lo indicó la cátedra en la corrección del 01/10, y coincide con el mail del
+06/02, que describe dos tipos de usuario distintos. Nombrar al admin de forma explícita en
+cada política deja a la vista qué puede hacer cada rol, en lugar de esconderlo dentro de
+una función cuyo nombre dice otra cosa.
+
+**Descartado:** lo que había en D-12, donde `es_empleado()` devolvía verdadero para `admin`
+y `empleado`. Ahorraba escribir el admin en cada política, pero le daba la validación de
+entradas, que no le corresponde.
+
+**Corrige:** D-12. **Requisitos:** R-31 a R-33 (validación, solo el empleado) y R-34 a R-38
+(administración y reportes, solo el admin).
