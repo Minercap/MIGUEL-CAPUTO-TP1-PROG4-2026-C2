@@ -4,9 +4,9 @@
   @if (auth.usuarioActual()) {
     <a routerLink="/mi-cuenta">Mi cuenta</a>
 
+    <!-- Cada rol ve solo lo suyo: el admin no valida entradas (D-24). -->
     @switch (auth.perfil()?.rol) {
       @case ('admin') {
-        <a routerLink="/empleado">Validación</a>
         <a routerLink="/admin">Administración</a>
       }
       @case ('empleado') {

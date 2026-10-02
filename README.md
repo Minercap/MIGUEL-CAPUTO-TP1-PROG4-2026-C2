@@ -54,6 +54,10 @@ Las carpetas que todavía no tienen archivos se llenan a medida que avanza el de
 
 - [Requerimientos](docs/requerimientos.md) — qué pidió el cliente, mail por mail, con las
   interpretaciones adoptadas.
+- [Corrección del 01/10](docs/correccion-01-10.md) — respuestas de la cátedra en la reunión
+  de seguimiento y lo que no se respetó de los mails.
+- [Validaciones](docs/validaciones.md) — estándar de validación de todos los formularios:
+  principios, patrones reutilizables, reglas campo por campo y lo que se repite en la base.
 - [Modelo de datos](docs/modelo-datos.md) — las tablas, sus campos y qué requisito cubre
   cada una.
 - [Esquema de la base](supabase/schema.sql) — script SQL con las tablas, RLS, las
@@ -75,6 +79,8 @@ Se completa a medida que avanza el desarrollo.
   mismo id. Rol, puntos y crédito toman su valor por defecto: la base no deja cargarlos
   desde la app.
 - Tres guards funcionales protegen las rutas: `logueadoGuard` (`/mi-cuenta`),
-  `empleadoGuard` (`/empleado`, también para el admin) y `adminGuard` (`/admin`). Son
-  async y esperan a que se restaure la sesión antes de decidir (D-13).
+  `empleadoGuard` (`/empleado`, solo el empleado) y `adminGuard` (`/admin`, solo el admin).
+  Son async y esperan a que se restaure la sesión antes de decidir (D-13).
+- Admin y empleado son roles separados: el admin no valida entradas ni entrega candy
+  (D-24). La misma separación está en las políticas de la base.
 - El menú cambia según haya sesión y según el rol.

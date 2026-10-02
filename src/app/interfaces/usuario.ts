@@ -6,9 +6,9 @@ export interface Usuario {
   nombre: string;
   apellido: string;
   fecha_nacimiento: string; // 'AAAA-MM-DD', como la devuelve Postgres
-  tipo_sangre: string | null;
-  color_ojos: string | null;
-  dias_vacaciones: number | null;
+  tipo_sangre: string; // not null desde la corrección del 01/10 (D-25)
+  color_ojos: string;
+  dias_vacaciones: number;
   rol: 'admin' | 'empleado' | 'cliente';
   puntos: number;
   credito: number;

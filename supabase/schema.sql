@@ -12,6 +12,9 @@
 --   4. Permisos de columna sobre Usuarios
 --   5. Datos iniciales (géneros, D-15)
 --   6. Storage: bucket de pósters y sus políticas
+--   7. Correcciones del 01/10: roles separados (D-24), campos
+--      obligatorios y constraints check (docs/validaciones.md)
+--   8. Estado de la película: una sola columna "visible" (D-27)
 -- ============================================================
 
 -- ============================================================
@@ -48,6 +51,8 @@ create table public."Peliculas" (
   duracion_minutos     int not null,
   restriccion_edad     int check (restriccion_edad in (13, 18)),
   fecha_estreno        date,
+  -- OJO: en_cartelera y proximamente se reemplazan por "visible" en la
+  -- sección 8 (D-27). Las de acá son las columnas originales.
   en_cartelera         boolean not null default false,
   proximamente         boolean not null default false,
   preventa_habilitada  boolean not null default false,
@@ -256,6 +261,8 @@ as $$
 $$;
 
 -- Atajos, para que las políticas se lean solas.
+-- OJO: es_empleado() se redefine en la sección 7.1 (D-24) para que sea
+-- verdadero solo con el rol 'empleado'. La de acá es la versión original.
 create or replace function public.es_admin()
 returns boolean
 language sql
@@ -396,8 +403,9 @@ create policy "recompensas: escritura admin"
 
 
 -- ---------- Compras ----------
--- El cliente ve las suyas. El empleado y el admin ven todas, porque
--- tienen que validar entradas (R-31).
+-- El cliente ve las suyas. El empleado ve todas porque tiene que validar
+-- entradas (R-31), y el admin porque las necesita para los reportes: a
+-- él se lo agrega la sección 7.1 (D-24).
 -- El anónimo puede insertar: es la compra sin cuenta (R-02).
 
 create policy "cliente lee sus compras"
@@ -509,7 +517,8 @@ create policy "alertas: admin marca notificada"
 
 -- ---------- Log de actividad ----------
 -- Lo lee solo el admin (R-38). Lo escriben admin y empleado, que son
--- los que hacen las acciones que se auditan.
+-- los que hacen las acciones que se auditan. La condición de escritura
+-- se corrige en la sección 7.1 para nombrar a los dos (D-24).
 -- No hay política de update ni de delete: el log no se edita ni se borra.
 
 create policy "log: lectura admin"
@@ -617,6 +626,227 @@ create policy "posters: reemplaza admin"
 create policy "posters: borra admin"
   on storage.objects for delete to authenticated
   using (bucket_id = 'peliculas' and public.es_admin());
+
+
+-- ============================================================
+-- 7. CORRECCIONES DEL 01/10  (docs/correccion-01-10.md)
+-- ============================================================
+-- Esta sección cambia cosas que se crearon más arriba. Está aparte, y
+-- no mezclada con las secciones 1 a 3, porque la base ya existía cuando
+-- llegó la corrección: es exactamente lo que se corrió sobre la base
+-- viva. Corriendo el script completo desde cero se llega al mismo
+-- resultado, porque primero crea y después corrige.
+
+
+-- ---------- 7.1 Admin y empleado, roles separados (decisión D-24) ----------
+-- El admin no valida entradas ni entrega candy: lo hace solo el empleado.
+-- Antes es_empleado() devolvía verdadero también para el admin.
+--
+-- "create or replace" reemplaza el cuerpo de la función sin borrarla,
+-- así que las políticas que ya la usan siguen en pie y toman la regla
+-- nueva sin tocarlas. Por eso NO hace falta modificar:
+--   "empleado lee usuarios"      queda solo para el empleado; el admin ya
+--                                lee Usuarios por "usuario lee su perfil",
+--                                que lo nombra con es_admin().
+--   "cliente cancela su compra"  el update de Compras queda para el dueño
+--                                de la compra (cancelar, R-29) y para el
+--                                empleado (validar, R-31 y R-33). El admin
+--                                queda afuera.
+
+create or replace function public.es_empleado()
+returns boolean
+language sql
+stable
+as $ select public.rol_actual() = 'empleado'; $;
+
+-- Las tres políticas que sí cambian son las que contaban con que
+-- es_empleado() incluía al admin. "alter policy" cambia la condición de
+-- una política que ya existe, sin tener que borrarla y crearla de nuevo.
+
+-- El admin lee todas las compras: las necesita para los reportes
+-- (R-35 a R-37). Leer no es validar.
+alter policy "cliente lee sus compras"
+  on public."Compras"
+  using (usuario_id = auth.uid() or public.es_empleado() or public.es_admin());
+
+-- Lo mismo con los ítems del candy: el reporte del producto más vendido
+-- (R-37) sale de acá.
+alter policy "items_candy: lectura"
+  on public."ItemsCandy"
+  using (
+    exists (
+      select 1 from public."Compras" c
+      where c.id = compra_id
+        and (c.usuario_id = auth.uid() or public.es_empleado() or public.es_admin())
+    )
+  );
+
+-- El log lo escriben los dos: el admin cuando crea o modifica algo y el
+-- empleado cuando valida un QR (R-38). Sin este cambio, el admin dejaba
+-- de poder registrar sus acciones.
+alter policy "log: escritura admin y empleado"
+  on public."LogActividad"
+  with check (public.es_admin() or public.es_empleado());
+
+
+-- ---------- 7.2 Campos obligatorios (docs/validaciones.md, sección 4) ----------
+-- "not null en todos los campos obligatorios."
+--
+-- Usuarios: los tres datos del registro que habían quedado opcionales
+-- (R-01 los pide todos).
+-- Peliculas: "Toda película tiene una duración, una imagen, un nombre y
+-- una sinopsis" (R-04, mail del 01/01); nombre y duracion_minutos ya
+-- eran not null. Se suma la fecha de estreno, que el formulario exige.
+-- restriccion_edad sigue aceptando null: null es "sin restricción".
+--
+-- Si alguna fila existente tiene null en estas columnas, el alter falla
+-- y no cambia nada: hay que completarla antes.
+
+alter table public."Usuarios"
+  alter column tipo_sangre     set not null,
+  alter column color_ojos      set not null,
+  alter column dias_vacaciones set not null;
+
+alter table public."Peliculas"
+  alter column sinopsis      set not null,
+  alter column imagen_url    set not null,
+  alter column fecha_estreno set not null;
+
+
+-- ---------- 7.3 Reglas de contenido como constraints check (D-25) ----------
+-- Son las mismas reglas que valida el formulario (docs/validaciones.md).
+-- Se repiten acá porque el formulario se puede saltear desde la consola
+-- del navegador y la base no.
+--
+-- Un check es una condición que la fila tiene que cumplir para poder
+-- guardarse. Se evalúa en cada insert y en cada update. Si la columna
+-- es null, el check no la rechaza: de eso se ocupa el not null.
+--
+--   trim(texto)         saca los espacios de adelante y de atrás.
+--   char_length(texto)  cuenta los caracteres.
+-- Combinadas resuelven dos reglas en una: un texto que es solo espacios
+-- queda con largo 0 después del trim, y no llega al mínimo.
+--
+--   texto ~ 'patrón'    es verdadero si el texto cumple la expresión
+--                       regular. Es el Validators.pattern de la base.
+
+alter table public."Usuarios"
+  -- 254 es el largo máximo de un mail (RFC 5321).
+  add constraint usuarios_email_largo
+    check (char_length(trim(email)) between 1 and 254),
+
+  add constraint usuarios_nombre_largo
+    check (char_length(trim(nombre)) between 2 and 50),
+  add constraint usuarios_apellido_largo
+    check (char_length(trim(apellido)) between 2 and 50),
+
+  -- Patrón textoPersona: solo letras, separadas por UN espacio, apóstrofo
+  -- o guion. Se lee así:
+  --   ^[letras]+                 empieza con una o más letras
+  --   ([ '-][letras]+)*          después, cero o más veces: un separador
+  --                              seguido de una o más letras
+  --   $                          y ahí termina
+  -- Como cada separador tiene que estar seguido de letras, no puede haber
+  -- dos seguidos ni uno al principio o al final.
+  -- Las letras son A-Z, a-z y las latinas con acento o diacrítico
+  -- (À-Ö, Ø-ö, ø-ɏ: incluye á, ñ, ü, ç). Los dos huecos dejan afuera a
+  -- × y ÷, que están en el medio de ese rango y no son letras.
+  -- El apóstrofo va escrito dos veces porque está dentro de un texto SQL.
+  add constraint usuarios_nombre_solo_letras
+    check (nombre ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$'),
+  add constraint usuarios_apellido_solo_letras
+    check (apellido ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$'),
+
+  -- No futura y no más de 120 años atrás. current_date es la fecha de hoy
+  -- en el servidor, y restarle un interval la corre hacia atrás.
+  -- Que la fecha exista (no 31/02) ya lo garantiza el tipo date.
+  add constraint usuarios_fecha_nacimiento_rango
+    check (fecha_nacimiento <= current_date
+           and fecha_nacimiento >= current_date - interval '120 years'),
+
+  -- Campos de lista: solo los valores que ofrece el desplegable del
+  -- registro. Si se agrega una opción en el front, se agrega acá.
+  add constraint usuarios_tipo_sangre_lista
+    check (tipo_sangre in ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-')),
+  add constraint usuarios_color_ojos_lista
+    check (color_ojos in ('Marrón', 'Negro', 'Verde', 'Azul', 'Gris', 'Otro')),
+
+  add constraint usuarios_dias_vacaciones_rango
+    check (dias_vacaciones between 0 and 60);
+
+alter table public."Peliculas"
+  add constraint peliculas_nombre_largo
+    check (char_length(trim(nombre)) between 1 and 100),
+  add constraint peliculas_sinopsis_largo
+    check (char_length(trim(sinopsis)) between 20 and 1000),
+  -- La URL del póster la arma la app, no la escribe nadie: el tope de
+  -- 2048 es solo para que el texto tenga un máximo, como todos.
+  add constraint peliculas_imagen_largo
+    check (char_length(trim(imagen_url)) between 1 and 2048),
+  add constraint peliculas_duracion_rango
+    check (duracion_minutos between 30 and 300),
+
+  -- Patrón precio: mayor a 0 y hasta 1.000.000. Los dos decimales ya los
+  -- garantiza el tipo numeric(12,2).
+  add constraint peliculas_precio_preventa_rango
+    check (precio_preventa > 0 and precio_preventa <= 1000000),
+  -- Check cruzado, entre dos columnas de la misma fila: si la preventa
+  -- está habilitada, tiene que haber precio. "not A or B" se lee
+  -- "si A, entonces B".
+  add constraint peliculas_preventa_con_precio
+    check (not preventa_habilitada or precio_preventa is not null);
+
+-- Lo que NO está como check, y por qué:
+--
+--   Géneros, entre 1 y 4. Un check solo ve la fila que se está guardando,
+--   y los géneros están en otra tabla (PeliculasGeneros). Queda validado
+--   solo en el formulario.
+--
+--   Fecha de estreno entre 1 año atrás y 1 año adelante, y preventa solo
+--   con estreno futuro. Se podrían escribir con current_date, pero un
+--   check se vuelve a evaluar en CADA update de la fila: el día que la
+--   película cumpla un año de estrenada, o al día siguiente del estreno
+--   de una que tuvo preventa, la base rechazaría cualquier cambio sobre
+--   ella, aunque sea sacarla de cartelera. Son reglas del momento de la
+--   carga, no de la fila: quedan en el formulario.
+--   (En la fecha de nacimiento el mismo riesgo existe solo para alguien
+--   que cumple 120 años, así que ahí sí se usa.)
+--
+--   En cartelera y Próximamente a la vez. Dejó de ser una regla: las dos
+--   columnas se reemplazan por "visible" en la sección 8 (D-27).
+
+
+-- ============================================================
+-- 8. ESTADO DE LA PELÍCULA  (decisión D-27)
+-- ============================================================
+-- en_cartelera y proximamente se reemplazan por una sola columna,
+-- visible. El admin decide si la película aparece o no (R-05, mail del
+-- 01/01); en qué lugar aparece lo dice la fecha de estreno:
+--   visible y estreno futuro         -> Próximamente
+--   visible y estreno hoy o pasado   -> en cartelera
+--   no visible                       -> no aparece
+-- Así nadie tiene que pasar la película a cartelera a mano el día del
+-- estreno. El cálculo se hace en el front, comparando fecha_estreno con
+-- la fecha de hoy: la base solo guarda los dos datos.
+--
+-- Son tres pasos, en este orden:
+--   1. Se agrega la columna. Con el default, las filas que ya existen
+--      quedan en false.
+--   2. Se pasa lo que había: era visible la película que estaba en
+--      cartelera o en Próximamente. El update no lleva where a propósito:
+--      recorre todas las filas.
+--   3. Recién entonces se borran las dos columnas viejas. Si se borraran
+--      antes, el paso 2 no tendría de dónde leer.
+
+alter table public."Peliculas"
+  add column visible boolean not null default false;
+
+update public."Peliculas"
+  set visible = (en_cartelera or proximamente);
+
+alter table public."Peliculas"
+  drop column en_cartelera,
+  drop column proximamente;
 
 
 -- ============================================================

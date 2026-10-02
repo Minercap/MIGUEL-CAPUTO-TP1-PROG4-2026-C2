@@ -273,6 +273,9 @@ usuario desde el navegador, y cualquiera podría ponerse rol `admin`.
 **Consecuencia:** hoy nadie puede cambiar un rol desde la app; el admin y el empleado se
 crean cambiando el rol a mano desde el panel de Supabase.
 
+**Corregido por D-24:** en esta versión `es_empleado()` devolvía verdadero también para el
+admin. Desde el 01/10 devuelve verdadero solo para el rol `empleado`.
+
 **Clase de origen:** 6 (RLS) y 7 (tabla `Usuarios`). **Requisitos:** R-31 a R-33 (acciones
 del empleado), R-34 a R-38 (acciones del admin) y R-30 (crédito, que el cliente no puede
 editarse).
@@ -485,3 +488,226 @@ mismo script asignaría géneros equivocados sin dar ningún error.
 con el mismo nombre; si la hubiera, también recibiría los géneros.
 
 **Requisito:** R-07. Se apoya en D-11 (base versionada en SQL) y D-15 (géneros fijos).
+
+---
+
+## D-23 · Fechas con tres desplegables, sin calendario · 01/10
+
+**Elegido:** las fechas se ingresan con **tres desplegables** (`<select>`): día, mes y año.
+En el formulario son un **`FormGroup` anidado** `{ dia, mes, anio }` dentro del formulario
+de la pantalla. Ese grupo lleva un **validador de grupo** que rechaza las fechas imposibles
+(31/02, 29/02 de un año no bisiesto). Los tres desplegables viven en un componente
+reutilizable, **`campo-fecha`**, que recibe el grupo con `input()`. Los meses se muestran
+con su nombre y los años van del más reciente al más viejo, con el rango que le indica
+quien lo usa.
+
+**Por qué:** el cliente rechazó expresamente el selector de calendario para fechas y horas
+(R-41, mail del 28/02), y hasta acá se usaba `input type="date"` en el registro y en el
+alta de película. Con tres desplegables no hay calendario ni scroll largo, y cada valor
+sale de una lista, así que no se puede tipear mal. La validez de la fecha depende de los
+**tres** campos a la vez, y por eso el validador va en el grupo y no en un control: es el
+mismo criterio de D-17. El componente sigue el patrón del campo reutilizable de la clase 4,
+que recibe un control con `input()`; acá recibe un grupo.
+
+**Descartado:** un **campo de texto `dd/mm/aaaa`**. Es más rápido de cargar con el teclado,
+pero admite errores de tipeo: el formato, las barras y el orden de día y mes quedan a cargo
+de quien escribe, y hay que validarlos y explicarlos con un mensaje.
+
+**Consecuencia:** la **hora** de las funciones va a seguir el mismo criterio, con dos
+desplegables: hora, y minutos de 15 en 15. Queda prohibido `input type="date"` y
+`input type="time"` en todo el proyecto.
+
+**Clase de origen:** 4 (grupos anidados con `formGroupName`, validadores propios y campo
+reutilizable con `input()`). **Requisito:** R-41. Afecta a R-01 (fecha de nacimiento), R-04
+y R-10 (fecha de estreno) y R-17 (día y hora de las funciones).
+
+---
+
+## D-24 · Admin y empleado son roles separados · 01/10
+
+**Elegido:** `admin` y `empleado` son dos roles **separados**, sin que uno incluya al otro.
+El admin **no** valida entradas ni entrega candy: eso lo hace solo el empleado.
+
+- En la base, `es_empleado()` devuelve verdadero **solo** para el rol `empleado`.
+- Donde el admin necesita **leer** (`Usuarios`, `Compras` e `ItemsCandy`, para los
+  reportes), la política lo nombra de forma explícita con `es_admin()`.
+- El `update` de `Compras` que marca la validación de la entrada y la entrega del candy
+  queda solo para el empleado. El cliente sigue pudiendo cancelar su propia compra.
+- `LogActividad` sigue aceptando inserts de los dos, porque los dos hacen acciones que se
+  auditan.
+- En el front, `empleadoGuard` deja pasar únicamente al empleado, y el menú del admin no
+  muestra "Validación".
+
+**Por qué:** lo indicó la cátedra en la corrección del 01/10, y coincide con el mail del
+06/02, que describe dos tipos de usuario distintos. Nombrar al admin de forma explícita en
+cada política deja a la vista qué puede hacer cada rol, en lugar de esconderlo dentro de
+una función cuyo nombre dice otra cosa.
+
+**Descartado:** lo que había en D-12, donde `es_empleado()` devolvía verdadero para `admin`
+y `empleado`. Ahorraba escribir el admin en cada política, pero le daba la validación de
+entradas, que no le corresponde.
+
+**Corrige:** D-12. **Requisitos:** R-31 a R-33 (validación, solo el empleado) y R-34 a R-38
+(administración y reportes, solo el admin).
+
+---
+
+## D-25 · Reglas de contenido repetidas como constraints `check` · 01/10
+
+**Elegido:** las reglas de largo, rango, formato y obligatoriedad se validan en el
+formulario **y además** en la base, con `not null` y constraints `check`, siguiendo la
+sección 4 de [`docs/validaciones.md`](validaciones.md). Por ahora cubre las dos tablas que
+ya tienen formulario (sección 7 de [`supabase/schema.sql`](../supabase/schema.sql)); las
+demás se completan en su bloque.
+
+- `Usuarios`: `tipo_sangre`, `color_ojos` y `dias_vacaciones` pasan a `not null`. Mail de
+  hasta 254 caracteres, nombre y apellido de 2 a 50 y solo con letras, fecha de nacimiento
+  no futura y no más de 120 años atrás, tipo de sangre y color de ojos de la lista, días
+  de vacaciones de 0 a 60.
+- `Peliculas`: `sinopsis`, `imagen_url` y `fecha_estreno` pasan a `not null`. Nombre de 1 a
+  100 caracteres, sinopsis de 20 a 1000, duración de 30 a 300 minutos, precio de preventa
+  mayor a 0 y hasta 1.000.000, y obligatorio si la preventa está habilitada.
+
+**Por qué:** el formulario se puede saltear desde la consola del navegador, llamando a
+Supabase directo; la base no. Lo marcó la cátedra en la corrección del 01/10, que además
+permitió expresamente funciones, triggers y constraints de Postgres.
+
+Lo que no se vio en clase (🟡) y se usa acá:
+
+- **`check`**: una condición que la fila tiene que cumplir para guardarse. Se evalúa en cada
+  insert y en cada update. Si la columna es null no la rechaza: de eso se ocupa `not null`.
+- **`trim()` y `char_length()`**: sacar los espacios de los extremos y contar caracteres.
+  Juntas resuelven "no puede ser solo espacios": un texto de puros espacios queda con
+  largo 0 y no llega al mínimo.
+- **`texto ~ 'patrón'`**: verdadero si el texto cumple la expresión regular. Es el
+  equivalente en la base de `Validators.pattern`.
+- **`current_date - interval '120 years'`**: la fecha de hoy corrida 120 años atrás.
+- **Check cruzado**: `not preventa_habilitada or precio_preventa is not null` mira dos
+  columnas de la misma fila. "No A, o B" se lee "si A, entonces B".
+- **`alter policy`** y **`alter table ... add constraint`**: cambian una política o una
+  tabla que ya existe, sin borrarla y crearla de nuevo.
+
+**"Solo letras" en nombre y apellido.** El patrón `textoPersona` acepta letras, separadas
+por un solo espacio, apóstrofo o guion, y tiene que empezar y terminar con letra. Las
+letras son las **latinas con cualquier acento o diacrítico** (`A-Z`, `a-z`, `À-Ö`, `Ø-ö`,
+`ø-ɏ`), escritas como rangos. `validaciones.md` dice "letras de cualquier idioma", pero las
+expresiones regulares de Postgres no tienen una clase que signifique "cualquier letra" de
+forma confiable: depende de la configuración regional del servidor. Con los rangos
+explícitos, la base y el formulario aceptan **exactamente lo mismo**. Queda afuera un
+nombre escrito en otro alfabeto (cirílico, griego, chino).
+
+**Límites conocidos:**
+
+- Géneros "entre 1 y 4" **no se puede expresar** como `check`: un check solo ve la fila que
+  se está guardando, y los géneros están en otra tabla. Haría falta un trigger. Queda
+  validado solo en el formulario.
+- "Fecha de estreno entre 1 año atrás y 1 año adelante" y "preventa solo con estreno
+  futuro" **se pueden escribir pero no conviene**: un check se vuelve a evaluar en cada
+  update de la fila. Cuando la película cumpla un año de estrenada, o al día siguiente del
+  estreno de una que tuvo preventa, la base rechazaría cualquier cambio sobre ella. Son
+  reglas del momento de la carga: quedan en el formulario.
+- El rango de la fecha de nacimiento sí usa `current_date`. El mismo problema existe solo
+  para quien cumple 120 años.
+- El servidor está en UTC y Argentina en UTC-3: de 21 a 24 hs la base ya está en el día
+  siguiente. El efecto es que acepta una fecha de nacimiento un día "en el futuro" durante
+  esas tres horas; nunca rechaza una fecha válida.
+- Las listas de tipo de sangre y color de ojos quedan escritas en dos lugares, el
+  formulario y la base. Si se agrega una opción, hay que agregarla en los dos.
+
+**Descartado:** validar solo en el formulario. Es lo visto en clase, pero deja la base
+aceptando cualquier cosa.
+
+**Requisitos:** R-01 y R-04. Se apoya en D-11 (base versionada en SQL).
+
+---
+
+## D-26 · Reglas de carga de la película: se exigen al cargar, no en cada edición · 01/10
+
+**Elegido:** dos reglas del formulario de película se aplican **en el momento en que el
+admin carga el dato**, y no cada vez que se guarda la película:
+
+- **Fecha de estreno entre un año atrás y un año adelante:** se exige en el alta. En la
+  edición, solo si la fecha se cambió. Si queda la que la película ya tenía, no se vuelve
+  a validar.
+- **Preventa solo con estreno futuro:** se exige al **habilitar** la preventa. Si la
+  película ya la tenía habilitada al abrir la edición, el formulario no la bloquea aunque
+  el estreno ya haya pasado.
+
+Para eso el formulario guarda, al abrir la edición, la fecha de estreno y el estado de la
+preventa que la película tenía, y los dos validadores los comparan con lo que hay en
+pantalla. En el alta no hay valores anteriores, así que las dos reglas se aplican siempre.
+
+**Por qué:** las dos reglas comparan contra **hoy**, y hoy cambia. Una fecha de estreno
+que era válida al cargarla deja de serlo sola cuando la película cumple un año; una
+preventa bien habilitada queda "mal" al día siguiente del estreno. Si se exigieran en cada
+guardado, esas películas no se podrían volver a editar, ni para sacarlas de cartelera.
+
+Sobre la preventa, el mail del 08/03 dice que pasada la fecha de preventa el precio vuelve
+al normal (R-11). Eso lo resuelve **el sistema con la fecha de estreno**, en el momento de
+la compra: el admin no tiene que acordarse de destildar nada. La casilla dice "esta
+película tiene preventa"; si la preventa está vigente o no, lo dice la fecha.
+
+**Descartado:**
+
+- Aplicar las dos reglas en cada guardado, que es como estaban. Bloquea la edición de
+  películas viejas y de las que tuvieron preventa.
+- Sacar las reglas del todo. Dejaría cargar una fecha de estreno de 1990 por un error de
+  tipeo, o habilitar la preventa de una película ya estrenada.
+
+**Consecuencia:** son reglas solo del formulario. En la base no tienen `check` por el mismo
+motivo: un check se vuelve a evaluar en cada update (D-25). Y "preventa habilitada" pasa a
+significar "tiene preventa", no "la preventa está abierta hoy": el bloque de compra tiene
+que mirar la fecha de estreno, no solo la casilla.
+
+Es el mismo tipo de validador que D-17 (un `ValidatorFn` colgado de un grupo), pero como
+método del componente, porque necesita leer los valores originales.
+
+**Clase de origen:** 4 (validadores propios). **Requisitos:** R-04 y R-11. Se apoya en D-17
+y D-25.
+
+---
+
+## D-27 · El estado de la película sale de la fecha de estreno · 01/10
+
+**Elegido:** las columnas `en_cartelera` y `proximamente` se reemplazan por una sola,
+**`visible`**. El admin decide si la película aparece o no; **en qué lugar aparece lo
+dice la fecha de estreno**:
+
+| `visible` | Estreno | Dónde aparece |
+|---|---|---|
+| sí | futuro | Próximamente (R-10) |
+| sí | hoy o pasado | En cartelera (R-05) |
+| no | cualquiera | No aparece |
+
+El estado no se guarda en la base: se calcula en el front comparando `fecha_estreno` con
+la fecha de hoy, en el pipe `estadoPelicula` (clase 8).
+
+La **preventa** sigue siendo una casilla aparte, y solo se puede habilitar con estreno
+futuro (D-26).
+
+El campo del formulario pasa a llamarse **"Estreno en Olympia Cinema"**, con la ayuda
+"Fecha en que la película empieza a proyectarse en el cine, no la de su estreno original".
+Como de esa fecha depende dónde aparece la película, tiene que quedar claro que es la del
+cine: *The Godfather* es de 1972, pero su estreno en Olympia es el de la cartelera.
+
+**Por qué:** el mail del 01/01 pide que el admin elija **qué películas aparecen** al entrar
+a la página, no en qué sección. Con dos casillas el estado se podía contradecir (las dos
+marcadas, o "en cartelera" con un estreno futuro), y esa regla había quedado como "a
+decidir" en `docs/validaciones.md`. Con una sola casilla y la fecha no hay combinación
+inválida posible, así que la regla desaparece en vez de validarse.
+
+**Descartado:** un **selector manual de estado** (oculta, próximamente, en cartelera).
+Resuelve la contradicción, pero obliga a que alguien pase la película a cartelera a mano
+el día del estreno. Si se olvida, la película sigue figurando como próxima con el estreno
+ya pasado.
+
+**Migración:** `visible` toma `en_cartelera or proximamente` de cada fila antes de borrar
+las dos columnas (sección 8 de [`supabase/schema.sql`](../supabase/schema.sql)).
+`alter table ... add column` y `drop column` no se vieron en clase (🟡): agregan y quitan
+una columna de una tabla que ya existe, sin borrarla y crearla de nuevo.
+
+**Consecuencia:** la cartelera y Próximamente del cliente tienen que usar el mismo
+cálculo. Y como una película pasa sola de Próximamente a cartelera el día del estreno,
+para que se pueda comprar ese día ya tiene que tener funciones cargadas.
+
+**Clase de origen:** 8 (pipes propios). **Requisitos:** R-05, R-10 y R-11. Se apoya en D-26.

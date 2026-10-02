@@ -7,40 +7,95 @@
 } @else if (errorCarga()) {
   <p class="error" role="alert">{{ errorCarga() }}</p>
 } @else {
+  <!-- Los maxlength repiten el máximo de cada regla: el navegador no deja
+       escribir de más (docs/validaciones.md, principio 10). -->
   <form [formGroup]="formulario" (ngSubmit)="guardar()">
     <label for="nombre">Nombre</label>
-    <input id="nombre" type="text" formControlName="nombre" />
-    @if (nombre?.touched && nombre?.errors?.['required']) {
-      <small class="error">El nombre es obligatorio.</small>
+    <input id="nombre" type="text" formControlName="nombre" maxlength="100" />
+    @if (nombre?.touched) {
+      @if (nombre?.errors?.['required']) {
+        <small class="error">El nombre es obligatorio.</small>
+      } @else if (nombre?.errors?.['largo']) {
+        <small class="error">El nombre puede tener hasta 100 caracteres.</small>
+      } @else if (nombre?.errors?.['textoLibre']) {
+        <small class="error">El nombre tiene caracteres que no se pueden mostrar.</small>
+      }
     }
 
     <label for="sinopsis">Sinopsis</label>
-    <textarea id="sinopsis" rows="4" formControlName="sinopsis"></textarea>
+    <textarea id="sinopsis" rows="4" formControlName="sinopsis" maxlength="1000"></textarea>
+    <!-- Contador de caracteres: el largo de lo escrito sobre el máximo. -->
+    <small>{{ sinopsis?.value?.length ?? 0 }} / 1000</small>
+    @if (sinopsis?.touched) {
+      @if (sinopsis?.errors?.['required']) {
+        <small class="error">La sinopsis es obligatoria.</small>
+      } @else if (sinopsis?.errors?.['largo']) {
+        <small class="error">La sinopsis tiene que tener entre 20 y 1000 caracteres.</small>
+      } @else if (sinopsis?.errors?.['textoLibre']) {
+        <small class="error">La sinopsis tiene caracteres que no se pueden mostrar.</small>
+      }
+    }
 
     <label for="duracion_minutos">Duración (minutos)</label>
-    <input id="duracion_minutos" type="number" min="1" formControlName="duracion_minutos" />
+    <input
+      id="duracion_minutos"
+      type="number"
+      min="30"
+      max="300"
+      step="1"
+      formControlName="duracion_minutos"
+    />
     @if (duracionMinutos?.touched) {
       @if (duracionMinutos?.errors?.['required']) {
         <small class="error">La duración es obligatoria.</small>
-      } @else if (duracionMinutos?.errors?.['min']) {
-        <small class="error">La duración tiene que ser de al menos 1 minuto.</small>
-      } @else if (duracionMinutos?.errors?.['pattern']) {
+      } @else if (duracionMinutos?.errors?.['entero']) {
         <small class="error">Tiene que ser un número entero de minutos.</small>
+      } @else if (duracionMinutos?.errors?.['rango']) {
+        <small class="error">La duración tiene que ser de entre 30 y 300 minutos.</small>
       }
     }
 
     <label for="restriccion_edad">Restricción de edad</label>
     <select id="restriccion_edad" formControlName="restriccion_edad">
-      <option value="">Ninguna</option>
+      <option value="" disabled>Elegí una opción</option>
+      <option value="ninguna">Ninguna</option>
       <option value="13">Mayores de 13</option>
       <option value="18">Mayores de 18</option>
     </select>
+    @if (restriccionEdad?.touched) {
+      @if (restriccionEdad?.errors?.['required']) {
+        <small class="error">Elegí la restricción de edad. Si no tiene, elegí "Ninguna".</small>
+      } @else if (restriccionEdad?.errors?.['unoDe']) {
+        <small class="error">Elegí una restricción de la lista.</small>
+      }
+    }
 
-    <label for="fecha_estreno">Fecha de estreno</label>
-    <input id="fecha_estreno" type="date" formControlName="fecha_estreno" />
+    <!-- Fecha sin calendario (D-23). Los mensajes van adentro de la etiqueta
+         y el componente los muestra debajo de los desplegables. -->
+    <app-campo-fecha
+      etiqueta="Estreno en Olympia Cinema"
+      [grupo]="fechaEstreno"
+      [anioDesde]="anioDesde()"
+      [anioHasta]="anioHasta()"
+    >
+      <small>
+        Fecha en que la película empieza a proyectarse en el cine, no la de su estreno original.
+      </small>
+      @if (fechaEstreno.touched) {
+        @if (fechaEstreno.errors?.['fechaImposible']) {
+          <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+        } @else if (fechaEstreno.errors?.['fechaMinima']) {
+          <small class="error">La fecha de estreno no puede ser de hace más de un año.</small>
+        } @else if (fechaEstreno.errors?.['fechaMaxima']) {
+          <small class="error">La fecha de estreno no puede ser de acá a más de un año.</small>
+        } @else if (fechaEstreno.invalid) {
+          <small class="error">Elegí el día, el mes y el año.</small>
+        }
+      }
+    </app-campo-fecha>
 
     <fieldset formArrayName="generos">
-      <legend>Géneros</legend>
+      <legend>Géneros (de 1 a 4)</legend>
       @for (genero of generos(); track genero.id; let i = $index) {
         <label class="opcion">
           <input type="checkbox" [formControlName]="i" />
@@ -48,33 +103,53 @@
         </label>
       }
     </fieldset>
-    @if (generosForm.dirty && generosForm.errors?.['sinGeneros']) {
-      <small class="error">Elegí al menos un género.</small>
+    @if (generosForm.dirty) {
+      @if (generosForm.errors?.['pocosMarcados']) {
+        <small class="error">Elegí al menos un género.</small>
+      } @else if (generosForm.errors?.['demasiadosMarcados']) {
+        <small class="error">Elegí como máximo 4 géneros.</small>
+      }
     }
 
+    <!-- El estado no se elige: sale de la fecha de estreno (D-27). -->
     <fieldset>
       <legend>Estado</legend>
       <label class="opcion">
-        <input type="checkbox" formControlName="en_cartelera" />
-        En cartelera
-      </label>
-      <label class="opcion">
-        <input type="checkbox" formControlName="proximamente" />
-        Próximamente
+        <input type="checkbox" formControlName="visible" />
+        Visible en el sitio
       </label>
       <label class="opcion">
         <input type="checkbox" formControlName="preventa_habilitada" />
         Preventa habilitada
       </label>
     </fieldset>
+    <small>
+      Una película visible aparece en Próximamente hasta el día del estreno y, desde ese día,
+      en cartelera.
+    </small>
+    <!-- Error del formulario entero: compara la preventa con la fecha (D-17). -->
+    @if (formulario.errors?.['preventaSinEstrenoFuturo']) {
+      <small class="error">
+        La preventa solo se puede habilitar si la fecha de estreno es futura.
+      </small>
+    }
 
     <label for="precio_preventa">Precio de preventa</label>
-    <input id="precio_preventa" type="number" min="0" step="0.01" formControlName="precio_preventa" />
-    <!-- Este error es del formulario entero, no del campo (D-17). -->
+    <input
+      id="precio_preventa"
+      type="number"
+      min="0.01"
+      max="1000000"
+      step="0.01"
+      formControlName="precio_preventa"
+    />
+    <!-- El primer error es del formulario entero, no del campo (D-17). -->
     @if (formulario.errors?.['precioDePreventaObligatorio']) {
       <small class="error">Con la preventa habilitada, el precio de preventa es obligatorio.</small>
-    } @else if (precioPreventa?.errors?.['min']) {
-      <small class="error">El precio no puede ser negativo.</small>
+    } @else if (precioPreventa?.errors?.['precio']) {
+      <small class="error">
+        El precio tiene que ser mayor a 0, de hasta 1.000.000 y con dos decimales como mucho.
+      </small>
     }
 
     <label for="poster">Póster</label>
@@ -82,10 +157,27 @@
       <img class="poster" [src]="url" alt="Póster actual" />
     }
     <!-- Un input de archivo no se puede atar con formControlName: el archivo
-         se toma del evento (clase 7). -->
-    <input id="poster" type="file" accept="image/*" (input)="cargarPoster($event)" />
+         se toma del evento (clase 7). accept filtra lo que ofrece el
+         explorador de archivos, pero no reemplaza al validador. -->
+    <input
+      id="poster"
+      type="file"
+      accept="image/jpeg,image/png,image/webp"
+      (input)="cargarPoster($event)"
+    />
     @if (posterActual()) {
       <small>Si no elegís otro archivo, se conserva el póster actual.</small>
+    } @else {
+      <small>Obligatorio. JPG, PNG o WebP, de hasta 2 MB.</small>
+    }
+    @if (posterTocado()) {
+      @if (poster?.errors?.['imagenTipo']) {
+        <small class="error">El póster tiene que ser una imagen JPG, PNG o WebP.</small>
+      } @else if (poster?.errors?.['imagenPeso']) {
+        <small class="error">El póster no puede pesar más de 2 MB.</small>
+      } @else if (formulario.errors?.['posterObligatorio']) {
+        <small class="error">El póster es obligatorio.</small>
+      }
     }
 
     @if (error()) {

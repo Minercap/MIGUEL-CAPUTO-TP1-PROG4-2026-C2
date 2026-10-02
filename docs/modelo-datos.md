@@ -51,12 +51,15 @@ Cubre R-01, R-03, R-27, R-30 y los roles del punto 2 del documento.
 | `imagen_url` | text | Storage, clase 7 |
 | `duracion_minutos` | int | Define el fin de la función (R-19) |
 | `restriccion_edad` | int | `18`, `13` o nulo |
-| `fecha_estreno` | date | |
-| `en_cartelera` | bool | R-05 |
-| `proximamente` | bool | R-10 |
+| `fecha_estreno` | date | Estreno en Olympia Cinema, no el estreno original de la película |
+| `visible` | bool | R-05: el admin decide si la película aparece. Reemplaza a `en_cartelera` y `proximamente` (D-27) |
 | `preventa_habilitada` | bool | R-11 |
 | `precio_preventa` | numeric | R-11 |
 | `creado_en` | timestamptz | |
+
+> **El estado de la película no se guarda: sale de `visible` y `fecha_estreno` (D-27).**
+> Visible con estreno futuro, aparece en Próximamente (R-10); visible con estreno hoy o
+> pasado, en cartelera (R-05); no visible, no aparece.
 
 ### `Generos`
 

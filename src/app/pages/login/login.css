@@ -15,6 +15,30 @@ button {
   margin-top: 1.25rem;
 }
 
+.accesos-rapidos {
+  margin-top: 1.5rem;
+  max-width: 24rem;
+}
+
+.accesos-rapidos h2 {
+  font-size: 1rem;
+  margin-bottom: 0.25rem;
+}
+
+.accesos-rapidos p {
+  margin: 0;
+}
+
+.accesos-rapidos .botones {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.accesos-rapidos button {
+  flex: 1;
+  margin-top: 0.75rem;
+}
+
 .error {
   color: #b00020;
 }
