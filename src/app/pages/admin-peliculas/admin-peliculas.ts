@@ -2,10 +2,11 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { Peliculas } from '../../services/peliculas';
 import { Pelicula } from '../../interfaces/pelicula';
+import { EstadoPeliculaPipe } from '../../pipes/estado-pelicula-pipe';
 
 // Listado de películas del admin (R-34), con las acciones Editar y Borrar.
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, EstadoPeliculaPipe],
   selector: 'app-admin-peliculas',
   styleUrl: './admin-peliculas.css',
   templateUrl: './admin-peliculas.html',

@@ -61,6 +61,12 @@
   font-size: 0.8rem;
 }
 
+/* Una película oculta no aparece en el sitio: su etiqueta va apagada. */
+.oculta {
+  border-style: dashed;
+  color: #777;
+}
+
 .edad {
   border-color: #b00020;
   color: #b00020;

@@ -13,9 +13,10 @@ export interface Pelicula {
   imagen_url: string; // URL pública del póster en Storage (clase 7)
   duracion_minutos: number;
   restriccion_edad: 13 | 18 | null; // null = apta para todo público
-  fecha_estreno: string; // 'AAAA-MM-DD', como la devuelve Postgres
-  en_cartelera: boolean;
-  proximamente: boolean;
+  fecha_estreno: string; // estreno en Olympia Cinema. 'AAAA-MM-DD', como la devuelve Postgres
+  // El admin decide si aparece. Dónde aparece (Próximamente o en cartelera)
+  // no se guarda: sale de fecha_estreno (D-27).
+  visible: boolean;
   preventa_habilitada: boolean;
   precio_preventa: number | null;
   creado_en: string;
@@ -30,8 +31,7 @@ export interface PeliculaPorCrear {
   duracion_minutos: number;
   restriccion_edad: 13 | 18 | null;
   fecha_estreno: string;
-  en_cartelera: boolean;
-  proximamente: boolean;
+  visible: boolean;
   preventa_habilitada: boolean;
   precio_preventa: number | null;
 }
@@ -46,8 +46,7 @@ export interface PeliculaPorModificar {
   duracion_minutos: number;
   restriccion_edad: 13 | 18 | null;
   fecha_estreno: string;
-  en_cartelera: boolean;
-  proximamente: boolean;
+  visible: boolean;
   preventa_habilitada: boolean;
   precio_preventa: number | null;
 }

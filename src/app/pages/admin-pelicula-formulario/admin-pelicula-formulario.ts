@@ -105,8 +105,9 @@ export class AdminPeliculaFormulario implements OnInit {
           validators: [fechaReal(), this.estrenoEnRango()],
         },
       ),
-      en_cartelera: [false],
-      proximamente: [false],
+      // Si aparece en el sitio. Dónde aparece lo dice la fecha de estreno:
+      // Próximamente si es futura, en cartelera si ya pasó (D-27).
+      visible: [false],
       preventa_habilitada: [false],
       precio_preventa: [null as number | null, [precio()]],
       // Un checkbox por género. Arranca vacío: los controles se agregan con
@@ -253,8 +254,7 @@ export class AdminPeliculaFormulario implements OnInit {
         restriccion_edad:
           pelicula.restriccion_edad === null ? 'ninguna' : String(pelicula.restriccion_edad),
         fecha_estreno: textoAFecha(pelicula.fecha_estreno),
-        en_cartelera: pelicula.en_cartelera,
-        proximamente: pelicula.proximamente,
+        visible: pelicula.visible,
         preventa_habilitada: pelicula.preventa_habilitada,
         precio_preventa: pelicula.precio_preventa,
         generos: generos.map((genero) => pelicula.generos_ids.includes(genero.id)),
@@ -325,8 +325,7 @@ export class AdminPeliculaFormulario implements OnInit {
         mes: v.fecha_estreno.mes ?? '',
         anio: v.fecha_estreno.anio ?? '',
       }),
-      en_cartelera: v.en_cartelera ?? false,
-      proximamente: v.proximamente ?? false,
+      visible: v.visible ?? false,
       preventa_habilitada: v.preventa_habilitada ?? false,
       precio_preventa: v.precio_preventa,
     };

@@ -26,12 +26,10 @@
           <span>{{ pelicula.duracion_minutos }} min</span>
 
           <div class="etiquetas">
-            @if (pelicula.en_cartelera) {
-              <span class="etiqueta">En cartelera</span>
-            }
-            @if (pelicula.proximamente) {
-              <span class="etiqueta">Próximamente</span>
-            }
+            <!-- El estado sale de visible y de la fecha de estreno (D-27). -->
+            <span class="etiqueta" [class.oculta]="!pelicula.visible">
+              {{ pelicula | estadoPelicula }}
+            </span>
             @if (pelicula.preventa_habilitada) {
               <span class="etiqueta">Preventa</span>
             }

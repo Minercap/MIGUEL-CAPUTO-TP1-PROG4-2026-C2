@@ -73,11 +73,14 @@
     <!-- Fecha sin calendario (D-23). Los mensajes van adentro de la etiqueta
          y el componente los muestra debajo de los desplegables. -->
     <app-campo-fecha
-      etiqueta="Fecha de estreno"
+      etiqueta="Estreno en Olympia Cinema"
       [grupo]="fechaEstreno"
       [anioDesde]="anioDesde()"
       [anioHasta]="anioHasta()"
     >
+      <small>
+        Fecha en que la película empieza a proyectarse en el cine, no la de su estreno original.
+      </small>
       @if (fechaEstreno.touched) {
         @if (fechaEstreno.errors?.['fechaImposible']) {
           <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
@@ -108,21 +111,22 @@
       }
     }
 
+    <!-- El estado no se elige: sale de la fecha de estreno (D-27). -->
     <fieldset>
       <legend>Estado</legend>
       <label class="opcion">
-        <input type="checkbox" formControlName="en_cartelera" />
-        En cartelera
-      </label>
-      <label class="opcion">
-        <input type="checkbox" formControlName="proximamente" />
-        Próximamente
+        <input type="checkbox" formControlName="visible" />
+        Visible en el sitio
       </label>
       <label class="opcion">
         <input type="checkbox" formControlName="preventa_habilitada" />
         Preventa habilitada
       </label>
     </fieldset>
+    <small>
+      Una película visible aparece en Próximamente hasta el día del estreno y, desde ese día,
+      en cartelera.
+    </small>
     <!-- Error del formulario entero: compara la preventa con la fecha (D-17). -->
     @if (formulario.errors?.['preventaSinEstrenoFuturo']) {
       <small class="error">
