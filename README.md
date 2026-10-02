@@ -55,7 +55,9 @@ Las carpetas que todavía no tienen archivos se llenan a medida que avanza el de
 - [Requerimientos](docs/requerimientos.md) — qué pidió el cliente, mail por mail, con las
   interpretaciones adoptadas.
 - [Corrección del 01/10](docs/correccion-01-10.md) — respuestas de la cátedra en la reunión
-  de seguimiento, lo que no se respetó de los mails y las reglas de validación de cada campo.
+  de seguimiento y lo que no se respetó de los mails.
+- [Validaciones](docs/validaciones.md) — estándar de validación de todos los formularios:
+  principios, patrones reutilizables, reglas campo por campo y lo que se repite en la base.
 - [Modelo de datos](docs/modelo-datos.md) — las tablas, sus campos y qué requisito cubre
   cada una.
 - [Esquema de la base](supabase/schema.sql) — script SQL con las tablas, RLS, las

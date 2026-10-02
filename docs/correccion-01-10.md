@@ -92,6 +92,9 @@ navegador; la base no.
 
 ## 4. Reglas de validación propuestas
 
+> **Reemplazado por [`docs/validaciones.md`](validaciones.md).** Este punto queda como
+> registro de lo que se propuso el 01/10; el estándar vigente es el otro documento.
+
 ### Registro
 
 | Campo | Regla |
