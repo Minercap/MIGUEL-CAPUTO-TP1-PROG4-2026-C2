@@ -1,0 +1,28 @@
+/* Estilo mínimo. El estilo visual del cine se trabaja aparte. */
+
+/* Se saca el recuadro que el navegador le pone al fieldset, para que se
+   vea como cualquier otro campo. */
+fieldset {
+  border: 0;
+  margin: 0.75rem 0 0;
+  padding: 0;
+}
+
+legend {
+  padding: 0;
+  margin-bottom: 0.25rem;
+}
+
+.desplegables {
+  display: flex;
+  gap: 0.5rem;
+}
+
+/* El mes lleva el nombre completo: se le da más lugar que al día y al año. */
+.desplegables select {
+  flex: 1;
+}
+
+.desplegables select.mes {
+  flex: 2;
+}

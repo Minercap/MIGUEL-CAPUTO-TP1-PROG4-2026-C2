@@ -1,0 +1,38 @@
+<!-- El input es opcional, así que puede no haber grupo: el @if lo guarda en g
+     solo si llegó (clase 3). -->
+@if (grupo(); as g) {
+  <!-- fieldset y legend agrupan los tres desplegables bajo una sola etiqueta.
+       [formGroup] ata este bloque al grupo recibido, y cada select se ata a
+       su control con formControlName. -->
+  <fieldset [formGroup]="g">
+    <legend>{{ etiqueta() }}</legend>
+
+    <div class="desplegables">
+      <select formControlName="dia" aria-label="Día">
+        <option value="" disabled>Día</option>
+        @for (dia of dias; track dia) {
+          <option [value]="dia">{{ dia }}</option>
+        }
+      </select>
+
+      <!-- Se muestra el nombre del mes y se guarda su número: $index
+           arranca en 0, por eso el + 1. -->
+      <select class="mes" formControlName="mes" aria-label="Mes">
+        <option value="" disabled>Mes</option>
+        @for (mes of meses; track mes) {
+          <option [value]="$index + 1">{{ mes }}</option>
+        }
+      </select>
+
+      <select formControlName="anio" aria-label="Año">
+        <option value="" disabled>Año</option>
+        @for (anio of anios(); track anio) {
+          <option [value]="anio">{{ anio }}</option>
+        }
+      </select>
+    </div>
+
+    <!-- Acá aparecen los mensajes de error que escribe la pantalla. -->
+    <ng-content />
+  </fieldset>
+}
