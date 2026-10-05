@@ -134,6 +134,12 @@ restricción de edad. Es más confiable, porque la fecha ya está validada en el
 pero se descarta porque elimina la compra anónima para esas funciones, que el cliente
 pidió expresamente en el mail del 01/01.
 
+**Reemplazada el 05/10 (D-39):** las películas con restricción de edad pasan a requerir
+cuenta para comprar, porque la edad solo se conoce de los usuarios registrados: una fecha
+declarada en el momento no se puede verificar. La compra anónima sigue existiendo para las
+películas sin restricción. La columna `fecha_nacimiento_declarada` de `Compras` queda sin
+uso.
+
 **Requisito:** R-25. Se relaciona con R-02 (compra anónima) y R-26 (aviso de acompañante
 adulto).
 
@@ -913,3 +919,105 @@ pero deja el horario de la función dependiendo de la configuración de cada dis
 
 **Clase de origen:** 8 (pipes incorporados). **Requisito:** R-05 (horarios de cada
 película). Se relaciona con D-29, que hace lo mismo del lado de la base.
+---
+
+## D-36 · QR con la librería qrcode · 05/10
+
+**Elegido:** `qrcode` (`toDataURL`), sirve para la pantalla y el PDF.
+
+**Descartado:** un componente QR de Angular, porque después hay que sacar la imagen para el
+PDF.
+
+**Cómo lo explico en el oral:** generar un QR a mano es implementar el estándar; una
+función de librería me da la imagen del código de la compra.
+
+**Clase de origen:** 🔴 librería justificada (como `canvas-confetti` en la clase 7).
+**Requisito:** R-20 (mails 01/01 y 30/01).
+
+---
+
+## D-37 · Ticket en PDF con jsPDF · 05/10
+
+**Elegido:** jsPDF, la app genera y descarga el archivo.
+
+**Descartado:** CSS de impresión y `window.print()`, porque el PDF lo arma el usuario desde
+un diálogo que cambia según el navegador.
+
+**Cómo lo explico en el oral:** el mail pide que la app genere el PDF; la misma librería
+sirve para el reporte de facturación.
+
+**Clase de origen:** 🔴 librería justificada. **Requisito:** R-20 (mail 01/01, "les genere el
+pdf") y la cátedra (A-01).
+
+---
+
+## D-38 · Butacas ocupadas en una tabla pública con unique · 05/10
+
+**Elegido:** `ButacasOcupadas` (solo función y butaca), pública, con Realtime y `unique`.
+
+**Descartado:** mostrar también las butacas "en selección" con Broadcast, porque el mail
+pide las ocupadas por otra compra y suma liberar butacas abandonadas.
+
+**Cómo lo explico en el oral:** Realtime respeta RLS, y las entradas son privadas. Separé
+lo público (qué butaca está ocupada) de lo privado (quién la compró), y el `unique` hace
+imposible la doble venta.
+
+**Lo que cambia en las políticas:** `Entradas` deja de ser de lectura pública: cada uno lee
+las de sus compras, y el empleado y el admin las leen todas. El mapa ya no las necesita.
+
+**Lo que no se vio en clase (🟡) y se usa acá:**
+
+- **`unique` compuesto**: `unique (funcion_id, fila, numero)`. No puede haber dos filas con
+  la misma combinación de las tres columnas: la misma butaca se puede vender en dos
+  funciones distintas, pero no dos veces en la misma.
+- **`filter` en `postgres_changes`**: `filter: 'funcion_id=eq.12'`. El canal avisa solo de
+  las butacas de esa función, en lugar de las de todo el cine.
+- **`alter publication supabase_realtime add table`**: Realtime avisa únicamente de las
+  tablas que están en esa lista. Es lo mismo que activar Realtime para la tabla desde el
+  panel de Supabase, pero escrito en el script (D-11).
+
+**Cierra:** el punto abierto de la `unique` sobre `Entradas` (modelo de datos, punto 1). No
+se pone ahí porque las entradas de una compra cancelada quedan como historial, y esa
+butaca tiene que poder venderse de nuevo.
+
+**Clase de origen:** 6 (Realtime) + `unique` compuesto 🟡 + `filter` de Realtime 🟡.
+**Requisito:** R-16 (mail 12/02, tiempo real) y no vender dos veces.
+
+---
+
+## D-39 · La compra es una función de Postgres · 05/10
+
+**Elegido:** `realizar_compra` con `rpc()`, todo en una transacción.
+
+**Descartado:** varios inserts desde Angular, porque una compra puede quedar a medias, el
+precio vendría del navegador y `Compras` tendría que aceptar escrituras de anónimos.
+
+**Cómo lo explico en el oral:** la plata la calcula la base. Angular muestra el precio,
+pero la función lo vuelve a calcular, valida edad y fechas, e inserta todo o nada.
+
+**Qué es `rpc()` (🟡):** la forma de llamar desde la app a una función de Postgres:
+`this.sup.Sup.rpc('realizar_compra', { ... })`. Devuelve `{ data, error }`, igual que un
+`select`.
+
+**Por qué es `security definer`:** la función corre con los permisos de quien la creó, así
+que puede insertar en `Compras`, `Entradas` y `ButacasOcupadas` aunque el visitante no
+tenga permiso de escritura sobre ninguna de las tres. Por eso se quitan las políticas de
+insert que esas tablas tenían para `anon` y `authenticated`: la única puerta de entrada
+es la función, que valida todo. Lleva `set search_path = public`, igual que `rol_actual()`
+(D-12), para que nadie pueda hacerle usar una tabla falsa con el mismo nombre.
+
+**Los errores:** cada regla que no se cumple hace `raise exception` con un mensaje escrito
+para el comprador. Llegan al front con el código `P0001` y el servicio muestra ese texto.
+
+**Reglas de negocio que aplica** (interpretaciones adoptadas en `docs/requerimientos.md`):
+
+- La venta abre 7 días antes del estreno si la película tiene preventa, y el día del
+  estreno si no. En hora argentina (R-11).
+- En preventa, las butacas comunes y accesibles salen a `precio_preventa`; las VIP
+  mantienen `precio_vip`. Las accesibles valen lo mismo que las comunes.
+- Las películas con restricción de edad requieren cuenta: la edad sale de la fecha de
+  nacimiento del perfil. **Esto reemplaza a D-06.**
+- De 1 a 10 butacas por compra, válidas según la distribución de la sala (D-04).
+
+**Clase de origen:** función de Postgres 🟡 (D-25, aprobado por la cátedra) + `rpc()` 🟡.
+**Requisito:** integridad de la compra (R-20, R-25, R-11, R-14).
