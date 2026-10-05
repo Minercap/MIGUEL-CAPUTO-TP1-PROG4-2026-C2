@@ -9,5 +9,5 @@ nav {
 }
 
 .error {
-  color: #b00020;
+  color: var(--color-error);
 }

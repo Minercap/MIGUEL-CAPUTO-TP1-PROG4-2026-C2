@@ -22,7 +22,7 @@
   justify-content: space-between;
   gap: 0.5rem 1rem;
   padding: 0.75rem 0;
-  border-bottom: 1px solid #ccc;
+  border-bottom: 1px solid var(--color-texto-suave);
 }
 
 .datos,
@@ -35,16 +35,16 @@
 
 .etiqueta {
   padding: 0.1rem 0.5rem;
-  border: 1px solid #999;
+  border: 1px solid var(--color-texto-suave);
   border-radius: 1rem;
   font-size: 0.8rem;
 }
 
 .inactiva {
   border-style: dashed;
-  color: #777;
+  color: var(--color-texto-suave);
 }
 
 .error {
-  color: #b00020;
+  color: var(--color-error);
 }
