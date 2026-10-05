@@ -21,6 +21,8 @@
 --      se había corrido.
 --  10. Cartelera: vista de las películas más vendidas (D-31)
 --  11. Compra: ButacasOcupadas y la función realizar_compra (D-38, D-39)
+--  12. Candy y beneficios: combo como producto, reglas de contenido,
+--      y cupón de bienvenida (D-40 a D-43)
 -- ============================================================
 
 -- ============================================================
@@ -1901,6 +1903,185 @@ $$;
 -- controles están adentro de la función.
 grant execute on function public.realizar_compra(bigint, jsonb, text, text, date)
   to anon, authenticated;
+
+
+-- ============================================================
+-- 12. CANDY Y BENEFICIOS  (decisiones D-40 a D-43)
+-- ============================================================
+-- Las tablas del candy y de los beneficios existen desde la sección 1,
+-- con RLS y sus políticas en la sección 3: las lee cualquiera y las
+-- escribe solo el admin, con es_admin(), igual que Peliculas y Salas.
+-- Acá se cambia cómo se guarda un combo, se agregan las reglas de
+-- contenido de docs/validaciones.md (D-25) y se carga el cupón de
+-- bienvenida.
+--
+-- La lectura sigue siendo de todas las filas, también las dadas de baja
+-- (activo = false), por lo mismo que D-34: las compras y los canjes van
+-- a apuntar a esos productos y recompensas, y el historial los tiene
+-- que poder mostrar (D-40, D-42). La pantalla de compra filtra por
+-- activo.
+--
+-- El log de actividad no se toca: lo escribe el servicio de Angular en
+-- LogActividad después de cada operación del admin (D-14).
+--
+-- Orden:
+--   12.1 Combo como producto con sus ítems (D-40)
+--   12.2 Reglas de contenido del candy (validaciones.md, 3.6)
+--   12.3 Cupones: reglas y cupón de bienvenida (D-05, D-41, D-43)
+--   12.4 Recompensas: reglas (D-42, validaciones.md 3.8)
+
+
+-- ---------- 12.1 Combo como producto (D-40) ----------
+-- Un combo pasa a ser una fila más de ProductosCandy, con es_combo en
+-- true, y CombosProductos dice qué productos trae. Así, comprar un
+-- combo o un producto suelto es lo mismo: una fila de ItemsCandy que
+-- apunta a un producto. Se va la tabla Combos, y con ella la columna
+-- combo_id de ItemsCandy (D-08 queda ajustada).
+--
+-- Se borran tablas y una columna, así que se pierde lo que tengan. Estos
+-- tres conteos tienen que dar 0 antes de seguir: el candy todavía no
+-- tiene pantalla, así que no debería haber nada cargado.
+
+select
+  (select count(*) from public."Combos")          as combos,
+  (select count(*) from public."CombosProductos") as combos_productos,
+  (select count(*) from public."ItemsCandy")      as items_candy;
+
+-- ItemsCandy deja de apuntar a Combos. Al borrar la columna, Postgres
+-- borra también el check que la usaba ("producto_id is not null or
+-- combo_id is not null"). Ahora todo ítem es un producto, así que
+-- producto_id pasa a ser obligatorio.
+alter table public."ItemsCandy" drop column combo_id;
+alter table public."ItemsCandy" alter column producto_id set not null;
+
+-- Al borrar una tabla se borran también sus políticas. CombosProductos
+-- se crea de nuevo más abajo, apuntando a ProductosCandy.
+drop table public."CombosProductos";
+drop table public."Combos";
+
+-- es_combo:        la fila es un combo y tiene ítems en CombosProductos.
+--                  Los combos son los que se muestran destacados en la
+--                  compra (R-22): no hace falta otra columna.
+-- incluye_entrada: el combo trae una entrada además del candy (mail del
+--                  03/03, "entrada + pochoclos + bebida").
+-- imagen_url se va: ningún mail pide imagen para los productos.
+alter table public."ProductosCandy"
+  drop column imagen_url,
+  add column es_combo        boolean not null default false,
+  add column incluye_entrada boolean not null default false;
+
+-- Clave primaria compuesta (combo_id, producto_id): un combo no puede
+-- traer dos veces el mismo producto en dos filas; para eso está la
+-- cantidad (validaciones.md 3.6, "sin productos repetidos").
+-- on delete cascade en combo_id: si se borra el combo, se borran sus
+-- ítems. En producto_id no: un producto que está en un combo no se
+-- puede borrar (código 23503); se da de baja con activo.
+create table public."CombosProductos" (
+  combo_id     bigint not null references public."ProductosCandy"(id) on delete cascade,
+  producto_id  bigint not null references public."ProductosCandy"(id),
+  cantidad     int not null,
+  primary key (combo_id, producto_id),
+  -- entero(1, 10), validaciones.md 3.6
+  constraint combos_productos_cantidad_rango check (cantidad between 1 and 10),
+  -- Un combo no se puede contener a sí mismo.
+  constraint combos_productos_distintos check (combo_id <> producto_id)
+);
+
+-- Que combo_id sea un combo y que producto_id NO lo sea (no hay combos
+-- adentro de combos) depende de otras filas de ProductosCandy, y un
+-- check solo ve la fila que se está guardando. Queda en el formulario:
+-- el selector ofrece solo productos que no son combo, y la tabla la
+-- escribe solo el admin.
+
+alter table public."CombosProductos" enable row level security;
+
+create policy "combos_productos: lectura"
+  on public."CombosProductos" for select to anon, authenticated using (true);
+create policy "combos_productos: escritura admin"
+  on public."CombosProductos" for all to authenticated
+  using (public.es_admin()) with check (public.es_admin());
+
+
+-- ---------- 12.2 Reglas del candy (validaciones.md 3.6, D-25) ----------
+-- Mismo criterio que la sección 7.3: largo contado sin los espacios de
+-- los extremos, y el patrón precio (mayor a 0 y hasta 1.000.000).
+--
+-- El nombre de la categoría es único por lo mismo que el de la sala: el
+-- cliente las distingue por el nombre. Si se repite, Postgres devuelve
+-- 23505 y el servicio lo traduce.
+
+alter table public."CategoriasCandy"
+  add constraint categorias_candy_nombre_largo
+    check (char_length(trim(nombre)) between 2 and 40),
+  add constraint categorias_candy_nombre_unico
+    unique (nombre);
+
+alter table public."ProductosCandy"
+  add constraint productos_candy_nombre_largo
+    check (char_length(trim(nombre)) between 2 and 60),
+  add constraint productos_candy_precio_rango
+    check (precio > 0 and precio <= 1000000),
+  -- Check cruzado: solo un combo puede incluir entrada.
+  -- "not A or B" se lee "si A, entonces B" (sección 7.3).
+  add constraint productos_candy_entrada_solo_combo
+    check (not incluye_entrada or es_combo);
+
+
+-- ---------- 12.3 Cupones (D-05, validaciones.md 3.7) ----------
+-- El porcentaje (1 a 100) y la condición ya tienen su check desde la
+-- sección 1.
+
+alter table public."Cupones"
+  add constraint cupones_nombre_largo
+    check (char_length(trim(nombre)) between 3 and 40);
+
+-- "Solo puede haber un cupón de primera compra activo a la vez" (D-43).
+-- Un check no alcanza, porque mira una sola fila. Un índice único
+-- PARCIAL es un unique que vale solo para las filas que cumplen el
+-- where: entre los cupones de primera compra activos, condicion no se
+-- puede repetir, o sea, hay uno solo. Los inactivos y los de mayores de
+-- 50 no cuentan. Si se intenta activar un segundo, Postgres devuelve
+-- 23505, igual que con el nombre de una sala.
+--
+-- Si ya hay más de uno activo, el create falla y no cambia nada. Este
+-- select tiene que dar vacío; si no, hay que desactivar los que sobran
+-- (mismo criterio que la sección 9.6).
+select id, nombre, porcentaje
+from public."Cupones"
+where condicion = 'primera_compra' and activo
+  and (select count(*) from public."Cupones"
+       where condicion = 'primera_compra' and activo) > 1;
+
+create unique index cupones_un_bienvenida_activo
+  on public."Cupones" (condicion)
+  where condicion = 'primera_compra' and activo;
+
+-- El cupón de bienvenida nace con el 20% del mail del 01/01. Es solo el
+-- valor inicial: el admin lo cambia desde el panel (mail del 30/01), y
+-- en el código no hay ningún 20 escrito. Los cupones para mayores de 50
+-- los crea el admin: no vienen cargados.
+--
+-- Cuándo aplica cada uno no se guarda en ninguna tabla (D-41): el de
+-- bienvenida, si el usuario no tiene compras pagadas previas; el de
+-- mayores de 50, cada vez que el usuario tenga más de 50 años. Lo va a
+-- calcular realizar_compra en el bloque de compra.
+insert into public."Cupones" (nombre, porcentaje, condicion)
+values ('Cupón de bienvenida', 20, 'primera_compra');
+
+
+-- ---------- 12.4 Recompensas (D-42, validaciones.md 3.8) ----------
+-- Se canjean por una entrada o por un producto del candy (mail del
+-- 03/03). El tipo ya tiene su check de lista desde la sección 1.
+
+alter table public."Recompensas"
+  -- entero(1, 100000)
+  add constraint recompensas_costo_rango
+    check (costo_puntos between 1 and 100000),
+  -- Check cruzado: si es un producto, dice cuál; si es una entrada, no
+  -- apunta a ningún producto.
+  add constraint recompensas_producto_segun_tipo
+    check ((tipo = 'producto' and producto_id is not null)
+        or (tipo = 'entrada'  and producto_id is null));
 
 
 -- ============================================================
