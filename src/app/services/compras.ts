@@ -1,5 +1,5 @@
 import { Service, inject } from '@angular/core';
-import { RealtimeChannel } from '@supabase/supabase-js';
+import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase';
 import { Butaca, ButacaOcupada, FilaDeSala, FuncionParaComprar } from '../interfaces/compra';
 import { Funcion } from '../interfaces/funcion';
@@ -88,18 +88,51 @@ export class Compras {
     return { datos: filas, error: null };
   }
 
-  // Realtime con postgres_changes (clase 6): cada vez que se inserta una
-  // fila en ButacasOcupadas para esta función, se llama a alOcupar con esa
-  // butaca. Es lo que hace que el mapa se actualice solo cuando otra
-  // persona compra (R-16).
+  // Realtime con postgres_changes (clase 6). Avisa de dos cosas (R-16):
+  //   INSERT: se vendió una butaca de esta función -> alOcupar(butaca).
+  //   DELETE: se liberó una butaca (una cancelación) -> alLiberar(id).
+  // Las dos llegan a la misma función, que decide con un switch sobre
+  // eventType, como en clase.
   //
-  // filter (D-38) limita los avisos a las filas de esta función: sin él
-  // llegarían las butacas vendidas de todas las funciones del cine.
-  // 'funcion_id=eq.12' se lee "funcion_id igual a 12".
+  // Son dos .on() sobre el mismo canal porque no se pueden pedir igual:
   //
-  // Solo se escucha INSERT: una butaca ocupada es siempre una fila nueva.
-  escucharOcupadas(funcionId: number, alOcupar: (butaca: ButacaOcupada) => void) {
+  //   INSERT lleva filter (D-38): 'funcion_id=eq.12' se lee "funcion_id
+  //   igual a 12". Sin él llegarían las butacas vendidas de todas las
+  //   funciones del cine.
+  //
+  //   DELETE no puede llevar ese filter. Según la documentación de
+  //   Supabase, un DELETE solo se puede filtrar si la tabla tiene "replica
+  //   identity full", y ButacasOcupadas no la tiene. Además, de una fila
+  //   borrada Postgres avisa únicamente la clave primaria: payload.old
+  //   trae el id y nada más, sin funcion_id, fila ni numero. Entonces
+  //   llegan los DELETE de TODAS las funciones, y solo con su id. Por eso
+  //   la pantalla guarda el id de cada butaca ocupada: cuando llega un
+  //   DELETE busca ese id entre las suyas, y si no lo tiene es de otra
+  //   función y lo ignora.
+  //   (Tampoco se le aplica RLS a un DELETE: Postgres no puede revisar
+  //   permisos sobre una fila que ya no existe. Acá no importa, porque la
+  //   tabla es pública y lo único que viaja es un id.)
+  escucharOcupadas(
+    funcionId: number,
+    alOcupar: (butaca: ButacaOcupada) => void,
+    alLiberar: (id: number) => void,
+  ) {
     this.dejarDeEscuchar();
+
+    // La misma función atiende los dos avisos.
+    const alCambiar = (payload: RealtimePostgresChangesPayload<ButacaOcupada>) => {
+      switch (payload.eventType) {
+        case 'INSERT':
+          // payload.new es la fila recién insertada, completa.
+          alOcupar(payload.new);
+          break;
+        case 'DELETE':
+          // payload.old trae solo el id. Si por algún motivo no viniera,
+          // no hay forma de saber qué butaca era: no se hace nada.
+          if (payload.old.id !== undefined) alLiberar(payload.old.id);
+          break;
+      }
+    };
 
     this.canal = this.sup.Sup.channel(`butacas-funcion-${funcionId}`);
     this.canal
@@ -111,8 +144,12 @@ export class Compras {
           table: 'ButacasOcupadas',
           filter: `funcion_id=eq.${funcionId}`,
         },
-        // payload.new es la fila recién insertada.
-        (payload) => alOcupar(payload.new),
+        alCambiar,
+      )
+      .on<ButacaOcupada>(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'ButacasOcupadas' },
+        alCambiar,
       )
       .subscribe();
   }

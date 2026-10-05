@@ -44,9 +44,10 @@ export class Compra implements OnInit, OnDestroy {
   // compró una que estaba elegida.
   aviso = signal<string | null>(null);
 
-  // Las butacas vendidas de esta función, como claves 'A-5'. Con textos,
-  // saber si una butaca está ocupada es un includes().
-  ocupadas = signal<string[]>([]);
+  // Las butacas vendidas de esta función, tal como están en la tabla, con
+  // su id: hace falta para saber cuál se liberó cuando llega un DELETE por
+  // Realtime, que trae solo el id (ver escucharOcupadas en el servicio).
+  ocupadas = signal<ButacaOcupada[]>([]);
   // Las que tiene elegidas el comprador, con su precio, y la suma.
   elegidas = signal<ButacaElegida[]>([]);
   total = signal(0);
@@ -75,12 +76,16 @@ export class Compra implements OnInit, OnDestroy {
       this.cargando.set(false);
       return;
     }
-    this.ocupadas.set(ocupadas.datos.map((butaca) => this.clave(butaca)));
+    this.ocupadas.set(ocupadas.datos);
 
-    // Desde acá, cada butaca que se venda en esta función llega sola
-    // (R-16). El callback escribe signals: con OnPush, si escribiera
-    // campos comunes la pantalla no se movería aunque el dato llegue (D-03).
-    this.comprasSrv.escucharOcupadas(this.funcionId, (butaca) => this.marcarOcupada(butaca));
+    // Desde acá, cada butaca que se venda o se libere llega sola (R-16).
+    // Los callbacks escriben signals: con OnPush, si escribieran campos
+    // comunes la pantalla no se movería aunque el dato llegue (D-03).
+    this.comprasSrv.escucharOcupadas(
+      this.funcionId,
+      (butaca) => this.marcarOcupada(butaca),
+      (id) => this.marcarLibre(id),
+    );
 
     this.cargando.set(false);
   }
@@ -117,7 +122,7 @@ export class Compra implements OnInit, OnDestroy {
   // Las dos se llaman desde el template, una vez por butaca, para decidir
   // qué clases lleva cada botón.
   estaOcupada(butaca: Butaca): boolean {
-    return this.ocupadas().includes(this.clave(butaca));
+    return this.ocupadas().some((ocupada) => this.clave(ocupada) === this.clave(butaca));
   }
 
   estaElegida(butaca: Butaca): boolean {
@@ -129,8 +134,8 @@ export class Compra implements OnInit, OnDestroy {
   private marcarOcupada(butaca: ButacaOcupada) {
     const clave = this.clave(butaca);
     // Con la propia compra también llega el aviso: si ya está, no se repite.
-    if (!this.ocupadas().includes(clave)) {
-      this.ocupadas.update((prev) => [...prev, clave]);
+    if (!this.ocupadas().some((ocupada) => ocupada.id === butaca.id)) {
+      this.ocupadas.update((prev) => [...prev, butaca]);
     }
 
     if (this.elegidas().some((elegida) => this.clave(elegida) === clave)) {
@@ -140,6 +145,15 @@ export class Compra implements OnInit, OnDestroy {
         `La butaca ${butaca.fila}${butaca.numero} acaba de ser comprada por otra persona y se quitó de tu selección. Elegí otra.`,
       );
     }
+  }
+
+  // Lo que llega por Realtime cuando se borra una fila de ButacasOcupadas:
+  // una cancelación liberó esa butaca. Llegan los borrados de todas las
+  // funciones y solo con el id, así que se busca entre las ocupadas de
+  // esta: si está, se saca y la butaca vuelve a verse libre; si no está,
+  // era de otra función y el filter no encuentra nada que sacar.
+  private marcarLibre(id: number) {
+    this.ocupadas.update((prev) => prev.filter((ocupada) => ocupada.id !== id));
   }
 
   private sumar() {
