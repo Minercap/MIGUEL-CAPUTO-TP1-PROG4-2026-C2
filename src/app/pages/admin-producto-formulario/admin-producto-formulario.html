@@ -1,0 +1,177 @@
+<p><a routerLink="/admin/productos">← Candy bar</a></p>
+
+<h1>{{ id === null ? 'Nuevo producto' : 'Editar producto' }}</h1>
+
+@if (cargando()) {
+  <p>Cargando…</p>
+} @else if (errorCarga()) {
+  <p class="error" role="alert">{{ errorCarga() }}</p>
+} @else {
+  <!-- Los maxlength repiten el máximo de cada regla: el navegador no deja
+       escribir de más (docs/validaciones.md, principio 10). -->
+  <form [formGroup]="formulario" (ngSubmit)="guardar()">
+    <label for="nombre">Nombre</label>
+    <input id="nombre" type="text" formControlName="nombre" maxlength="60" />
+    @if (nombre?.touched) {
+      @if (nombre?.errors?.['required']) {
+        <small class="error">El nombre es obligatorio.</small>
+      } @else if (nombre?.errors?.['largo']) {
+        <small class="error">El nombre tiene que tener entre 2 y 60 caracteres.</small>
+      } @else if (nombre?.errors?.['textoLibre']) {
+        <small class="error">El nombre tiene caracteres que no se pueden mostrar.</small>
+      }
+    }
+
+    <label for="categoria_id">Categoría</label>
+    <select id="categoria_id" formControlName="categoria_id">
+      <option value="" disabled>Elegí una categoría</option>
+      @for (categoria of categorias(); track categoria.id) {
+        <option [value]="categoria.id">{{ categoria.nombre }}</option>
+      }
+    </select>
+    @if (categoriaId?.touched) {
+      @if (categoriaId?.errors?.['required']) {
+        <small class="error">Elegí la categoría.</small>
+      } @else if (categoriaId?.errors?.['categoriaInexistente']) {
+        <small class="error">Elegí una categoría de la lista.</small>
+      }
+    }
+
+    <label for="precio">{{ esCombo ? 'Precio fijo del combo' : 'Precio' }}</label>
+    <input
+      id="precio"
+      type="number"
+      min="0.01"
+      max="1000000"
+      step="0.01"
+      formControlName="precio"
+    />
+    @if (precioProducto?.touched) {
+      @if (precioProducto?.errors?.['required']) {
+        <small class="error">El precio es obligatorio.</small>
+      } @else if (precioProducto?.errors?.['precio']) {
+        <small class="error">
+          El precio tiene que ser mayor a 0, de hasta 1.000.000 y con dos decimales como mucho.
+        </small>
+      }
+    }
+
+    <fieldset>
+      <legend>Tipo y estado</legend>
+      @if (estaEnCombos()) {
+        <!-- Está adentro de otro combo: convertirlo en combo armaría un
+             combo dentro de otro (D-40). Este checkbox no está atado al
+             formulario: solo muestra que no se puede. -->
+        <label class="opcion">
+          <input type="checkbox" disabled />
+          Es un combo
+        </label>
+      } @else {
+        <label class="opcion">
+          <input type="checkbox" formControlName="es_combo" (change)="alCambiarCombo()" />
+          Es un combo
+        </label>
+      }
+      <label class="opcion">
+        <input type="checkbox" formControlName="activo" />
+        Activo
+      </label>
+    </fieldset>
+    @if (estaEnCombos()) {
+      <small>No se puede convertir en combo porque está adentro de otro combo.</small>
+    }
+    <small>Un producto inactivo no se ofrece en la compra. Las compras que ya lo tienen no cambian.</small>
+
+    @if (esCombo) {
+      <fieldset class="combo">
+        <legend>Qué trae el combo</legend>
+
+        <label class="opcion">
+          <input type="checkbox" formControlName="incluye_entrada" />
+          Incluye una entrada
+        </label>
+
+        <!-- Un renglón por producto (FormArray, clase 4). Cada renglón es un
+             grupo { producto_id, cantidad }, que se nombra por su posición. -->
+        <div class="renglones" formArrayName="items">
+          @for (item of itemsForm.controls; track item; let i = $index) {
+            <div class="renglon" [formGroupName]="i">
+              <div class="campo">
+                <label [for]="'producto-' + i">Producto</label>
+                <select [id]="'producto-' + i" formControlName="producto_id">
+                  <option value="" disabled>Elegí un producto</option>
+                  @for (opcion of opcionesCombo(); track opcion.id) {
+                    <option [value]="opcion.id">
+                      {{ opcion.nombre }}{{ opcion.activo ? '' : ' (inactivo)' }}
+                    </option>
+                  }
+                </select>
+              </div>
+              <div class="campo cantidad">
+                <label [for]="'cantidad-' + i">Cantidad</label>
+                <input
+                  [id]="'cantidad-' + i"
+                  type="number"
+                  min="1"
+                  max="10"
+                  step="1"
+                  formControlName="cantidad"
+                />
+              </div>
+              <button type="button" (click)="quitarItem(i)">Quitar</button>
+
+              @if (item.controls.producto_id.touched) {
+                @if (item.controls.producto_id.errors?.['required']) {
+                  <small class="error">Elegí el producto.</small>
+                } @else if (item.controls.producto_id.errors?.['productoNoOfrecido']) {
+                  <small class="error">Elegí un producto de la lista.</small>
+                }
+              }
+              @if (item.controls.cantidad.touched) {
+                @if (item.controls.cantidad.errors?.['required']) {
+                  <small class="error">La cantidad es obligatoria.</small>
+                } @else if (
+                  item.controls.cantidad.errors?.['entero'] || item.controls.cantidad.errors?.['rango']
+                ) {
+                  <small class="error">La cantidad tiene que ser un número entero de 1 a 10.</small>
+                }
+              }
+            </div>
+          }
+        </div>
+
+        <button type="button" (click)="agregarItem()">Agregar otro producto</button>
+
+        @if (opcionesCombo().length === 0) {
+          <small class="error">
+            No hay productos para armar el combo. Cargá primero los productos sueltos.
+          </small>
+        }
+        <!-- Errores de la lista entera y del formulario (D-17). No esperan
+             al touched: si el botón Guardar está deshabilitado, hay que
+             decir por qué. -->
+        @if (itemsForm.errors?.['productoRepetido']) {
+          <small class="error">
+            Hay un producto repetido. Dejalo en un solo renglón y cambiá la cantidad.
+          </small>
+        }
+        @if (formulario.errors?.['comboVacio']) {
+          <small class="error">Un combo tiene que traer al menos un producto.</small>
+        }
+      </fieldset>
+    }
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (aviso()) {
+      <p class="error" role="alert">
+        {{ aviso() }} <a routerLink="/admin/productos">Volver al listado</a>
+      </p>
+    }
+
+    <button type="submit" [disabled]="!formulario.valid || enviando() || bloqueado()">
+      {{ enviando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </form>
+}

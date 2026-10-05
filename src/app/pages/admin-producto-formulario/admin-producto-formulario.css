@@ -1,0 +1,85 @@
+/* Estilo mínimo para que el formulario se lea, con las variables de :root
+   (D-33). El estilo visual del cine se trabaja aparte. */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 32rem;
+}
+
+label,
+fieldset {
+  margin-top: 0.75rem;
+}
+
+fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+}
+
+/* Las etiquetas de los checkboxes van en línea, sin el margen de arriba. */
+.opcion {
+  margin-top: 0;
+}
+
+/* El bloque del combo se apila: los renglones uno abajo del otro. */
+.combo {
+  flex-direction: column;
+  border-color: var(--color-acento-dorado);
+}
+
+.renglones {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Cada renglón: producto, cantidad y Quitar en una línea. Con flex-wrap,
+   en celular la cantidad y el botón bajan debajo del producto. */
+.renglon {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-texto-suave);
+}
+
+.campo {
+  display: flex;
+  flex: 1 1 12rem;
+  flex-direction: column;
+}
+
+.campo label {
+  margin-top: 0;
+}
+
+.cantidad {
+  flex: 0 1 6rem;
+}
+
+/* Los mensajes de un renglón ocupan su propia línea. */
+.renglon small {
+  flex-basis: 100%;
+}
+
+button {
+  align-self: flex-start;
+}
+
+button[type='submit'] {
+  margin-top: 1.25rem;
+}
+
+.error {
+  color: var(--color-error);
+}
+
+/* En celular el formulario va a todo el ancho. */
+@media (max-width: 600px) {
+  form {
+    max-width: none;
+  }
+}

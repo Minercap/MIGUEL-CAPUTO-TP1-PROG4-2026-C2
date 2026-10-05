@@ -1,0 +1,147 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<header class="encabezado">
+  <h1>Candy bar</h1>
+  <a routerLink="/admin/productos/nuevo">Nuevo producto</a>
+</header>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando el candy bar…</p>
+} @else {
+  <section class="categorias">
+    <h2>Categorías</h2>
+
+    <!-- El maxlength repite el máximo de la regla (docs/validaciones.md,
+         principio 10). -->
+    <form class="nueva-categoria" [formGroup]="formCategoria" (ngSubmit)="crearCategoria()">
+      <label for="nueva-categoria">Nueva categoría</label>
+      <div class="en-linea">
+        <input id="nueva-categoria" type="text" formControlName="nombre" maxlength="40" />
+        <button type="submit" [disabled]="!formCategoria.valid || creandoCategoria()">
+          {{ creandoCategoria() ? 'Agregando…' : 'Agregar' }}
+        </button>
+      </div>
+      @if (nombreNueva?.touched) {
+        @if (nombreNueva?.errors?.['required']) {
+          <small class="error">Escribí el nombre de la categoría.</small>
+        } @else if (nombreNueva?.errors?.['largo']) {
+          <small class="error">El nombre tiene que tener entre 2 y 40 caracteres.</small>
+        } @else if (nombreNueva?.errors?.['textoLibre']) {
+          <small class="error">El nombre tiene caracteres que no se pueden mostrar.</small>
+        }
+      }
+    </form>
+
+    <ul class="listado">
+      @for (categoria of categorias(); track categoria.id) {
+        <li class="fila">
+          @if (idCategoriaEditando() === categoria.id) {
+            <!-- Edición en la misma fila: un solo campo no justifica otra
+                 pantalla. -->
+            <form [formGroup]="formEdicion" (ngSubmit)="guardarCategoria(categoria.id)">
+              <label class="oculto" [for]="'categoria-' + categoria.id">Nombre de la categoría</label>
+              <div class="en-linea">
+                <input
+                  [id]="'categoria-' + categoria.id"
+                  type="text"
+                  formControlName="nombre"
+                  maxlength="40"
+                />
+                <button type="submit" [disabled]="!formEdicion.valid || guardandoCategoria()">
+                  {{ guardandoCategoria() ? 'Guardando…' : 'Guardar' }}
+                </button>
+                <button type="button" [disabled]="guardandoCategoria()" (click)="cancelarEdicion()">
+                  Cancelar
+                </button>
+              </div>
+              @if (nombreEdicion?.touched) {
+                @if (nombreEdicion?.errors?.['required']) {
+                  <small class="error">Escribí el nombre de la categoría.</small>
+                } @else if (nombreEdicion?.errors?.['largo']) {
+                  <small class="error">El nombre tiene que tener entre 2 y 40 caracteres.</small>
+                } @else if (nombreEdicion?.errors?.['textoLibre']) {
+                  <small class="error">El nombre tiene caracteres que no se pueden mostrar.</small>
+                }
+              }
+            </form>
+          } @else {
+            <strong>{{ categoria.nombre }}</strong>
+            <div class="acciones">
+              @if (idCategoriaPorBorrar() === categoria.id) {
+                <span>¿Borrar esta categoría?</span>
+                <button type="button" [disabled]="borrando()" (click)="borrarCategoria(categoria)">
+                  {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+                </button>
+                <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+                  Cancelar
+                </button>
+              } @else {
+                <button type="button" (click)="empezarEdicion(categoria)">Editar</button>
+                <button type="button" (click)="pedirBorrarCategoria(categoria.id)">Borrar</button>
+              }
+            </div>
+          }
+        </li>
+      } @empty {
+        <li>Todavía no hay categorías. Creá una para poder cargar productos.</li>
+      }
+    </ul>
+  </section>
+
+  <section>
+    <h2>Productos y combos</h2>
+
+    @for (categoria of categorias(); track categoria.id) {
+      <h3>{{ categoria.nombre }}</h3>
+      <ul class="listado">
+        @for (producto of productosDe(categoria.id); track producto.id) {
+          <li class="fila producto">
+            <div class="datos">
+              <strong>{{ producto.nombre }}</strong>
+              <span>${{ producto.precio }}</span>
+
+              <div class="etiquetas">
+                <!-- Los combos son los destacados de la compra (R-22). -->
+                @if (producto.es_combo) {
+                  <span class="etiqueta combo">Combo</span>
+                }
+                @if (producto.incluye_entrada) {
+                  <span class="etiqueta">Incluye entrada</span>
+                }
+                <!-- Un producto inactivo no se ofrece: su etiqueta va apagada. -->
+                @if (!producto.activo) {
+                  <span class="etiqueta inactivo">Inactivo</span>
+                }
+              </div>
+
+              @if (producto.es_combo) {
+                <small>Trae: {{ contenidoDe(producto.id) || 'nada cargado' }}</small>
+              }
+            </div>
+
+            <div class="acciones">
+              @if (idProductoPorBorrar() === producto.id) {
+                <span>¿Borrar {{ producto.es_combo ? 'este combo' : 'este producto' }}?</span>
+                <button type="button" [disabled]="borrando()" (click)="borrarProducto(producto)">
+                  {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+                </button>
+                <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+                  Cancelar
+                </button>
+              } @else {
+                <a [routerLink]="['/admin/productos', producto.id]">Editar</a>
+                <button type="button" (click)="pedirBorrarProducto(producto.id)">Borrar</button>
+              }
+            </div>
+          </li>
+        } @empty {
+          <li>Sin productos en esta categoría.</li>
+        }
+      </ul>
+    }
+  </section>
+}

@@ -74,6 +74,29 @@ const rutas: Routes = [
         (m) => m.AdminFuncionFormulario,
       ),
   },
+  {
+    path: 'productos',
+    title: 'Candy bar · Administración',
+    loadComponent: () =>
+      import('./admin-productos/admin-productos').then((m) => m.AdminProductos),
+  },
+  // Mismo criterio que en películas: 'nuevo' antes que ':id'.
+  {
+    path: 'productos/nuevo',
+    title: 'Nuevo producto · Administración',
+    loadComponent: () =>
+      import('./admin-producto-formulario/admin-producto-formulario').then(
+        (m) => m.AdminProductoFormulario,
+      ),
+  },
+  {
+    path: 'productos/:id',
+    title: 'Editar producto · Administración',
+    loadComponent: () =>
+      import('./admin-producto-formulario/admin-producto-formulario').then(
+        (m) => m.AdminProductoFormulario,
+      ),
+  },
 ];
 
 export default rutas;

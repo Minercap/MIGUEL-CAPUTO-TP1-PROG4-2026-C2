@@ -1,0 +1,112 @@
+/* Estilo mínimo para que el listado se lea, con las variables de :root
+   (D-33). El estilo visual del cine se trabaja aparte. */
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+/* El bloque de categorías va arriba y más chico: es un apoyo para cargar
+   productos, no lo principal de la pantalla. */
+.categorias {
+  max-width: 32rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-superficie);
+  border-radius: 0.5rem;
+}
+
+.categorias h2 {
+  margin-top: 0;
+}
+
+.nueva-categoria {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Campo y botones en un renglón. Con flex-wrap, en celular los botones
+   bajan solos debajo del campo. */
+.en-linea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.en-linea input {
+  flex: 1 1 12rem;
+}
+
+.listado {
+  list-style: none;
+  padding: 0;
+}
+
+/* Cada renglón: datos a la izquierda y acciones a la derecha. En celular
+   las acciones bajan a otro renglón, así la lista queda en una columna. */
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-texto-suave);
+}
+
+.fila form {
+  flex: 1 1 100%;
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.etiquetas,
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.etiqueta {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.combo {
+  border-color: var(--color-acento-dorado);
+  color: var(--color-acento-dorado);
+}
+
+.inactivo {
+  border-style: dashed;
+  color: var(--color-texto-suave);
+}
+
+/* La etiqueta del campo de edición existe para los lectores de pantalla,
+   pero no se ve: el nombre ya está escrito en el campo. */
+.oculto {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+@media (max-width: 600px) {
+  .categorias {
+    max-width: none;
+  }
+}
