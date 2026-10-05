@@ -1075,6 +1075,12 @@ selector ofrece solo productos que no son combo). Depende de otra fila de
 `ProductosCandy`, y un check solo ve la fila que se guarda: es el mismo criterio que los
 géneros de 1 a 4 en D-25. La tabla la escribe solo el admin.
 
+**Límite conocido:** la edición de un combo borra sus ítems y los vuelve a insertar. Si
+falla el insert, el combo queda vacío: los datos del producto ya se guardaron y el borrado
+de los ítems también. El servicio lo informa con `ResultadoAccion` (`hecho: true` con un
+`error`) y el arreglo es volver a guardar desde la misma pantalla. Es el mismo criterio que
+los géneros de una película en D-19: hacerlo atómico exige una función de Postgres.
+
 **Clase de origen:** 6 (CRUD, RLS) + 4 (`FormArray`) + `check` (D-25).
 **Requisito:** R-21, R-22.
 
@@ -1168,3 +1174,31 @@ sobran. Es el mismo criterio que la sección 9.6.
 bienvenida activos.
 
 **Clase de origen:** índice único parcial 🟡. **Requisito:** R-23.
+
+---
+
+## D-44 · `reset()` para vaciar un formulario después de guardar · 05/10
+
+**Elegido:** `formulario.reset(valoresIniciales)` después de un alta que salió bien y al
+cancelar una edición, en las pantallas donde el formulario y la lista comparten página:
+categorías del candy, cupones y recompensas.
+
+**Lo que no se vio en clase (🟡):** `reset()` es un método de `FormGroup`. Hace dos cosas a
+la vez: vuelve cada campo a un valor y lo marca como **no tocado**. Lo segundo es lo que
+importa: los mensajes de error aparecen con `touched` (clase 4), así que sin eso el
+formulario recién vaciado mostraría "El nombre es obligatorio" apenas se guarda.
+
+**Siempre con los valores:** sin argumentos, `reset()` deja en `null` todos los campos de
+un `FormBuilder` común, incluido el checkbox "activo", que tiene que volver a estar
+marcado. Por eso cada pantalla guarda sus valores iniciales en un objeto y se los pasa:
+`reset({ nombre: '', porcentaje: null, condicion: '', activo: true })`.
+
+**Descartado:** `patchValue` con los valores iniciales (clase 4). Vacía los campos, pero
+quedan tocados y aparecen los errores de obligatorio sobre un formulario que el admin
+todavía no empezó a llenar.
+
+**Cómo lo explico en el oral:** guardar deja la pantalla como recién abierta, con el
+formulario vacío y sin errores, lista para cargar el siguiente.
+
+**Clase de origen:** 4 (formularios reactivos) + `reset()` 🟡. **Requisito:** R-34
+(`validaciones.md`, principio 9: los errores aparecen al tocar el campo).
