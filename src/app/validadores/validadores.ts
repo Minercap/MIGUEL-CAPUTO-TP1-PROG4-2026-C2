@@ -173,21 +173,69 @@ export function codigoCompra(): ValidatorFn {
 // Los datos de la tarjeta se validan y se descartan: no se mandan ni se
 // guardan en ningún lado.
 
-const PATRON_NUMERO_DE_TARJETA = /^\d{16}$/;
+// Entre 13 y 19 dígitos: es el largo que puede tener el número de una
+// tarjeta, según la marca.
+const PATRON_NUMERO_DE_TARJETA = /^\d{13,19}$/;
 
-// 16 dígitos. Se aceptan espacios entre medio ("4111 1111 1111 1111"), que
-// es como viene impreso en la tarjeta: se sacan antes de mirar.
+// El algoritmo de Luhn: la cuenta que usan todas las tarjetas para detectar
+// un número mal tipeado. El último dígito de una tarjeta no es parte del
+// número: es un "dígito verificador", calculado a partir de los demás para
+// que esta cuenta dé bien. Si se cambia un dígito, o se invierten dos
+// vecinos, la cuenta deja de dar. No dice si la tarjeta existe ni si tiene
+// saldo: solo que el número está bien escrito.
+//
+// Ejemplo con 4111 1111 1111 1111, un número de prueba válido:
+//   1. Se recorren los dígitos de derecha a izquierda.
+//   2. Uno sí y uno no se duplican, empezando por el segundo desde la
+//      derecha. El último (el verificador) queda como está.
+//   3. Si un duplicado da 10 o más, se le resta 9. Es lo mismo que sumar
+//      sus dos cifras: 7 x 2 = 14, y 14 - 9 = 5, igual que 1 + 4.
+//   4. Se suma todo.
+//   5. El número es válido si la suma termina en 0 (es múltiplo de 10).
+// En el ejemplo: de los quince 1, a 7 les toca duplicarse (2 cada uno, 14
+// en total) y a 8 no (8 en total); al 4 le toca duplicarse y da 8.
+// 14 + 8 + 8 = 30, que termina en 0: es válido.
+//
+// Recibe solo dígitos: el patrón de arriba se controla antes.
+function cumpleLuhn(digitos: string): boolean {
+  let suma = 0;
+  // false para el último dígito, true para el anterior, y así alternando.
+  let duplicar = false;
+
+  // Paso 1: de derecha a izquierda, desde el último índice hasta el 0.
+  for (let i = digitos.length - 1; i >= 0; i--) {
+    let digito = Number(digitos[i]);
+
+    if (duplicar) {
+      digito = digito * 2; // paso 2
+      if (digito > 9) digito = digito - 9; // paso 3
+    }
+
+    suma = suma + digito; // paso 4
+    duplicar = !duplicar; // el siguiente hace lo contrario
+  }
+
+  // Paso 5: el resto de dividir por 10 es 0 si la suma termina en 0.
+  return suma % 10 === 0;
+}
+
+// Número de tarjeta (docs/validaciones.md, 3.11): de 13 a 19 dígitos y que
+// cumpla el algoritmo de Luhn. Se aceptan espacios entre medio
+// ("4111 1111 1111 1111"), que es como viene impreso en la tarjeta: se
+// sacan antes de mirar. Son dos errores distintos para poder decirle al
+// comprador qué pasa: le faltan o sobran dígitos, o tipeó mal alguno.
 export function numeroDeTarjeta(): ValidatorFn {
   return (control: AbstractControl) => {
     const texto = leerTexto(control).replaceAll(' ', '');
     if (texto === '') return null;
-    return PATRON_NUMERO_DE_TARJETA.test(texto) ? null : { numeroDeTarjeta: true };
+    if (!PATRON_NUMERO_DE_TARJETA.test(texto)) return { numeroDeTarjeta: true };
+    return cumpleLuhn(texto) ? null : { luhn: true };
   };
 }
 
-const PATRON_CODIGO_DE_SEGURIDAD = /^\d{3}$/;
+const PATRON_CODIGO_DE_SEGURIDAD = /^\d{3,4}$/;
 
-// El código de seguridad (CVV): 3 dígitos.
+// El código de seguridad (CVV): 3 o 4 dígitos, según la marca.
 export function codigoDeSeguridad(): ValidatorFn {
   return (control: AbstractControl) => {
     const texto = leerTexto(control);

@@ -77,20 +77,40 @@
     }
 
     @if (pagaConTarjeta()) {
+      <!-- Datos de la tarjeta: docs/validaciones.md, sección 3.11.
+           autocomplete off: el navegador no ofrece guardarlos. -->
+      <label for="titular">Titular de la tarjeta</label>
+      <input id="titular" type="text" maxlength="50" autocomplete="off" formControlName="titular" />
+      @if (titular?.touched) {
+        @if (titular?.errors?.['largo']) {
+          <small class="error">El titular tiene que tener entre 2 y 50 caracteres.</small>
+        } @else if (titular?.errors?.['textoPersona']) {
+          <small class="error">
+            El titular solo puede tener letras, separadas por un espacio, un apóstrofo o un guion.
+          </small>
+        }
+      }
+
       <label for="numero_tarjeta">Número de la tarjeta</label>
-      <!-- inputmode abre el teclado numérico en el celular. maxlength 19:
-           los 16 dígitos más tres espacios. autocomplete off: el navegador
-           no ofrece guardar estos datos. -->
+      <!-- inputmode abre el teclado numérico en el celular. maxlength 23:
+           hasta 19 dígitos más cuatro espacios. -->
       <input
         id="numero_tarjeta"
         type="text"
         inputmode="numeric"
-        maxlength="19"
+        maxlength="23"
         autocomplete="off"
         formControlName="numero_tarjeta"
       />
-      @if (numeroTarjeta?.touched && numeroTarjeta?.errors?.['numeroDeTarjeta']) {
-        <small class="error">El número de la tarjeta tiene que tener 16 dígitos.</small>
+      @if (numeroTarjeta?.touched) {
+        @if (numeroTarjeta?.errors?.['numeroDeTarjeta']) {
+          <small class="error">El número de la tarjeta tiene entre 13 y 19 dígitos.</small>
+        } @else if (numeroTarjeta?.errors?.['luhn']) {
+          <!-- Pasa el largo pero no la cuenta de Luhn: hay un dígito mal. -->
+          <small class="error">
+            El número de la tarjeta no es válido. Revisá que esté bien escrito.
+          </small>
+        }
       }
 
       <!-- Vencimiento con dos desplegables, sin calendario (D-23). -->
@@ -118,12 +138,20 @@
         id="codigo_seguridad"
         type="password"
         inputmode="numeric"
-        maxlength="3"
+        maxlength="4"
         autocomplete="off"
         formControlName="codigo_seguridad"
       />
       @if (codigoSeguridad?.touched && codigoSeguridad?.errors?.['codigoDeSeguridad']) {
-        <small class="error">El código de seguridad tiene 3 dígitos.</small>
+        <small class="error">El código de seguridad tiene 3 o 4 dígitos.</small>
+      }
+      <!-- Error del formulario entero (D-17): pagando con tarjeta, falta
+           completar alguno de sus datos. Aparece cuando ya se pasó por el
+           último campo, para no marcar error antes de empezar. -->
+      @if (codigoSeguridad?.touched && formulario.errors?.['tarjetaIncompleta']) {
+        <small class="error">
+          Completá el titular, el número, el vencimiento y el código de seguridad.
+        </small>
       }
 
       <small>Es un pago simulado: no se hace ningún cobro y estos datos no se guardan.</small>

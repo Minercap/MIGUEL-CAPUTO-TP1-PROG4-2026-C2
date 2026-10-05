@@ -19,10 +19,12 @@ import {
   fechaHasta,
   fechaReal,
   hoy,
+  largo,
   noVencida,
   normalizarEmail,
   numeroDeTarjeta,
   sumarAnios,
+  textoPersona,
   unoDe,
 } from '../../validadores/validadores';
 
@@ -99,6 +101,9 @@ export class Pago {
         { validators: [fechaReal(), fechaHasta(this.fechaMaxima), fechaDesde(this.fechaMinima)] },
       ),
       medio_pago: ['', [Validators.required, unoDe(this.valoresDeMedios)]],
+      // Los datos de la tarjeta siguen docs/validaciones.md, sección 3.11.
+      // El titular usa el mismo patrón de letras que el nombre del registro.
+      titular: ['', [largo(2, 50), textoPersona()]],
       numero_tarjeta: ['', [numeroDeTarjeta()]],
       vencimiento: this.fb.group({ mes: [''], anio: [''] }, { validators: [noVencida()] }),
       codigo_seguridad: ['', [codigoDeSeguridad()]],
@@ -159,17 +164,19 @@ export class Pago {
     };
   }
 
-  // Pagando con tarjeta, sus tres datos son obligatorios. Con Mercado Pago
-  // no se piden.
+  // Pagando con tarjeta, sus cuatro datos son obligatorios. Con Mercado
+  // Pago no se piden.
   tarjetaObligatoria(): ValidatorFn {
     return (grupo: AbstractControl) => {
       const medio: string = grupo.get('medio_pago')?.value ?? '';
       if (medio !== 'credito' && medio !== 'debito') return null;
 
+      const titular: string = grupo.get('titular')?.value ?? '';
       const numero: string = grupo.get('numero_tarjeta')?.value ?? '';
       const codigo: string = grupo.get('codigo_seguridad')?.value ?? '';
       const vencimiento: { mes: string; anio: string } = grupo.get('vencimiento')?.value;
       const falta =
+        titular.trim() === '' ||
         numero.trim() === '' ||
         codigo.trim() === '' ||
         vencimiento.mes === '' ||
@@ -188,6 +195,9 @@ export class Pago {
   }
   get medioPago() {
     return this.formulario.get('medio_pago');
+  }
+  get titular() {
+    return this.formulario.get('titular');
   }
   get numeroTarjeta() {
     return this.formulario.get('numero_tarjeta');

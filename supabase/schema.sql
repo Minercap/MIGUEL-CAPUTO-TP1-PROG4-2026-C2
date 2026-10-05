@@ -1762,14 +1762,16 @@ begin
     end if;
   end if;
 
-  -- Sin sesión, el mail es obligatorio: es a donde va la entrada (R-02).
+  -- Sin sesión, el mail es obligatorio: es lo que identifica al comprador
+  -- de una compra anónima (R-02). No se envía ningún correo: la entrada
+  -- se genera en PDF al terminar la compra.
   -- Se guarda sin espacios y en minúsculas. El patrón es el mismo del
   -- validador email() del front: algo@algo.algo, sin espacios.
   -- Con sesión se usa el mail del perfil, y p_email se ignora.
   if v_usuario is null then
     v_email := lower(trim(coalesce(p_email, '')));
     if v_email = '' then
-      raise exception 'Ingresá un mail para recibir la entrada.';
+      raise exception 'Ingresá tu mail para registrar la compra.';
     end if;
     if char_length(v_email) > 254 or v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' then
       raise exception 'El mail no tiene un formato válido.';

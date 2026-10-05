@@ -50,6 +50,10 @@ días de vacaciones por año.
 Se puede comprar sin cuenta, indicando un mail al que llega la entrada. El comprador
 anónimo no acumula puntos, no usa crédito y no accede al cupón de bienvenida.
 
+> **Interpretación adoptada (D-39).** La entrada se genera en PDF al terminar la compra
+> (mail 01/01: "les genere el pdf"). El mail identifica al comprador anónimo; no se envían
+> correos.
+
 ### R-03 · Perfil del cliente
 
 El cliente ve en su perfil sus datos, sus puntos acumulados, el historial de canjes y su
@@ -364,6 +368,7 @@ adelante sin cambios estructurales.
 | D-39 | Leyenda del adulto | Toda entrada de una película con restricción lleva la leyenda "Debe asistir acompañado por un adulto" |
 | D-39 | Venta y preventa | Abre 7 días antes del estreno con preventa, o el día del estreno sin ella. En preventa, comunes y accesibles a precio de preventa; VIP a precio VIP |
 | D-39 | Butacas accesibles | Al precio base |
+| D-39 | Entrada de la compra anónima | Se genera en PDF al terminar la compra. El mail identifica al comprador; no se envían correos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
 
