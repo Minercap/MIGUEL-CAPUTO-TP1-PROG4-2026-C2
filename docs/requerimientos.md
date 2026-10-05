@@ -81,10 +81,17 @@ está cada una.
 
 Las **3 películas más vendidas** se muestran primero.
 
+> **Interpretación adoptada (D-31).** Solo cuentan las películas que hoy están en cartelera.
+> Se mide en entradas vendidas, sin contar las de compras canceladas. Si hay menos de 3
+> películas con ventas, la lista se completa con los estrenos más recientes en cartelera.
+
 ### R-07 · Buscador
 
 El listado de películas incluye un buscador con **filtro por género**, contemplando que una
 película puede tener varios.
+
+> **Interpretación adoptada (D-32).** Con varios géneros elegidos en el filtro, la película
+> tiene que tenerlos todos.
 
 ### R-08 · Reseñas
 
@@ -341,6 +348,8 @@ adelante sin cambios estructurales.
 | D-04 | Filas J y K | Dos filas accesibles de 14 butacas. 532 butacas por sala |
 | D-05 | Cupones | Modelo único con porcentaje configurable y condición de aplicación |
 | D-06 | Edad en compra anónima | Declaración de fecha de nacimiento en el formulario cuando la función lo exige |
+| D-31 | Más vendidas | Solo películas en cartelera, por entradas de compras no canceladas. Con menos de 3, se completa con los estrenos más recientes |
+| D-32 | Filtro de géneros | Con varios géneros elegidos, la película tiene que tenerlos todos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
 

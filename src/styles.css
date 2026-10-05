@@ -1,1 +1,39 @@
-/* You can add global styles to this file, and also import other style files */
+/* Estilos globales de Olympia Cinema.
+
+   Identidad "Sala oscura" (D-33): fondo oscuro, como la sala con las luces
+   apagadas, y dos acentos: el rojo de las butacas y el dorado.
+
+   Todos los colores y las fuentes de la app están acá, como variables de
+   :root. Las páginas no escriben colores: usan var(--nombre). Así el
+   estilo se cambia desde este archivo y queda igual en toda la app.
+
+   Lo de acá es la base, no el diseño final: los valores definitivos (y la
+   tipografía de Google Fonts, si se usa) se ajustan cambiando solo estas
+   líneas. */
+:root {
+  /* Colores */
+  --color-fondo: #111014; /* la sala: detrás de todo */
+  --color-superficie: #1d1b22; /* tarjetas y cajas, un poco más claras */
+  --color-texto: #f3efe8;
+  --color-texto-suave: #a9a39b; /* datos secundarios y bordes */
+  --color-acento-rojo: #a81c2b; /* rojo butaca */
+  --color-acento-dorado: #d9ae52;
+  --color-error: #ff8a8a; /* un rojo claro: el rojo butaca no se lee sobre el fondo */
+
+  /* Fuentes. Por ahora son las del sistema: títulos condensados y texto
+     común. */
+  --fuente-titulos: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  --fuente-texto: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 1rem;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+}
+
+a {
+  color: var(--color-acento-dorado);
+}

@@ -284,6 +284,19 @@ export function hoy(): Date {
   return new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 }
 
+// Dice si una película ya se estrenó en el cine: su fecha de estreno es
+// hoy o anterior. Es el criterio que separa "en cartelera" de
+// "Próximamente" (D-27), y lo usan el pipe de estado y la cartelera, para
+// que los dos digan lo mismo.
+// fechaEstreno llega como 'AAAA-MM-DD'. Se arma con sus tres partes para
+// que quede a las 00:00 de acá: new Date('AAAA-MM-DD') la toma en UTC, y en
+// Argentina eso es el día anterior a las 21 hs.
+export function yaSeEstreno(fechaEstreno: string): boolean {
+  const estreno = armarFecha(textoAFecha(fechaEstreno));
+  if (estreno === null) return true;
+  return estreno <= hoy();
+}
+
 // Una fecha corrida la cantidad de años indicada: negativa hacia atrás,
 // positiva hacia adelante.
 export function sumarAnios(fecha: Date, anios: number): Date {

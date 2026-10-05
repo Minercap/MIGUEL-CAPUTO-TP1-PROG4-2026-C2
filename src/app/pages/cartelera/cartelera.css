@@ -1,0 +1,184 @@
+/* Solo estructura: grilla, apilado y carrusel. Todos los colores y las
+   fuentes salen de las variables de :root (src/styles.css, D-33): acá no
+   hay ningún color suelto. El diseño final se trabaja aparte. */
+
+h1,
+h2 {
+  font-family: var(--fuente-titulos);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+/* ---------- Las más vendidas ---------- */
+
+/* En escritorio, las tres en fila, repartidas en partes iguales. */
+.carrusel {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.destacada {
+  /* relative: es la referencia para ubicar el número de posición. */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  text-decoration: none;
+}
+
+/* El 1, 2 o 3, arriba a la izquierda, encima del póster. */
+.posicion {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 0.25rem 0.75rem;
+  border-radius: 0.5rem 0 0.5rem 0;
+  background: var(--color-acento-dorado);
+  color: var(--color-fondo);
+  font-family: var(--fuente-titulos);
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+
+/* ---------- Buscador y géneros ---------- */
+
+.filtros {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+#buscador {
+  max-width: 24rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.25rem;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+}
+
+.generos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.genero,
+.limpiar {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 1rem;
+  background: transparent;
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  cursor: pointer;
+}
+
+/* Género prendido. */
+.elegido {
+  border-color: var(--color-acento-rojo);
+  background: var(--color-acento-rojo);
+}
+
+.limpiar {
+  border-style: dashed;
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Grilla de tarjetas ---------- */
+
+/* 4 columnas en escritorio. */
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 100%;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  text-decoration: none;
+}
+
+/* Todos los pósters con la misma proporción (2 de ancho por 3 de alto),
+   aunque las imágenes originales sean distintas. */
+.poster {
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 0.25rem;
+}
+
+.nombre {
+  font-family: var(--fuente-titulos);
+  font-size: 1.1rem;
+}
+
+.dato {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+/* +13 o +18. align-self evita que se estire a todo el ancho. */
+.edad {
+  align-self: flex-start;
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-acento-rojo);
+  border-radius: 1rem;
+  color: var(--color-texto);
+  font-size: 0.8rem;
+}
+
+/* El mensaje ocupa todas las columnas de la grilla. */
+.sin-resultados {
+  grid-column: 1 / -1;
+  color: var(--color-texto-suave);
+}
+
+/* ---------- Celular ---------- */
+
+@media (max-width: 600px) {
+  /* 2 columnas. */
+  .grilla {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* Carrusel horizontal: las tres quedan en una sola fila más ancha que
+     la pantalla, y se deslizan con el dedo. scroll-snap hace que al soltar
+     quede una tarjeta alineada, no cortada por la mitad. */
+  .carrusel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .carrusel li {
+    flex: 0 0 70%;
+    scroll-snap-align: start;
+  }
+
+  #buscador {
+    max-width: none;
+  }
+}

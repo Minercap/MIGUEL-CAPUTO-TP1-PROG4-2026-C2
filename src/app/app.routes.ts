@@ -7,9 +7,10 @@ import { logueadoGuard } from './guards/logueado-guard';
 // se pide recién cuando se navega a su ruta. El comodín '**' va siempre último.
 export const routes: Routes = [
   {
+    // La página principal es la cartelera, sin login (R-02, R-05).
     path: '',
-    title: 'Olympia Cinema',
-    loadComponent: () => import('./pages/inicio/inicio').then((m) => m.Inicio),
+    title: 'Cartelera · Olympia Cinema',
+    loadComponent: () => import('./pages/cartelera/cartelera').then((m) => m.Cartelera),
   },
   {
     // /login y /registro. Como auth.routes.ts tiene export default,

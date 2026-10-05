@@ -1,0 +1,92 @@
+<h1>Cartelera</h1>
+
+@if (cargando()) {
+  <p>Cargando la cartelera…</p>
+} @else if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+} @else if (peliculas().length === 0) {
+  <p>Todavía no hay películas en cartelera.</p>
+} @else {
+  <!-- Las 3 más vendidas (R-06). Si no hay ventas suficientes, el servicio
+       completa con los estrenos más recientes (D-31). -->
+  <section class="mas-vendidas">
+    <h2>Las más vendidas</h2>
+    @if (errorMasVendidas()) {
+      <p class="error" role="alert">{{ errorMasVendidas() }}</p>
+    } @else {
+      <!-- En celular es un carrusel: se desliza hacia el costado. -->
+      <ol class="carrusel">
+        @for (pelicula of masVendidas(); track pelicula.id; let i = $index) {
+          <li>
+            <a class="destacada" [routerLink]="['/pelicula', pelicula.id]">
+              <!-- $index arranca en 0: la posición es $index + 1. -->
+              <span class="posicion">{{ i + 1 }}</span>
+              <img class="poster" [src]="pelicula.imagen_url" [alt]="'Póster de ' + pelicula.nombre" />
+              <strong class="nombre">{{ pelicula.nombre }}</strong>
+            </a>
+          </li>
+        }
+      </ol>
+    }
+  </section>
+
+  <section class="todas">
+    <h2>Todas las películas</h2>
+
+    <!-- Buscador y filtro de géneros (R-07, D-32). No hay formulario: cada
+         cambio llama a un método, que actualiza la signal "filtradas". -->
+    <div class="filtros">
+      <label for="buscador">Buscar por nombre</label>
+      <!-- [value] muestra el texto guardado en la signal: así "Limpiar"
+           también vacía la caja. -->
+      <input
+        id="buscador"
+        type="search"
+        maxlength="100"
+        placeholder="Nombre de la película"
+        [value]="texto()"
+        (input)="buscar($event)"
+      />
+
+      <div class="generos">
+        @for (genero of generos(); track genero.id) {
+          <!-- La clase "elegido" se pone solo si el género está prendido. -->
+          <button
+            type="button"
+            class="genero"
+            [class.elegido]="generosElegidos().includes(genero.id)"
+            (click)="alternarGenero(genero.id)"
+          >
+            {{ genero.nombre }}
+          </button>
+        }
+        <button type="button" class="limpiar" (click)="limpiar()">Limpiar</button>
+      </div>
+    </div>
+
+    <ul class="grilla">
+      @for (pelicula of filtradas(); track pelicula.id) {
+        <li>
+          <a class="tarjeta" [routerLink]="['/pelicula', pelicula.id]">
+            <img class="poster" [src]="pelicula.imagen_url" [alt]="'Póster de ' + pelicula.nombre" />
+            <strong class="nombre">{{ pelicula.nombre }}</strong>
+            <span class="dato">{{ pelicula.duracion_minutos }} min</span>
+            <span class="dato">
+              @for (genero of pelicula.generos; track genero.id) {
+                {{ genero.nombre }}{{ $last ? '' : ' · ' }}
+              }
+            </span>
+            @if (pelicula.restriccion_edad) {
+              <span class="edad">+{{ pelicula.restriccion_edad }}</span>
+            }
+          </a>
+        </li>
+      } @empty {
+        <li class="sin-resultados">
+          No hay películas que coincidan con la búsqueda. Probá con otro nombre o quitá algún
+          género.
+        </li>
+      }
+    </ul>
+  </section>
+}

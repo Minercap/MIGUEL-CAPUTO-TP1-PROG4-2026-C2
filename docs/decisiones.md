@@ -821,3 +821,56 @@ cambian. El insert de muchas filas es atómico: si una choca, no entra ninguna.
 
 **Clase de origen:** 4 (formulario) + 6 (insert). **Requisito:** mail 06/02 ("lunes, martes y
 viernes a las 18hs") / R-17.
+---
+
+## D-31 · Más vendidas con una vista de Postgres · 05/10
+
+**Elegido:** vista `PeliculasMasVendidas` que expone solo `pelicula_id` y el total de
+entradas.
+
+**Descartado:** contar en Angular, porque RLS no deja leer compras ajenas y abrirlas sería
+un problema de privacidad; y un contador en `Peliculas`, porque se desincroniza con las
+cancelaciones.
+
+**Cómo lo explico en el oral:** las compras son privadas por RLS. La vista corre con
+permisos de su dueño y devuelve solo totales, así que el ranking es público pero las
+compras no.
+
+**Qué es una vista (🟡):** una consulta guardada con nombre. Desde la app se lee como una
+tabla, con `.from('PeliculasMasVendidas').select('*')`, pero no guarda datos: cada vez que
+se la consulta, Postgres vuelve a hacer la cuenta. Adentro usa `join` (une cada entrada con
+su compra y con su función), `count(*)` (cuenta filas) y `group by` (una fila de resultado
+por película).
+
+**Clase de origen:** 6 (lectura con `.from()`) + vista 🟡. **Requisito:** R-06 (mail 16/01).
+
+---
+
+## D-32 · Buscador y géneros filtrados en el componente · 05/10
+
+**Elegido:** se trae la cartelera una vez y `filtrar()` actualiza una signal.
+
+**Descartado:** filtrar en Supabase, porque es una consulta por tecla y suma `.ilike()` y
+filtros sobre relaciones (🟡).
+
+**Cómo lo explico en el oral:** un cine tiene decenas de películas, así que filtrar en
+memoria es instantáneo y no carga la base. Con varios géneros, la película tiene que
+tenerlos todos.
+
+**Clase de origen:** 2 (signals, `@for`) + 4 (inputs). **Requisito:** R-07 (mails 16/01).
+
+---
+
+## D-33 · Identidad visual "Sala oscura" · 05/10
+
+**Elegido:** fondo oscuro, acentos rojo butaca y dorado, títulos condensados; todo en
+variables CSS.
+
+**Descartado:** "Afiche de época", porque los pósters y el mapa de butacas se leen mejor
+sobre fondo oscuro.
+
+**Cómo lo explico en el oral:** todos los colores y fuentes salen de variables en `:root`,
+así que el estilo se cambia desde un lugar y es igual en toda la app.
+
+**Clase de origen:** CSS propio; tipografía de Google Fonts (a confirmar en el diseño
+final). **Requisito:** R-39 (consigna: estilo único y producido).
