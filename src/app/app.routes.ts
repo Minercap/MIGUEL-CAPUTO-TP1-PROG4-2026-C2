@@ -12,6 +12,19 @@ export const routes: Routes = [
     title: 'Cartelera · Olympia Cinema',
     loadComponent: () => import('./pages/cartelera/cartelera').then((m) => m.Cartelera),
   },
+  // Detalle de una película y compra de una función: públicas, sin guard,
+  // porque se puede ver la cartelera y comprar sin cuenta (R-02).
+  {
+    path: 'pelicula/:id',
+    title: 'Película · Olympia Cinema',
+    loadComponent: () =>
+      import('./pages/detalle-pelicula/detalle-pelicula').then((m) => m.DetallePelicula),
+  },
+  {
+    path: 'compra/:funcionId',
+    title: 'Compra · Olympia Cinema',
+    loadComponent: () => import('./pages/compra/compra').then((m) => m.Compra),
+  },
   {
     // /login y /registro. Como auth.routes.ts tiene export default,
     // loadChildren no necesita el .then() (clase 5).

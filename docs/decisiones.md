@@ -874,3 +874,42 @@ así que el estilo se cambia desde un lugar y es igual en toda la app.
 
 **Clase de origen:** CSS propio; tipografía de Google Fonts (a confirmar en el diseño
 final). **Requisito:** R-39 (consigna: estilo único y producido).
+---
+
+## D-34 · Las películas ocultas se pueden leer · 05/10
+
+**Elegido:** la política de lectura de `Peliculas` no se restringe: cualquiera puede leer
+todas las filas, también las no visibles. La cartelera y el detalle las dejan afuera
+filtrando por `visible`.
+
+**Por qué:** `visible` es una decisión editorial, no un dato privado. Restringir la lectura
+rompería Mis películas (R-12) cuando se oculta una película ya vista: el cliente dejaría
+de ver en su historial algo que vio.
+
+**Descartado:** una política `using (visible or es_admin())`. Esconde las películas
+ocultas de la API, pero no protege nada que haya que proteger y rompe el historial.
+
+**Requisitos:** R-05 y R-12. Se apoya en D-27.
+
+---
+
+## D-35 · Horas de las funciones siempre en hora argentina · 05/10
+
+**Elegido:** en el detalle de la película, las horas de las funciones se muestran con el
+pipe `date` y su tercer parámetro, la zona horaria: `fecha_hora | date: 'HH:mm' : '-0300'`.
+Los días en que se agrupan las funciones se calculan con el mismo corrimiento de tres
+horas.
+
+**Por qué:** `fecha_hora` guarda un instante, y el pipe `date` lo muestra por defecto en la
+zona horaria del navegador. Un navegador configurado en otra zona mostraría las horas
+corridas: una función de las 18:00 se vería a las 23:00 desde Madrid, y el cine está en
+Buenos Aires. Con `'-0300'` se ve siempre la hora del cine. El corrimiento puede ser fijo
+porque Argentina no tiene horario de verano: está en UTC-3 todo el año.
+
+El pipe `date` con formato se vio en la clase 8; el parámetro de zona horaria, no (🟡).
+
+**Descartado:** dejar la zona del navegador. Para quien está en Argentina se ve igual,
+pero deja el horario de la función dependiendo de la configuración de cada dispositivo.
+
+**Clase de origen:** 8 (pipes incorporados). **Requisito:** R-05 (horarios de cada
+película). Se relaciona con D-29, que hace lo mismo del lado de la base.

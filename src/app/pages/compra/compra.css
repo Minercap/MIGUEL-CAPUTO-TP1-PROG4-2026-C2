@@ -1,0 +1,4 @@
+/* Sin colores sueltos: salen de las variables de :root (D-33). */
+h1 {
+  font-family: var(--fuente-titulos);
+}

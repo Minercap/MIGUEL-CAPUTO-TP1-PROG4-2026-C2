@@ -1,0 +1,80 @@
+<p><a routerLink="/">← Cartelera</a></p>
+
+@if (cargando()) {
+  <p>Cargando la película…</p>
+} @else if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+} @else if (pelicula(); as p) {
+  <!-- Póster a un costado y datos al otro; en celular, apilados. -->
+  <article class="ficha">
+    <img class="poster" [src]="p.imagen_url" [alt]="'Póster de ' + p.nombre" />
+
+    <div class="datos">
+      <h1>{{ p.nombre }}</h1>
+
+      <div class="etiquetas">
+        <span class="etiqueta">{{ p.duracion_minutos }} min</span>
+        @if (p.restriccion_edad) {
+          <span class="etiqueta edad">+{{ p.restriccion_edad }}</span>
+        }
+        @for (genero of p.generos; track genero.id) {
+          <span class="etiqueta">{{ genero.nombre }}</span>
+        }
+      </div>
+
+      <p class="sinopsis">{{ p.sinopsis }}</p>
+    </div>
+  </article>
+
+  <section class="funciones">
+    <h2>Funciones</h2>
+
+    @if (errorFunciones()) {
+      <p class="error" role="alert">{{ errorFunciones() }}</p>
+    } @else if (dias().length === 0) {
+      <p>Esta película todavía no tiene funciones programadas.</p>
+    } @else {
+      <!-- Fila de días. Al elegir uno, abajo aparecen sus horarios. -->
+      <div class="dias">
+        @for (dia of dias(); track dia.clave) {
+          <button
+            type="button"
+            class="dia"
+            [class.elegido]="diaElegido() === dia.clave"
+            (click)="elegirDia(dia)"
+          >
+            {{ dia.etiqueta }}
+          </button>
+        }
+      </div>
+
+      <!-- Cada horario es un link a la compra de esa función.
+           date con 'HH:mm' muestra la hora en 24 hs, y '-0300' la fija en
+           hora argentina, sin importar la zona del navegador (D-35).
+           titlecase pone la primera letra en mayúscula: 'castellano' se
+           guarda en minúscula. -->
+      <ul class="horarios">
+        @for (funcion of funcionesDelDia(); track funcion.id) {
+          <li>
+            <a class="horario" [routerLink]="['/compra', funcion.id]">
+              <strong>
+                {{ funcion.fecha_hora | date: 'HH:mm' : '-0300' }} · {{ funcion.formato }} ·
+                {{ funcion.idioma | titlecase }}
+              </strong>
+              <span class="precios">
+                Base ${{ funcion.precio_base }} · VIP ${{ funcion.precio_vip }}
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    }
+  </section>
+
+  <section class="resenias">
+    <h2>Reseñas</h2>
+    <!-- Se construye mañana, con el bloque de reseñas (R-08, R-09): el
+         promedio de estrellas, la lista de comentarios y el formulario
+         para dejar una. -->
+  </section>
+}
