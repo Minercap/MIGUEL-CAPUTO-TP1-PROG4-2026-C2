@@ -1,0 +1,20 @@
+/* Estilo mínimo para que el formulario se lea. El estilo visual del
+   cine se trabaja aparte. */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 32rem;
+}
+
+label {
+  margin-top: 0.75rem;
+}
+
+button {
+  margin-top: 1.25rem;
+}
+
+.error {
+  color: #b00020;
+}

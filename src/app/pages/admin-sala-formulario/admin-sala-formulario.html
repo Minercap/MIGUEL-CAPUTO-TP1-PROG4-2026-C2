@@ -1,0 +1,46 @@
+<p><a routerLink="/admin/salas">← Salas</a></p>
+
+<h1>{{ id === null ? 'Nueva sala' : 'Editar sala' }}</h1>
+
+@if (cargando()) {
+  <p>Cargando…</p>
+} @else if (errorCarga()) {
+  <p class="error" role="alert">{{ errorCarga() }}</p>
+} @else {
+  <!-- El maxlength repite el máximo de la regla: el navegador no deja
+       escribir de más (docs/validaciones.md, principio 10). -->
+  <form [formGroup]="formulario" (ngSubmit)="guardar()">
+    <label for="nombre">Nombre</label>
+    <input id="nombre" type="text" formControlName="nombre" maxlength="30" />
+    @if (nombre?.touched) {
+      @if (nombre?.errors?.['required']) {
+        <small class="error">El nombre es obligatorio.</small>
+      } @else if (nombre?.errors?.['largo']) {
+        <small class="error">El nombre tiene que tener entre 2 y 30 caracteres.</small>
+      } @else if (nombre?.errors?.['textoLibre']) {
+        <small class="error">El nombre tiene caracteres que no se pueden mostrar.</small>
+      }
+    }
+
+    <label class="opcion">
+      <input type="checkbox" formControlName="activa" />
+      Activa
+    </label>
+    <small>
+      Una sala inactiva no recibe funciones nuevas. Las que ya tenía cargadas no cambian.
+    </small>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+    @if (aviso()) {
+      <p class="error" role="alert">
+        {{ aviso() }} <a routerLink="/admin/salas">Volver al listado</a>
+      </p>
+    }
+
+    <button type="submit" [disabled]="!formulario.valid || enviando() || bloqueado()">
+      {{ enviando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </form>
+}

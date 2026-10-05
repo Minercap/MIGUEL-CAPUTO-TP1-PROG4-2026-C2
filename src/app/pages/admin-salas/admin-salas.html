@@ -1,0 +1,46 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<header class="encabezado">
+  <h1>Salas</h1>
+  <a routerLink="/admin/salas/nueva">Nueva sala</a>
+</header>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando las salas…</p>
+} @else {
+  <ul class="listado">
+    @for (sala of salas(); track sala.id) {
+      <li class="sala">
+        <div class="datos">
+          <strong>{{ sala.nombre }}</strong>
+          <!-- Una sala inactiva no recibe funciones nuevas: su etiqueta va
+               apagada. -->
+          <span class="etiqueta" [class.inactiva]="!sala.activa">
+            {{ sala.activa ? 'Activa' : 'Inactiva' }}
+          </span>
+        </div>
+
+        <div class="acciones">
+          @if (idPorBorrar() === sala.id) {
+            <span>¿Borrar esta sala?</span>
+            <button type="button" [disabled]="borrando()" (click)="borrar(sala)">
+              {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+            </button>
+            <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+              Cancelar
+            </button>
+          } @else {
+            <a [routerLink]="['/admin/salas', sala.id]">Editar</a>
+            <button type="button" (click)="pedirConfirmacion(sala.id)">Borrar</button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li>Todavía no hay salas cargadas.</li>
+    }
+  </ul>
+}

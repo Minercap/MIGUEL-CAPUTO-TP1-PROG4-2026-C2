@@ -34,6 +34,24 @@ const rutas: Routes = [
         (m) => m.AdminPeliculaFormulario,
       ),
   },
+  {
+    path: 'salas',
+    title: 'Salas · Administración',
+    loadComponent: () => import('./admin-salas/admin-salas').then((m) => m.AdminSalas),
+  },
+  // Mismo criterio que en películas: 'nueva' antes que ':id'.
+  {
+    path: 'salas/nueva',
+    title: 'Nueva sala · Administración',
+    loadComponent: () =>
+      import('./admin-sala-formulario/admin-sala-formulario').then((m) => m.AdminSalaFormulario),
+  },
+  {
+    path: 'salas/:id',
+    title: 'Editar sala · Administración',
+    loadComponent: () =>
+      import('./admin-sala-formulario/admin-sala-formulario').then((m) => m.AdminSalaFormulario),
+  },
 ];
 
 export default rutas;

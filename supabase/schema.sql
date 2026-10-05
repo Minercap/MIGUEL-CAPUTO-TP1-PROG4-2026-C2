@@ -15,6 +15,7 @@
 --   7. Correcciones del 01/10: roles separados (D-24), campos
 --      obligatorios y constraints check (docs/validaciones.md)
 --   8. Estado de la película: una sola columna "visible" (D-27)
+--   9. Salas y funciones: reglas de contenido (D-28, D-29)
 -- ============================================================
 
 -- ============================================================
@@ -847,6 +848,35 @@ update public."Peliculas"
 alter table public."Peliculas"
   drop column en_cartelera,
   drop column proximamente;
+
+
+-- ============================================================
+-- 9. SALAS Y FUNCIONES  (bloque del 05/10, D-28 y D-29)
+-- ============================================================
+-- Las dos tablas y sus políticas ya existen (secciones 1 y 3): las lee
+-- cualquiera y las escribe solo el admin, igual que Peliculas. Acá se
+-- agregan las reglas de contenido de docs/validaciones.md, con el mismo
+-- criterio de la sección 7.3 (D-25).
+
+
+-- ---------- 9.1 Salas (docs/validaciones.md, sección 3.4) ----------
+-- Nombre de 2 a 30 caracteres, contados sin los espacios de los extremos:
+-- un nombre que es solo espacios no llega al mínimo.
+--
+-- unique: no puede haber dos filas con el mismo valor en esa columna. Si
+-- se intenta, Postgres rechaza el insert o el update con el código 23505,
+-- que el servicio traduce a "Ya existe una sala con ese nombre". Hace
+-- falta porque la sala se le informa al cliente por su nombre: dos
+-- "Sala 1" serían dos salas que no se pueden distinguir.
+--
+-- Si alguna fila existente no cumple, el alter falla y no cambia nada:
+-- hay que corregirla antes.
+
+alter table public."Salas"
+  add constraint salas_nombre_largo
+    check (char_length(trim(nombre)) between 2 and 30),
+  add constraint salas_nombre_unico
+    unique (nombre);
 
 
 -- ============================================================
