@@ -97,6 +97,17 @@ const rutas: Routes = [
         (m) => m.AdminProductoFormulario,
       ),
   },
+  {
+    path: 'cupones',
+    title: 'Cupones · Administración',
+    loadComponent: () => import('./admin-cupones/admin-cupones').then((m) => m.AdminCupones),
+  },
+  {
+    path: 'recompensas',
+    title: 'Recompensas · Administración',
+    loadComponent: () =>
+      import('./admin-recompensas/admin-recompensas').then((m) => m.AdminRecompensas),
+  },
 ];
 
 export default rutas;

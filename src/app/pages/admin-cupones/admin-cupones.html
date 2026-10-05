@@ -1,0 +1,100 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<h1>Cupones</h1>
+
+<!-- El maxlength repite el máximo de la regla (docs/validaciones.md,
+     principio 10). -->
+<form [formGroup]="formulario" (ngSubmit)="guardar()">
+  <h2>{{ idEditando() === null ? 'Nuevo cupón' : 'Editar cupón' }}</h2>
+
+  <label for="nombre">Nombre</label>
+  <input id="nombre" type="text" formControlName="nombre" maxlength="40" />
+  @if (nombre?.touched) {
+    @if (nombre?.errors?.['required']) {
+      <small class="error">El nombre es obligatorio.</small>
+    } @else if (nombre?.errors?.['largo']) {
+      <small class="error">El nombre tiene que tener entre 3 y 40 caracteres.</small>
+    } @else if (nombre?.errors?.['textoLibre']) {
+      <small class="error">El nombre tiene caracteres que no se pueden mostrar.</small>
+    }
+  }
+
+  <label for="porcentaje">Porcentaje de descuento</label>
+  <input id="porcentaje" type="number" min="1" max="100" step="1" formControlName="porcentaje" />
+  @if (porcentaje?.touched) {
+    @if (porcentaje?.errors?.['required']) {
+      <small class="error">El porcentaje es obligatorio.</small>
+    } @else if (porcentaje?.errors?.['entero'] || porcentaje?.errors?.['rango']) {
+      <small class="error">El porcentaje tiene que ser un número entero de 1 a 100.</small>
+    }
+  }
+
+  <label for="condicion">A quién se le aplica</label>
+  <select id="condicion" formControlName="condicion">
+    <option value="" disabled>Elegí una condición</option>
+    <option value="primera_compra">Primera compra de un cliente registrado</option>
+    <option value="mayor_50">Clientes de más de 50 años</option>
+  </select>
+  @if (condicion?.touched) {
+    @if (condicion?.errors?.['required']) {
+      <small class="error">Elegí a quién se le aplica.</small>
+    } @else if (condicion?.errors?.['unoDe']) {
+      <small class="error">Elegí una condición de la lista.</small>
+    }
+  }
+
+  <label class="opcion">
+    <input type="checkbox" formControlName="activo" />
+    Activo
+  </label>
+  <small>Solo puede haber un cupón de primera compra activo a la vez.</small>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  <div class="botones">
+    <button type="submit" [disabled]="!formulario.valid || enviando()">
+      {{ enviando() ? 'Guardando…' : idEditando() === null ? 'Crear cupón' : 'Guardar cambios' }}
+    </button>
+    @if (idEditando() !== null) {
+      <button type="button" [disabled]="enviando()" (click)="cancelarEdicion()">Cancelar</button>
+    }
+  </div>
+</form>
+
+@if (cargando()) {
+  <p>Cargando los cupones…</p>
+} @else {
+  <ul class="listado">
+    @for (cupon of cupones(); track cupon.id) {
+      <li class="fila" [class.editando]="idEditando() === cupon.id">
+        <div class="datos">
+          <strong>{{ cupon.nombre }}</strong>
+          <span>{{ cupon.porcentaje }}% · {{ cuponesSrv.nombreCondicion(cupon.condicion) }}</span>
+          <!-- Un cupón inactivo no se aplica: su etiqueta va apagada. -->
+          <span class="etiqueta" [class.inactivo]="!cupon.activo">
+            {{ cupon.activo ? 'Activo' : 'Inactivo' }}
+          </span>
+        </div>
+
+        <div class="acciones">
+          @if (idPorBorrar() === cupon.id) {
+            <span>¿Borrar este cupón?</span>
+            <button type="button" [disabled]="borrando()" (click)="borrar(cupon)">
+              {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+            </button>
+            <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+              Cancelar
+            </button>
+          } @else {
+            <button type="button" (click)="editar(cupon)">Editar</button>
+            <button type="button" (click)="pedirConfirmacion(cupon.id)">Borrar</button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li>Todavía no hay cupones cargados.</li>
+    }
+  </ul>
+}

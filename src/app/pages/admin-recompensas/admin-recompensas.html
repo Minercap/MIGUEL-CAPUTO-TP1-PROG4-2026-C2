@@ -1,0 +1,118 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<h1>Recompensas</h1>
+<p>Lo que el cliente puede canjear con sus puntos. Gana 1 punto por cada peso que gasta.</p>
+
+<form [formGroup]="formulario" (ngSubmit)="guardar()">
+  <h2>{{ idEditando() === null ? 'Nueva recompensa' : 'Editar recompensa' }}</h2>
+
+  <label for="tipo">Qué se canjea</label>
+  <select id="tipo" formControlName="tipo" (change)="alCambiarTipo()">
+    <option value="" disabled>Elegí una opción</option>
+    <option value="entrada">Una entrada</option>
+    <option value="producto">Un producto del candy bar</option>
+  </select>
+  @if (tipo?.touched) {
+    @if (tipo?.errors?.['required']) {
+      <small class="error">Elegí qué se canjea.</small>
+    } @else if (tipo?.errors?.['unoDe']) {
+      <small class="error">Elegí una opción de la lista.</small>
+    }
+  }
+
+  <!-- El producto aparece solo si se canjea un producto (D-42). -->
+  @if (esProducto) {
+    <label for="producto_id">Producto</label>
+    <select id="producto_id" formControlName="producto_id">
+      <option value="" disabled>Elegí un producto</option>
+      @for (producto of opcionesProducto(); track producto.id) {
+        <option [value]="producto.id">
+          {{ producto.nombre }}{{ producto.activo ? '' : ' (inactivo)' }}
+        </option>
+      }
+    </select>
+    @if (opcionesProducto().length === 0) {
+      <small class="error">No hay productos activos. Cargalos primero en el candy bar.</small>
+    }
+    @if (productoId?.touched) {
+      @if (formulario.errors?.['productoObligatorio']) {
+        <small class="error">Elegí el producto.</small>
+      } @else if (productoId?.errors?.['productoNoOfrecido']) {
+        <small class="error">Elegí un producto de la lista.</small>
+      }
+    }
+  }
+
+  <label for="costo_puntos">Costo en puntos</label>
+  <input
+    id="costo_puntos"
+    type="number"
+    min="1"
+    max="100000"
+    step="1"
+    formControlName="costo_puntos"
+  />
+  @if (costoPuntos?.touched) {
+    @if (costoPuntos?.errors?.['required']) {
+      <small class="error">El costo en puntos es obligatorio.</small>
+    } @else if (costoPuntos?.errors?.['entero'] || costoPuntos?.errors?.['rango']) {
+      <small class="error">El costo tiene que ser un número entero de 1 a 100.000 puntos.</small>
+    }
+  }
+
+  <label class="opcion">
+    <input type="checkbox" formControlName="activa" />
+    Activa
+  </label>
+  <small>Una recompensa inactiva no se ofrece. Los canjes que ya se hicieron no cambian.</small>
+
+  @if (error()) {
+    <p class="error" role="alert">{{ error() }}</p>
+  }
+
+  <div class="botones">
+    <button type="submit" [disabled]="!formulario.valid || enviando()">
+      {{
+        enviando() ? 'Guardando…' : idEditando() === null ? 'Crear recompensa' : 'Guardar cambios'
+      }}
+    </button>
+    @if (idEditando() !== null) {
+      <button type="button" [disabled]="enviando()" (click)="cancelarEdicion()">Cancelar</button>
+    }
+  </div>
+</form>
+
+@if (cargando()) {
+  <p>Cargando las recompensas…</p>
+} @else {
+  <ul class="listado">
+    @for (recompensa of recompensas(); track recompensa.id) {
+      <li class="fila" [class.editando]="idEditando() === recompensa.id">
+        <div class="datos">
+          <strong>{{ nombreDe(recompensa) }}</strong>
+          <span>{{ recompensa.costo_puntos }} puntos</span>
+          <span class="etiqueta" [class.inactiva]="!recompensa.activa">
+            {{ recompensa.activa ? 'Activa' : 'Inactiva' }}
+          </span>
+        </div>
+
+        <div class="acciones">
+          @if (idPorBorrar() === recompensa.id) {
+            <span>¿Borrar esta recompensa?</span>
+            <button type="button" [disabled]="borrando()" (click)="borrar(recompensa)">
+              {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+            </button>
+            <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+              Cancelar
+            </button>
+          } @else {
+            <button type="button" (click)="editar(recompensa)">Editar</button>
+            <button type="button" (click)="pedirConfirmacion(recompensa.id)">Borrar</button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li>Todavía no hay recompensas cargadas.</li>
+    }
+  </ul>
+}

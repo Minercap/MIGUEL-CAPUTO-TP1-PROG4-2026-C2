@@ -24,7 +24,8 @@ export class Admin {
     { nombre: 'Salas', descripcion: 'Las salas del cine', ruta: '/admin/salas' },
     { nombre: 'Funciones', descripcion: 'Horarios, formatos y precios', ruta: '/admin/funciones' },
     { nombre: 'Candy', descripcion: 'Productos y combos', ruta: '/admin/productos' },
-    { nombre: 'Cupones', descripcion: 'Descuentos y condiciones', ruta: null },
+    { nombre: 'Cupones', descripcion: 'Descuentos y condiciones', ruta: '/admin/cupones' },
+    { nombre: 'Recompensas', descripcion: 'Canje de puntos', ruta: '/admin/recompensas' },
     { nombre: 'Reportes', descripcion: 'Facturación y más vendidos', ruta: null },
     { nombre: 'Log', descripcion: 'Quién hizo qué y cuándo', ruta: null },
   ];

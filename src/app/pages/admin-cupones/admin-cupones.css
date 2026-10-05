@@ -1,0 +1,82 @@
+/* Estilo mínimo para que la pantalla se lea, con las variables de :root
+   (D-33). El estilo visual del cine se trabaja aparte. */
+
+/* El formulario va en una caja, arriba de la lista. */
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  max-width: 32rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-superficie);
+  border-radius: 0.5rem;
+}
+
+form h2 {
+  margin-top: 0;
+}
+
+label {
+  margin-top: 0.75rem;
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.listado {
+  list-style: none;
+  padding: 0;
+}
+
+/* Cada renglón: datos a la izquierda y acciones a la derecha. Con
+   flex-wrap, en celular las acciones bajan solas a otro renglón. */
+.fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-texto-suave);
+}
+
+/* El renglón que está cargado en el formulario. */
+.editando {
+  border-left: 3px solid var(--color-acento-dorado);
+  padding-left: 0.75rem;
+}
+
+.datos,
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.etiqueta {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.inactivo {
+  border-style: dashed;
+  color: var(--color-texto-suave);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+/* En celular el formulario va a todo el ancho. */
+@media (max-width: 600px) {
+  form {
+    max-width: none;
+  }
+}
