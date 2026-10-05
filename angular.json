@@ -28,7 +28,15 @@
             "styles": [
               "src/styles.css"
             ],
-            "serviceWorker": "ngsw-config.json"
+            "serviceWorker": "ngsw-config.json",
+            "allowedCommonJsDependencies": [
+              "qrcode",
+              "canvg",
+              "html2canvas",
+              "core-js",
+              "raf",
+              "rgbcolor"
+            ]
           },
           "configurations": {
             "production": {

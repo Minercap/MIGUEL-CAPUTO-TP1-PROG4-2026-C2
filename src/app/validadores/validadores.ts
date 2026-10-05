@@ -169,6 +169,53 @@ export function codigoCompra(): ValidatorFn {
   };
 }
 
+// ---------- Pago simulado (A-01) ----------
+// Los datos de la tarjeta se validan y se descartan: no se mandan ni se
+// guardan en ningún lado.
+
+const PATRON_NUMERO_DE_TARJETA = /^\d{16}$/;
+
+// 16 dígitos. Se aceptan espacios entre medio ("4111 1111 1111 1111"), que
+// es como viene impreso en la tarjeta: se sacan antes de mirar.
+export function numeroDeTarjeta(): ValidatorFn {
+  return (control: AbstractControl) => {
+    const texto = leerTexto(control).replaceAll(' ', '');
+    if (texto === '') return null;
+    return PATRON_NUMERO_DE_TARJETA.test(texto) ? null : { numeroDeTarjeta: true };
+  };
+}
+
+const PATRON_CODIGO_DE_SEGURIDAD = /^\d{3}$/;
+
+// El código de seguridad (CVV): 3 dígitos.
+export function codigoDeSeguridad(): ValidatorFn {
+  return (control: AbstractControl) => {
+    const texto = leerTexto(control);
+    if (texto === '') return null;
+    return PATRON_CODIGO_DE_SEGURIDAD.test(texto) ? null : { codigoDeSeguridad: true };
+  };
+}
+
+// Para el grupo { mes, anio } del vencimiento (dos desplegables, D-23): la
+// tarjeta no puede estar vencida. Vence al terminar el mes indicado, así
+// que el mes actual todavía es válido. Mientras falte elegir alguno de los
+// dos no informa error.
+export function noVencida(): ValidatorFn {
+  return (grupo: AbstractControl) => {
+    const valor: { mes: string; anio: string } = grupo.value;
+    if (valor.mes === '' || valor.anio === '') return null;
+
+    const ahora = new Date();
+    const anio = Number(valor.anio);
+    const mes = Number(valor.mes);
+    // Los meses de Date van de 0 a 11, por eso el + 1.
+    const vencida =
+      anio < ahora.getFullYear() ||
+      (anio === ahora.getFullYear() && mes < ahora.getMonth() + 1);
+    return vencida ? { tarjetaVencida: true } : null;
+  };
+}
+
 // ---------- Imágenes ----------
 
 const TIPOS_DE_IMAGEN = ['image/jpeg', 'image/png', 'image/webp'];
@@ -301,6 +348,17 @@ export function yaSeEstreno(fechaEstreno: string): boolean {
 // positiva hacia adelante.
 export function sumarAnios(fecha: Date, anios: number): Date {
   return new Date(fecha.getFullYear() + anios, fecha.getMonth(), fecha.getDate());
+}
+
+// Los años cumplidos al día de hoy por alguien que nació en esa fecha. Se
+// restan los años y, si este año todavía no llegó el cumpleaños, se
+// descuenta uno.
+export function edadEnAnios(nacimiento: Date): number {
+  const actual = hoy();
+  let edad = actual.getFullYear() - nacimiento.getFullYear();
+  const cumpleEsteAnio = new Date(actual.getFullYear(), nacimiento.getMonth(), nacimiento.getDate());
+  if (actual < cumpleEsteAnio) edad--;
+  return edad;
 }
 
 // Una fecha corrida la cantidad de días indicada. Si el día se pasa del

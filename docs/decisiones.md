@@ -940,6 +940,15 @@ un diálogo que cambia según el navegador.
 **Cómo lo explico en el oral:** el mail pide que la app genere el PDF; la misma librería
 sirve para el reporte de facturación.
 
+**Dónde se usan:** las dos librerías (`qrcode` y `jspdf`) se importan en un solo archivo,
+`services/tickets.ts`. Si alguna se cambia, se cambia ahí y nada más.
+
+**`allowedCommonJsDependencies` en `angular.json`:** `qrcode` y varias dependencias internas
+de jsPDF (`canvg`, `html2canvas`, `core-js`, `raf`, `rgbcolor`) están publicadas en un
+formato de módulos viejo (CommonJS), y `ng build` avisa con un warning por cada una. Esa
+opción le dice al build que son conocidas y aceptadas, para que el build quede limpio. No
+cambia cómo funciona la app.
+
 **Clase de origen:** 🔴 librería justificada. **Requisito:** R-20 (mail 01/01, "les genere el
 pdf") y la cátedra (A-01).
 

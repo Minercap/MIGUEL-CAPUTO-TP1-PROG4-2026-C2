@@ -27,6 +27,16 @@
     <!-- No se puede comprar: el motivo va en lugar del mapa. -->
     <p class="sin-venta" role="alert">{{ motivoSinVenta() }}</p>
   } @else {
+    <!-- Avisos de la selección: se llegó al máximo, o alguien compró una
+         butaca que estaba elegida. Va arriba de los pasos porque puede
+         aparecer tanto en el mapa como en el pago. -->
+    @if (aviso()) {
+      <p class="error" role="alert">{{ aviso() }}</p>
+    }
+
+    <!-- Los tres pasos de la compra: se muestra uno solo por vez. -->
+    @switch (paso()) {
+      @case ('mapa') {
     <section class="mapa">
       <h2>Elegí tus butacas</h2>
 
@@ -81,10 +91,6 @@
       </div>
     </section>
 
-    @if (aviso()) {
-      <p class="error" role="alert">{{ aviso() }}</p>
-    }
-
     <!-- Resumen: cada butaca con su precio. Si es VIP se dice con todas las
          letras, antes de pagar (R-14, mail 10/03). -->
     <section class="resumen">
@@ -111,6 +117,37 @@
         <span>Total ({{ elegidas().length }} de {{ maximo }} butacas)</span>
         <strong>${{ total() }}</strong>
       </p>
+      <button
+        type="button"
+        class="continuar"
+        [disabled]="elegidas().length === 0"
+        (click)="irAlPago()"
+      >
+        Continuar al pago
+      </button>
     </section>
+      }
+
+      @case ('pago') {
+        <!-- Componente hijo (clase 3): recibe lo que tiene que mostrar con
+             [input] y avisa con (output). El pago en sí lo hace esta
+             pantalla, en pagar(). -->
+        <app-pago
+          [elegidas]="elegidas()"
+          [total]="total()"
+          [restriccion]="d.pelicula.restriccion_edad"
+          [enviando]="pagando()"
+          (pagar)="pagar($event)"
+          (volver)="volverAlMapa()"
+        />
+        @if (errorPago()) {
+          <p class="error" role="alert">{{ errorPago() }}</p>
+        }
+      }
+
+      @case ('entrada') {
+        <app-entrada [compra]="compra()" [datos]="d" />
+      }
+    }
   }
 }

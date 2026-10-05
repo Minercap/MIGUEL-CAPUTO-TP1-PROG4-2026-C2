@@ -1,7 +1,14 @@
 import { Service, inject } from '@angular/core';
 import { RealtimeChannel, RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 import { SupabaseService } from './supabase';
-import { Butaca, ButacaOcupada, FilaDeSala, FuncionParaComprar } from '../interfaces/compra';
+import {
+  Butaca,
+  ButacaOcupada,
+  CompraConfirmada,
+  FilaDeSala,
+  FuncionParaComprar,
+  PedidoDeCompra,
+} from '../interfaces/compra';
 import { Funcion } from '../interfaces/funcion';
 import { Pelicula } from '../interfaces/pelicula';
 import { Sala } from '../interfaces/sala';
@@ -30,9 +37,9 @@ export const MAXIMO_BUTACAS = 10;
 // estreno (R-11).
 const DIAS_DE_PREVENTA = 7;
 
-// La compra de entradas (R-13 a R-16, R-20). En esta parte: los datos de
-// la función, el mapa de la sala, las butacas ocupadas en tiempo real y
-// las reglas de venta y de precio. Ningún método muestra nada: devuelven
+// La compra de entradas (R-13 a R-16, R-20): los datos de la función, el
+// mapa de la sala, las butacas ocupadas en tiempo real, las reglas de
+// venta y de precio, y la compra en sí. Ningún método muestra nada: devuelven
 // el error ya traducido para la pantalla.
 //
 // Las reglas de venta y de precio están también en la base, que es la que
@@ -161,6 +168,42 @@ export class Compras {
       this.canal.unsubscribe();
       this.canal = null;
     }
+  }
+
+  // La compra (D-39). No son inserts: se llama con rpc() a la función
+  // realizar_compra de la base (supabase/schema.sql, sección 11.4), que
+  // valida todo, calcula los precios y guarda la compra, las entradas y las
+  // butacas ocupadas en una sola transacción.
+  //
+  // rpc() recibe el nombre de la función y un objeto con sus parámetros,
+  // con los mismos nombres que tienen en SQL, y devuelve { data, error }
+  // igual que un select. Hay que mandar los cinco: los que no aplican van
+  // en null.
+  async realizarCompra(pedido: PedidoDeCompra): Promise<Resultado<CompraConfirmada>> {
+    const { data, error } = await this.sup.Sup.rpc('realizar_compra', {
+      p_funcion_id: pedido.funcion_id,
+      p_butacas: pedido.butacas,
+      p_email: pedido.email,
+      p_medio_pago: pedido.medio_pago,
+      p_fecha_nacimiento: pedido.fecha_nacimiento,
+    });
+
+    if (error) {
+      // P0001 es el código con el que llega un "raise exception" de
+      // Postgres. Todos los de realizar_compra están escritos para el
+      // comprador ("Alguna de las butacas ya fue vendida. Elegí otras."),
+      // así que ese texto se muestra tal cual. Cualquier otro error es
+      // técnico y se reemplaza por un mensaje genérico.
+      const mensaje =
+        error.code === 'P0001'
+          ? error.message
+          : 'No se pudo completar la compra. Probá de nuevo en unos minutos.';
+      return { datos: null, error: mensaje };
+    }
+
+    // La función devuelve un JSON con la forma de CompraConfirmada.
+    const compra: CompraConfirmada = data;
+    return { datos: compra, error: null };
   }
 
   // Arma el mapa: las 20 filas, cada una con sus tres bloques de butacas.

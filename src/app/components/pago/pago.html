@@ -1,0 +1,145 @@
+<section class="pago">
+  <h2>Pago</h2>
+
+  <!-- Detalle final de lo que se compra (A-01): cada butaca con su precio,
+       y si es VIP se dice antes de pagar (R-14). -->
+  <ul class="detalle">
+    @for (elegida of elegidas(); track elegida.fila + '-' + elegida.numero) {
+      <li>
+        <span>
+          Fila {{ elegida.fila }}, butaca {{ elegida.numero }}
+          @if (elegida.es_vip) {
+            <strong class="marca-vip">Butaca VIP</strong>
+          }
+        </span>
+        <span>${{ elegida.precio }}</span>
+      </li>
+    }
+  </ul>
+  <p class="total">
+    <span>Total</span>
+    <strong>${{ total() }}</strong>
+  </p>
+
+  <form [formGroup]="formulario" (ngSubmit)="confirmar()">
+    @if (sinSesion()) {
+      <!-- Compra sin cuenta (R-02): la compra queda a nombre de este mail. -->
+      <label for="email">Tu mail</label>
+      <input id="email" type="email" formControlName="email" autocomplete="email" maxlength="254" />
+      @if (email?.touched) {
+        @if (formulario.errors?.['emailObligatorio']) {
+          <small class="error">El mail es obligatorio.</small>
+        } @else if (email?.errors?.['emailLargo']) {
+          <small class="error">El mail puede tener hasta 254 caracteres.</small>
+        } @else if (email?.errors?.['email']) {
+          <small class="error">Ingresá un mail válido.</small>
+        }
+      }
+    }
+
+    @if (pideNacimiento()) {
+      <!-- Sin cuenta y con restricción de edad: el comprador declara su
+           fecha de nacimiento (D-06). Fecha sin calendario (D-23). -->
+      <app-campo-fecha
+        etiqueta="Tu fecha de nacimiento"
+        [grupo]="fechaNacimiento"
+        [anioDesde]="anioDesde"
+        [anioHasta]="anioHasta"
+      >
+        <small>Esta película es para mayores de {{ restriccion() }} años.</small>
+        @if (fechaNacimiento.touched) {
+          @if (fechaNacimiento.errors?.['fechaImposible']) {
+            <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+          } @else if (fechaNacimiento.errors?.['fechaMaxima']) {
+            <small class="error">La fecha de nacimiento no puede ser futura.</small>
+          } @else if (fechaNacimiento.errors?.['fechaMinima']) {
+            <small class="error">Revisá el año de nacimiento.</small>
+          } @else if (formulario.errors?.['nacimientoObligatorio']) {
+            <small class="error">Elegí el día, el mes y el año.</small>
+          } @else if (formulario.errors?.['edadInsuficiente']; as edad) {
+            <small class="error">
+              Esta película es para mayores de {{ edad }} años: no podés comprar entradas.
+            </small>
+          }
+        }
+      </app-campo-fecha>
+    }
+
+    <label for="medio_pago">Medio de pago</label>
+    <select id="medio_pago" formControlName="medio_pago">
+      <option value="" disabled>Elegí un medio de pago</option>
+      @for (medio of medios; track medio.valor) {
+        <option [value]="medio.valor">{{ medio.nombre }}</option>
+      }
+    </select>
+    @if (medioPago?.touched && medioPago?.invalid) {
+      <small class="error">Elegí un medio de pago de la lista.</small>
+    }
+
+    @if (pagaConTarjeta()) {
+      <label for="numero_tarjeta">Número de la tarjeta</label>
+      <!-- inputmode abre el teclado numérico en el celular. maxlength 19:
+           los 16 dígitos más tres espacios. autocomplete off: el navegador
+           no ofrece guardar estos datos. -->
+      <input
+        id="numero_tarjeta"
+        type="text"
+        inputmode="numeric"
+        maxlength="19"
+        autocomplete="off"
+        formControlName="numero_tarjeta"
+      />
+      @if (numeroTarjeta?.touched && numeroTarjeta?.errors?.['numeroDeTarjeta']) {
+        <small class="error">El número de la tarjeta tiene que tener 16 dígitos.</small>
+      }
+
+      <!-- Vencimiento con dos desplegables, sin calendario (D-23). -->
+      <fieldset formGroupName="vencimiento">
+        <legend>Vencimiento</legend>
+        <select formControlName="mes" aria-label="Mes de vencimiento">
+          <option value="" disabled>Mes</option>
+          @for (mes of meses; track mes) {
+            <option [value]="mes">{{ mes }}</option>
+          }
+        </select>
+        <select formControlName="anio" aria-label="Año de vencimiento">
+          <option value="" disabled>Año</option>
+          @for (anio of aniosDeVencimiento; track anio) {
+            <option [value]="anio">{{ anio }}</option>
+          }
+        </select>
+      </fieldset>
+      @if (vencimiento.errors?.['tarjetaVencida']) {
+        <small class="error">La tarjeta está vencida.</small>
+      }
+
+      <label for="codigo_seguridad">Código de seguridad (CVV)</label>
+      <input
+        id="codigo_seguridad"
+        type="password"
+        inputmode="numeric"
+        maxlength="3"
+        autocomplete="off"
+        formControlName="codigo_seguridad"
+      />
+      @if (codigoSeguridad?.touched && codigoSeguridad?.errors?.['codigoDeSeguridad']) {
+        <small class="error">El código de seguridad tiene 3 dígitos.</small>
+      }
+
+      <small>Es un pago simulado: no se hace ningún cobro y estos datos no se guardan.</small>
+    }
+
+    @if (medioPago?.value === 'mercado_pago') {
+      <small>Pago con Mercado Pago simulado: no se hace ningún cobro.</small>
+    }
+
+    <div class="botones">
+      <button type="button" [disabled]="enviando()" (click)="volver.emit()">
+        Volver al mapa
+      </button>
+      <button type="submit" class="principal" [disabled]="!formulario.valid || enviando()">
+        {{ enviando() ? 'Procesando…' : 'Pagar $' + total() }}
+      </button>
+    </div>
+  </form>
+</section>

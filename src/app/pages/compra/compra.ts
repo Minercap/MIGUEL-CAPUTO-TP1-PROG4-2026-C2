@@ -2,20 +2,31 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Compras, MAXIMO_BUTACAS } from '../../services/compras';
+import { Pago } from '../../components/pago/pago';
+import { Entrada } from '../../components/entrada/entrada';
 import {
   Butaca,
   ButacaElegida,
   ButacaOcupada,
+  CompraConfirmada,
+  DatosDePago,
   FuncionParaComprar,
 } from '../../interfaces/compra';
 import { diaParaMostrar } from '../../validadores/validadores';
 
-// Compra de entradas para una función (R-13 a R-16). En esta parte: el
-// encabezado con los datos de la función, el mapa de butacas en tiempo
-// real y el resumen de lo elegido. El pago se agrega en la parte siguiente.
+// Los tres pasos de la compra, en orden.
+type PasoDeCompra = 'mapa' | 'pago' | 'entrada';
+
+// Compra de entradas para una función (R-13 a R-16, R-20). La pantalla
+// tiene un encabezado con los datos de la función y tres pasos:
+//   mapa     elegir butacas, con las ocupadas en tiempo real;
+//   pago     el formulario de pago (componente Pago);
+//   entrada  la compra confirmada, con QR y PDF (componente Entrada).
+// Esta pantalla guarda el estado de la compra y es la que llama a la base;
+// los dos componentes hijos solo muestran y avisan (clase 3).
 // No lleva guard: se puede comprar sin cuenta (R-02).
 @Component({
-  imports: [RouterLink, DatePipe, TitleCasePipe],
+  imports: [RouterLink, DatePipe, TitleCasePipe, Pago, Entrada],
   selector: 'app-compra',
   styleUrl: './compra.css',
   templateUrl: './compra.html',
@@ -51,6 +62,14 @@ export class Compra implements OnInit, OnDestroy {
   // Las que tiene elegidas el comprador, con su precio, y la suma.
   elegidas = signal<ButacaElegida[]>([]);
   total = signal(0);
+
+  // En qué paso está la compra. La pantalla muestra una cosa u otra con un
+  // @switch: el mapa, el formulario de pago o la entrada ya comprada.
+  paso = signal<PasoDeCompra>('mapa');
+  pagando = signal(false); // se está guardando la compra
+  errorPago = signal<string | null>(null);
+  // Lo que devolvió la base cuando la compra salió bien.
+  compra = signal<CompraConfirmada | null>(null);
 
   async ngOnInit() {
     const resultado = await this.comprasSrv.traerFuncion(this.funcionId);
@@ -119,6 +138,60 @@ export class Compra implements OnInit, OnDestroy {
     this.sumar();
   }
 
+  // ---------- Los pasos ----------
+
+  irAlPago() {
+    if (this.elegidas().length === 0) {
+      this.aviso.set('Elegí al menos una butaca para continuar.');
+      return;
+    }
+    this.aviso.set(null);
+    this.errorPago.set(null);
+    this.paso.set('pago');
+  }
+
+  volverAlMapa() {
+    this.errorPago.set(null);
+    this.paso.set('mapa');
+  }
+
+  // Lo que llega del componente de pago por su output (clase 3): el mail,
+  // el medio y la fecha de nacimiento, ya validados. Acá se arma el pedido
+  // y se llama a la base.
+  async pagar(pago: DatosDePago) {
+    // pagando() evita el doble envío.
+    if (this.pagando()) return;
+    this.errorPago.set(null);
+    this.aviso.set(null);
+    this.pagando.set(true);
+
+    // A la base van solo la fila y el número de cada butaca. Los precios
+    // no: los calcula ella (D-39).
+    const resultado = await this.comprasSrv.realizarCompra({
+      funcion_id: this.funcionId,
+      butacas: this.elegidas().map((elegida) => ({ fila: elegida.fila, numero: elegida.numero })),
+      email: pago.email,
+      medio_pago: pago.medio_pago,
+      fecha_nacimiento: pago.fecha_nacimiento,
+    });
+
+    this.pagando.set(false);
+
+    if (resultado.error || !resultado.datos) {
+      this.errorPago.set(resultado.error);
+      // Si falló porque alguien compró antes alguna de las butacas, esas
+      // ya figuran como ocupadas: se sacan de la selección para que el
+      // mapa no las muestre elegidas y ocupadas a la vez.
+      this.quitarOcupadasDeLaSeleccion();
+      return;
+    }
+
+    this.compra.set(resultado.datos);
+    this.elegidas.set([]);
+    this.total.set(0);
+    this.paso.set('entrada');
+  }
+
   // Las dos se llaman desde el template, una vez por butaca, para decidir
   // qué clases lleva cada botón.
   estaOcupada(butaca: Butaca): boolean {
@@ -138,13 +211,27 @@ export class Compra implements OnInit, OnDestroy {
       this.ocupadas.update((prev) => [...prev, butaca]);
     }
 
+    // Mientras se está pagando, o con la compra ya hecha, los avisos que
+    // llegan pueden ser los de la propia compra: no se toca la selección.
+    // Si en ese momento la butaca la compró otra persona, la base rechaza
+    // el pago y pagar() limpia la selección.
+    if (this.pagando() || this.paso() === 'entrada') return;
+
     if (this.elegidas().some((elegida) => this.clave(elegida) === clave)) {
       this.elegidas.update((prev) => prev.filter((elegida) => this.clave(elegida) !== clave));
       this.sumar();
       this.aviso.set(
         `La butaca ${butaca.fila}${butaca.numero} acaba de ser comprada por otra persona y se quitó de tu selección. Elegí otra.`,
       );
+      // Si estaba en el pago y se quedó sin butacas, vuelve al mapa.
+      if (this.elegidas().length === 0) this.paso.set('mapa');
     }
+  }
+
+  // Saca de la selección las butacas que ya figuran como ocupadas.
+  private quitarOcupadasDeLaSeleccion() {
+    this.elegidas.update((prev) => prev.filter((elegida) => !this.estaOcupada(elegida)));
+    this.sumar();
   }
 
   // Lo que llega por Realtime cuando se borra una fila de ButacasOcupadas:

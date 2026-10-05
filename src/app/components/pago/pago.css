@@ -1,0 +1,88 @@
+/* Solo estructura. Todos los colores y las fuentes salen de las variables
+   de :root (src/styles.css, D-33): acá no hay ningún color suelto. */
+
+h2 {
+  font-family: var(--fuente-titulos);
+}
+
+.pago {
+  max-width: 32rem;
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.detalle {
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada renglón: la butaca a la izquierda y el precio a la derecha. */
+.detalle li,
+.total {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--color-superficie);
+}
+
+.total {
+  border-bottom: none;
+  font-size: 1.1rem;
+}
+
+.marca-vip {
+  margin-left: 0.5rem;
+  color: var(--color-acento-dorado);
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+label,
+fieldset {
+  margin-top: 0.75rem;
+}
+
+fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.botones button {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  cursor: pointer;
+}
+
+/* El botón de pagar es el que resalta. */
+.botones .principal {
+  border-color: var(--color-acento-rojo);
+  background: var(--color-acento-rojo);
+  font-weight: bold;
+}
+
+.botones button:disabled {
+  border-color: var(--color-texto-suave);
+  background: transparent;
+  color: var(--color-texto-suave);
+  cursor: not-allowed;
+}
