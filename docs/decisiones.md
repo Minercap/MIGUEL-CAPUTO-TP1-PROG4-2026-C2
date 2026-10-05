@@ -611,6 +611,15 @@ nombre escrito en otro alfabeto (cirílico, griego, chino).
 - Las listas de tipo de sangre y color de ojos quedan escritas en dos lugares, el
   formulario y la base. Si se agrega una opción, hay que agregarla en los dos.
 
+**Aplicación en la base viva · 05/10:** estos checks estaban en `schema.sql` desde el 01/10
+pero no en Supabase. La sección 7 empezaba con `es_empleado()` escrita con `as $ ... $;` en
+vez de `as $$ ... $$;`: es un error de sintaxis, y como el SQL Editor corre todo lo pegado
+como una sola operación, no quedó aplicado nada de esa sección (tampoco los roles separados
+de D-24). Se corrigió la línea y se agregó la sección 9.6, que vuelve a aplicar la 7.1, la
+7.2 y la 7.3 de forma que se pueda correr en cualquier estado (`drop constraint if exists`
+antes de cada `add`), con un `select` previo por regla que muestra las filas que no la
+cumplen. Lección: después de correr un script, verificar en la base que quedó aplicado.
+
 **Resuelto · zona horaria de la fecha de nacimiento · 05/10:** el check usaba
 `current_date`, que es el día del servidor, y el servidor está en UTC. De 21 a 24 hs de
 Argentina la base ya estaba en el día siguiente y aceptaba una fecha de nacimiento un día

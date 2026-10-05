@@ -16,7 +16,9 @@
 --      obligatorios y constraints check (docs/validaciones.md)
 --   8. Estado de la película: una sola columna "visible" (D-27)
 --   9. Salas y funciones: reglas de contenido, trigger de superposición
---      y de estreno, y fechas en hora argentina (D-28, D-29)
+--      y de estreno, y fechas en hora argentina (D-28, D-29).
+--      La 9.6 vuelve a aplicar la sección 7 sobre la base viva, donde no
+--      se había corrido.
 -- ============================================================
 
 -- ============================================================
@@ -659,7 +661,7 @@ create or replace function public.es_empleado()
 returns boolean
 language sql
 stable
-as $ select public.rol_actual() = 'empleado'; $;
+as $$ select public.rol_actual() = 'empleado'; $$;
 
 -- Las tres políticas que sí cambian son las que contaban con que
 -- es_empleado() incluía al admin. "alter policy" cambia la condición de
@@ -1134,17 +1136,246 @@ $$;
 -- queda el día de acá. Antes usaba current_date, que es el día del
 -- servidor.
 --
+-- "drop constraint if exists" borra el check solo si está: si no está, no
+-- da error y sigue. Hace falta porque en la base viva la sección 7 no se
+-- había corrido (ver 9.6) y este check no existía. Así el alter se puede
+-- correr en cualquier estado, y también más de una vez.
+--
 -- Al crear el check, Postgres revisa todas las filas que ya existen: si
--- alguna no cumple, el alter falla y no cambia nada.
+-- alguna no cumple, el alter falla y no cambia nada. Este select muestra
+-- cuáles son, para corregirlas antes. Si no devuelve filas, está todo bien.
+
+select id, email, fecha_nacimiento
+from public."Usuarios"
+where not (
+  fecha_nacimiento <= (now() at time zone 'America/Argentina/Buenos_Aires')::date
+  and fecha_nacimiento >= (now() at time zone 'America/Argentina/Buenos_Aires')::date
+                          - interval '120 years'
+);
 
 alter table public."Usuarios"
-  drop constraint usuarios_fecha_nacimiento_rango,
+  drop constraint if exists usuarios_fecha_nacimiento_rango,
   add constraint usuarios_fecha_nacimiento_rango
     check (
       fecha_nacimiento <= (now() at time zone 'America/Argentina/Buenos_Aires')::date
       and fecha_nacimiento >= (now() at time zone 'America/Argentina/Buenos_Aires')::date
                               - interval '120 years'
     );
+
+
+-- ---------- 9.6 Ponerse al día: lo de la sección 7 que no estaba ----------
+-- El 05/10 se vio que en la base viva no existía ningún check de la
+-- sección 7.3. La causa: en la 7.1, es_empleado() estaba escrita con
+-- "as $ ... $;" en lugar de "as $$ ... $$;". Eso es un error de sintaxis,
+-- y el SQL Editor corre todo lo que se le pega como una sola operación:
+-- al fallar esa línea, no quedó aplicado nada de lo que venía con ella.
+-- La línea ya está corregida más arriba.
+--
+-- Esta sección vuelve a aplicar la 7.1, la 7.2 y la 7.3, escritas para
+-- que se puedan correr en cualquier estado y más de una vez:
+--   create or replace / alter policy   pisan lo que haya.
+--   set not null                       si ya era not null, no cambia nada.
+--   drop constraint if exists + add    borra el check si está y lo crea.
+-- Corriendo el script completo desde cero no cambia nada: repite lo que
+-- la sección 7 ya dejó.
+--
+-- No incluye el check de la fecha de nacimiento: lo crea la 9.5.
+--
+-- CÓMO CORRERLA: por pasos, y los select de a uno (el editor muestra
+-- solo el resultado de la última consulta). Cada select muestra las filas
+-- que hoy NO cumplen la regla que sigue. Si alguno devuelve filas, hay
+-- que corregirlas antes del alter de ese paso, o el alter falla.
+
+
+-- ----- Paso 0: cómo está la base hoy (solo consultas, no cambian nada) -----
+
+-- ¿Cuál es_empleado() está vigente? Con D-24 aplicada, el texto dice
+-- "= 'empleado'"; con la versión vieja, "in ('admin', 'empleado')".
+-- De paso muestra el trigger: la versión de la 9.5 contiene "at time zone".
+select proname, prosrc
+from pg_proc
+where proname in ('es_empleado', 'funciones_sin_superposicion');
+
+-- ¿Las tres políticas de la 7.1 nombran al admin con es_admin()?
+select tablename, policyname, qual, with_check
+from pg_policies
+where policyname in ('cliente lee sus compras', 'items_candy: lectura',
+                     'log: escritura admin y empleado');
+
+-- ¿Qué columnas de Usuarios y Peliculas aceptan null? Y de paso: si
+-- Peliculas tiene "visible" y ya no tiene en_cartelera ni proximamente,
+-- la sección 8 está aplicada.
+select table_name, column_name, is_nullable
+from information_schema.columns
+where table_schema = 'public'
+  and table_name in ('Usuarios', 'Peliculas');
+
+
+-- ----- Paso 1: roles separados (7.1, D-24) -----
+-- Sin esto el admin sigue pudiendo validar entradas, porque
+-- es_empleado() lo incluye. No depende de los datos: no lleva select.
+
+create or replace function public.es_empleado()
+returns boolean
+language sql
+stable
+as $$ select public.rol_actual() = 'empleado'; $$;
+
+alter policy "cliente lee sus compras"
+  on public."Compras"
+  using (usuario_id = auth.uid() or public.es_empleado() or public.es_admin());
+
+alter policy "items_candy: lectura"
+  on public."ItemsCandy"
+  using (
+    exists (
+      select 1 from public."Compras" c
+      where c.id = compra_id
+        and (c.usuario_id = auth.uid() or public.es_empleado() or public.es_admin())
+    )
+  );
+
+alter policy "log: escritura admin y empleado"
+  on public."LogActividad"
+  with check (public.es_admin() or public.es_empleado());
+
+
+-- ----- Paso 2: Usuarios (7.2 y 7.3) -----
+
+-- not null en tipo_sangre, color_ojos y dias_vacaciones
+select id, email, tipo_sangre, color_ojos, dias_vacaciones
+from public."Usuarios"
+where tipo_sangre is null or color_ojos is null or dias_vacaciones is null;
+
+-- usuarios_email_largo
+select id, email
+from public."Usuarios"
+where not (char_length(trim(email)) between 1 and 254);
+
+-- usuarios_nombre_largo y usuarios_apellido_largo
+select id, email, nombre, apellido
+from public."Usuarios"
+where not (char_length(trim(nombre)) between 2 and 50)
+   or not (char_length(trim(apellido)) between 2 and 50);
+
+-- usuarios_nombre_solo_letras y usuarios_apellido_solo_letras
+select id, email, nombre, apellido
+from public."Usuarios"
+where not (nombre   ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$')
+   or not (apellido ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$');
+
+-- usuarios_tipo_sangre_lista (ojo: es '0+' con el número cero, no 'O+')
+select id, email, tipo_sangre
+from public."Usuarios"
+where tipo_sangre not in ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-');
+
+-- usuarios_color_ojos_lista
+select id, email, color_ojos
+from public."Usuarios"
+where color_ojos not in ('Marrón', 'Negro', 'Verde', 'Azul', 'Gris', 'Otro');
+
+-- usuarios_dias_vacaciones_rango
+select id, email, dias_vacaciones
+from public."Usuarios"
+where not (dias_vacaciones between 0 and 60);
+
+alter table public."Usuarios"
+  alter column tipo_sangre     set not null,
+  alter column color_ojos      set not null,
+  alter column dias_vacaciones set not null;
+
+alter table public."Usuarios"
+  drop constraint if exists usuarios_email_largo,
+  add constraint usuarios_email_largo
+    check (char_length(trim(email)) between 1 and 254),
+
+  drop constraint if exists usuarios_nombre_largo,
+  add constraint usuarios_nombre_largo
+    check (char_length(trim(nombre)) between 2 and 50),
+  drop constraint if exists usuarios_apellido_largo,
+  add constraint usuarios_apellido_largo
+    check (char_length(trim(apellido)) between 2 and 50),
+
+  drop constraint if exists usuarios_nombre_solo_letras,
+  add constraint usuarios_nombre_solo_letras
+    check (nombre ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$'),
+  drop constraint if exists usuarios_apellido_solo_letras,
+  add constraint usuarios_apellido_solo_letras
+    check (apellido ~ '^[A-Za-zÀ-ÖØ-öø-ɏ]+([ ''-][A-Za-zÀ-ÖØ-öø-ɏ]+)*$'),
+
+  drop constraint if exists usuarios_tipo_sangre_lista,
+  add constraint usuarios_tipo_sangre_lista
+    check (tipo_sangre in ('A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-')),
+  drop constraint if exists usuarios_color_ojos_lista,
+  add constraint usuarios_color_ojos_lista
+    check (color_ojos in ('Marrón', 'Negro', 'Verde', 'Azul', 'Gris', 'Otro')),
+
+  drop constraint if exists usuarios_dias_vacaciones_rango,
+  add constraint usuarios_dias_vacaciones_rango
+    check (dias_vacaciones between 0 and 60);
+
+
+-- ----- Paso 3: Peliculas (7.2 y 7.3) -----
+
+-- not null en sinopsis, imagen_url y fecha_estreno
+select id, nombre, sinopsis, imagen_url, fecha_estreno
+from public."Peliculas"
+where sinopsis is null or imagen_url is null or fecha_estreno is null;
+
+-- peliculas_nombre_largo
+select id, nombre
+from public."Peliculas"
+where not (char_length(trim(nombre)) between 1 and 100);
+
+-- peliculas_sinopsis_largo (muestra el largo para ver cuánto falta o sobra)
+select id, nombre, char_length(trim(sinopsis)) as largo_sinopsis
+from public."Peliculas"
+where not (char_length(trim(sinopsis)) between 20 and 1000);
+
+-- peliculas_imagen_largo
+select id, nombre, imagen_url
+from public."Peliculas"
+where not (char_length(trim(imagen_url)) between 1 and 2048);
+
+-- peliculas_duracion_rango
+select id, nombre, duracion_minutos
+from public."Peliculas"
+where not (duracion_minutos between 30 and 300);
+
+-- peliculas_precio_preventa_rango
+select id, nombre, precio_preventa
+from public."Peliculas"
+where not (precio_preventa > 0 and precio_preventa <= 1000000);
+
+-- peliculas_preventa_con_precio
+select id, nombre, preventa_habilitada, precio_preventa
+from public."Peliculas"
+where preventa_habilitada and precio_preventa is null;
+
+alter table public."Peliculas"
+  alter column sinopsis      set not null,
+  alter column imagen_url    set not null,
+  alter column fecha_estreno set not null;
+
+alter table public."Peliculas"
+  drop constraint if exists peliculas_nombre_largo,
+  add constraint peliculas_nombre_largo
+    check (char_length(trim(nombre)) between 1 and 100),
+  drop constraint if exists peliculas_sinopsis_largo,
+  add constraint peliculas_sinopsis_largo
+    check (char_length(trim(sinopsis)) between 20 and 1000),
+  drop constraint if exists peliculas_imagen_largo,
+  add constraint peliculas_imagen_largo
+    check (char_length(trim(imagen_url)) between 1 and 2048),
+  drop constraint if exists peliculas_duracion_rango,
+  add constraint peliculas_duracion_rango
+    check (duracion_minutos between 30 and 300),
+  drop constraint if exists peliculas_precio_preventa_rango,
+  add constraint peliculas_precio_preventa_rango
+    check (precio_preventa > 0 and precio_preventa <= 1000000),
+  drop constraint if exists peliculas_preventa_con_precio,
+  add constraint peliculas_preventa_con_precio
+    check (not preventa_habilitada or precio_preventa is not null);
 
 
 -- ============================================================
