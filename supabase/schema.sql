@@ -1019,6 +1019,12 @@ begin
 
   -- Regla del estreno. Va primero porque no necesita mirar otras filas.
   -- El % del mensaje se reemplaza por el valor que sigue a la coma.
+  --
+  -- OJO: no sacar la palabra "estreno" de este mensaje. Las dos reglas del
+  -- trigger llegan al front con el mismo código (P0001), y el servicio
+  -- las distingue buscando esa palabra en el texto (traducirError, en
+  -- src/app/services/funciones.ts). Si cambia acá, hay que cambiarla allá.
+  -- Por lo mismo, el mensaje de superposición no tiene que contenerla.
   if new.fecha_hora < estreno then
     raise exception 'La función es anterior al estreno de la película (%).', estreno;
   end if;

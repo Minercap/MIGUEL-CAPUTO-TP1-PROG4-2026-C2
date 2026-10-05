@@ -451,6 +451,10 @@ export class Funciones {
   //     este servicio la vio libre y el momento de guardar.
   // 23514 es "violación de check": un dato no cumple una regla de la tabla.
   private traducirError(error: ErrorDeBase, generico: string): string {
+    // OJO: la regla del estreno se reconoce por la palabra "estreno" en el
+    // mensaje del raise exception (supabase/schema.sql, sección 9.4). Si se
+    // cambia ese texto en el trigger, hay que cambiar esta palabra, y al
+    // revés. El mensaje de superposición no tiene que contenerla.
     if (error.code === 'P0001' && error.message.includes('estreno')) {
       return 'Alguna función quedó antes del estreno de la película. No se guardó nada: revisá la fecha de estreno y las fechas elegidas.';
     }
