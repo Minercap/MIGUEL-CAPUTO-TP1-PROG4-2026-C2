@@ -63,9 +63,9 @@ Basados en las guías de validación de entrada de OWASP y, para contraseñas, e
 | Nombre | Obligatorio · `textoPersona` · 2 a 50 caracteres |
 | Apellido | Obligatorio · `textoPersona` · 2 a 50 caracteres |
 | Fecha de nacimiento | Obligatoria · `fecha` · no futura · no más de 120 años atrás |
-| Tipo de sangre | Obligatorio · uno de A+, A−, B+, B−, AB+, AB−, 0+, 0− |
+| Tipo de sangre | Obligatorio · uno de A+, A-, B+, B-, AB+, AB-, 0+, 0- |
 | Color de ojos | Obligatorio · uno de la lista |
-| Días de vacaciones | Obligatorio · `entero(0, 60)` **(a decidir el máximo)** |
+| Días de vacaciones | Obligatorio · `entero(0, 60)` |
 
 Sobre la contraseña: NIST pide un mínimo de 8 caracteres, recomienda no imponer reglas de
 composición y pide aceptar al menos 64. El tope de 72 es el que admite Supabase Auth. El
