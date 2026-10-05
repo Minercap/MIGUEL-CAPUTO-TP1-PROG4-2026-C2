@@ -19,6 +19,7 @@
 --      y de estreno, y fechas en hora argentina (D-28, D-29).
 --      La 9.6 vuelve a aplicar la sección 7 sobre la base viva, donde no
 --      se había corrido.
+--  10. Cartelera: vista de las películas más vendidas (D-31)
 -- ============================================================
 
 -- ============================================================
@@ -1376,6 +1377,70 @@ alter table public."Peliculas"
   drop constraint if exists peliculas_preventa_con_precio,
   add constraint peliculas_preventa_con_precio
     check (not preventa_habilitada or precio_preventa is not null);
+
+
+-- ============================================================
+-- 10. CARTELERA: LAS MÁS VENDIDAS  (R-06, decisión D-31)
+-- ============================================================
+-- La página principal muestra primero las 3 películas más vendidas. Para
+-- armar ese ranking hay que contar entradas de TODAS las compras, y la
+-- política de Compras solo deja leer las propias (y al empleado y al
+-- admin): un visitante sin sesión no puede contar nada.
+--
+-- Una vista es una consulta guardada con nombre. Desde la app se lee
+-- como una tabla, con .from('PeliculasMasVendidas'), pero no guarda
+-- datos: cada vez que se la consulta, Postgres vuelve a hacer la cuenta,
+-- así que nunca queda desactualizada (por ejemplo, tras una cancelación).
+--
+-- POR QUÉ PUEDE CONTAR LO QUE EL VISITANTE NO PUEDE LEER: una vista
+-- corre con los permisos de su dueño, que es quien la crea desde este
+-- editor, y a él RLS no lo frena. Es lo mismo que el "security definer"
+-- de rol_actual() (sección 2). No abre las compras: lo único que sale de
+-- la vista son dos columnas, la película y un total. No hay mails,
+-- montos ni códigos, y no se puede saber quién compró qué.
+--
+-- Tablas que usa:
+--   Entradas   una fila por butaca vendida: es lo que se cuenta.
+--   Compras    para quedarse solo con las pagadas (las canceladas no
+--              cuentan).
+--   Funciones  para saber de qué película es cada entrada: Entradas
+--              guarda la función, no la película.
+--
+--   join ... on    une cada fila de una tabla con la que le corresponde
+--                  de la otra: cada entrada con su compra y su función.
+--   count(*)       cuenta filas.
+--   group by       arma un grupo por película: el count cuenta dentro de
+--                  cada grupo, y sale una fila por película.
+--
+-- Una película sin entradas vendidas no aparece en la vista. Que solo
+-- cuenten las que hoy están en cartelera, y completar hasta 3 con los
+-- estrenos más recientes, lo resuelve el front (services/cartelera.ts).
+
+create view public."PeliculasMasVendidas" as
+select
+  f.pelicula_id,
+  count(*) as entradas_vendidas
+from public."Entradas" e
+join public."Compras" c on c.id = e.compra_id
+join public."Funciones" f on f.id = e.funcion_id
+where c.estado = 'pagada'
+group by f.pelicula_id;
+
+-- La lee cualquiera, con o sin sesión, igual que la cartelera (R-02).
+-- Una vista no lleva políticas de RLS: el permiso se da con grant.
+grant select on public."PeliculasMasVendidas" to anon, authenticated;
+
+-- Lo demás que lee la cartelera sin sesión ya tiene su política de
+-- lectura para anon y authenticated desde la sección 3: Peliculas,
+-- Generos, PeliculasGeneros, Funciones y Salas. No hizo falta agregar
+-- ninguna. Esta consulta lo confirma sobre la base viva: tiene que
+-- devolver una fila por cada una de las cinco tablas, con anon y
+-- authenticated en la columna roles.
+select tablename, policyname, roles, cmd
+from pg_policies
+where schemaname = 'public'
+  and cmd = 'SELECT'
+  and tablename in ('Peliculas', 'Generos', 'PeliculasGeneros', 'Funciones', 'Salas');
 
 
 -- ============================================================
