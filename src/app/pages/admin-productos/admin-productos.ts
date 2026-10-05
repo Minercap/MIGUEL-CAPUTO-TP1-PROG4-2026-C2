@@ -118,7 +118,10 @@ export class AdminProductos implements OnInit {
       this.categorias.update((prev) =>
         [...prev, creada].sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
       );
-      this.formCategoria.reset();
+      // Vacía el campo y lo deja sin tocar, para que no aparezca el error
+      // de obligatorio (D-44). Se le pasa el valor inicial: sin argumentos
+      // quedaría en null.
+      this.formCategoria.reset({ nombre: '' });
     }
   }
 
