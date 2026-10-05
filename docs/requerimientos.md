@@ -231,11 +231,6 @@ de nacimiento del comprador y se valida contra ella.
 > recortar ninguno; exigir cuenta para esas funciones habría eliminado la compra anónima
 > que el cliente pidió expresamente.
 
-> **Interpretación adoptada el 05/10 (D-39), que reemplaza a D-06.** Las películas con
-> restricción de edad (+13 o +18) **requieren cuenta para comprar**, porque la edad solo se
-> conoce de los usuarios registrados. La compra anónima sigue disponible para las películas
-> sin restricción. Ya no se pide la fecha de nacimiento en la compra anónima.
-
 ### R-26 · Aviso de acompañante adulto
 
 Toda entrada comprada para una película con restricción de edad debe aclarar que **debe ir
@@ -363,10 +358,10 @@ adelante sin cambios estructurales.
 |---|---|---|
 | D-04 | Filas J y K | Dos filas accesibles de 14 butacas. 532 butacas por sala |
 | D-05 | Cupones | Modelo único con porcentaje configurable y condición de aplicación |
-| D-06 | Edad en compra anónima | Reemplazada por D-39 el 05/10. Decía: declaración de fecha de nacimiento en el formulario cuando la función lo exige |
+| D-06 | Edad en compra anónima | Declaración de fecha de nacimiento en el formulario cuando la función lo exige |
 | D-31 | Más vendidas | Solo películas en cartelera, por entradas de compras no canceladas. Con menos de 3, se completa con los estrenos más recientes |
 | D-32 | Filtro de géneros | Con varios géneros elegidos, la película tiene que tenerlos todos |
-| D-39 | Edad en la compra | Las películas con restricción requieren cuenta. Toda entrada de esas películas lleva la leyenda del adulto |
+| D-39 | Leyenda del adulto | Toda entrada de una película con restricción lleva la leyenda "Debe asistir acompañado por un adulto" |
 | D-39 | Venta y preventa | Abre 7 días antes del estreno con preventa, o el día del estreno sin ella. En preventa, comunes y accesibles a precio de preventa; VIP a precio VIP |
 | D-39 | Butacas accesibles | Al precio base |
 

@@ -134,12 +134,6 @@ restricción de edad. Es más confiable, porque la fecha ya está validada en el
 pero se descarta porque elimina la compra anónima para esas funciones, que el cliente
 pidió expresamente en el mail del 01/01.
 
-**Reemplazada el 05/10 (D-39):** las películas con restricción de edad pasan a requerir
-cuenta para comprar, porque la edad solo se conoce de los usuarios registrados: una fecha
-declarada en el momento no se puede verificar. La compra anónima sigue existiendo para las
-películas sin restricción. La columna `fecha_nacimiento_declarada` de `Compras` queda sin
-uso.
-
 **Requisito:** R-25. Se relaciona con R-02 (compra anónima) y R-26 (aviso de acompañante
 adulto).
 
@@ -1015,9 +1009,15 @@ para el comprador. Llegan al front con el código `P0001` y el servicio muestra 
   estreno si no. En hora argentina (R-11).
 - En preventa, las butacas comunes y accesibles salen a `precio_preventa`; las VIP
   mantienen `precio_vip`. Las accesibles valen lo mismo que las comunes.
-- Las películas con restricción de edad requieren cuenta: la edad sale de la fecha de
-  nacimiento del perfil. **Esto reemplaza a D-06.**
+- Edad (R-25, D-06): si la película tiene restricción, la edad se calcula con la fecha de
+  nacimiento del perfil cuando hay sesión, y con la que el comprador declara cuando no la
+  hay. La fecha declarada se valida con la misma regla que la del registro (no futura y no
+  más de 120 años atrás, en hora argentina) y se guarda en `fecha_nacimiento_declarada`.
+- Toda entrada de una película con restricción lleva la leyenda "Debe asistir acompañado
+  por un adulto" (R-26, mail 12/02).
+- La película tiene que ser visible: una oculta se puede leer, pero no está ofrecida
+  (D-34), así que no se le venden entradas.
 - De 1 a 10 butacas por compra, válidas según la distribución de la sala (D-04).
 
 **Clase de origen:** función de Postgres 🟡 (D-25, aprobado por la cátedra) + `rpc()` 🟡.
-**Requisito:** integridad de la compra (R-20, R-25, R-11, R-14).
+**Requisito:** integridad de la compra (R-20, R-25, R-26, R-11, R-14). Se apoya en D-06.
