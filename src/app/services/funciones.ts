@@ -44,6 +44,13 @@ interface Asignacion {
   sala: Sala;
 }
 
+// Lo que se usa del error que devuelve Supabase: el código de Postgres y
+// el texto, que en un "raise exception" es el que escribió el trigger.
+interface ErrorDeBase {
+  code: string;
+  message: string;
+}
+
 // Lo que hace falta leer antes de asignar salas o de armar un texto.
 interface PeliculasYSalas {
   peliculas: Pelicula[];
@@ -179,7 +186,7 @@ export class Funciones {
     // salen los ids para el log (D-18).
     const { data, error } = await this.sup.Sup.from('Funciones').insert(filas).select();
     if (error) {
-      return this.fallo(this.traducirError(error.code, 'No se pudieron crear las funciones.'));
+      return this.fallo(this.traducirError(error, 'No se pudieron crear las funciones.'));
     }
     const creadas: Funcion[] = data;
     creadas.sort((a, b) => this.enMs(a.fecha_hora) - this.enMs(b.fecha_hora));
@@ -261,7 +268,7 @@ export class Funciones {
 
     const { error } = await this.sup.Sup.from('Funciones').update(cambios).eq('id', original.id);
     if (error) {
-      return this.fallo(this.traducirError(error.code, 'No se pudieron guardar los cambios.'));
+      return this.fallo(this.traducirError(error, 'No se pudieron guardar los cambios.'));
     }
 
     const asignada: FuncionAsignada = {
@@ -434,15 +441,23 @@ export class Funciones {
   }
 
   // P0001 es el código con el que llega un "raise exception" de Postgres:
-  // el trigger funciones_sin_superposicion rechazó la fila (D-29). Pasa si
-  // otro admin cargó una función en esa sala entre que este servicio la vio
-  // libre y el momento de guardar.
+  // el trigger funciones_sin_superposicion rechazó la fila (D-29). Tiene
+  // dos reglas, y las dos llegan con el mismo código: se distinguen por el
+  // texto que escribe el trigger (supabase/schema.sql, sección 9.4).
+  //   - Estreno: la función es anterior al estreno de la película. Este
+  //     servicio ya lo controla antes; llega acá solo si el estreno cambió
+  //     en el medio.
+  //   - Superposición: otro admin cargó una función en esa sala entre que
+  //     este servicio la vio libre y el momento de guardar.
   // 23514 es "violación de check": un dato no cumple una regla de la tabla.
-  private traducirError(codigo: string, generico: string): string {
-    if (codigo === 'P0001') {
+  private traducirError(error: ErrorDeBase, generico: string): string {
+    if (error.code === 'P0001' && error.message.includes('estreno')) {
+      return 'Alguna función quedó antes del estreno de la película. No se guardó nada: revisá la fecha de estreno y las fechas elegidas.';
+    }
+    if (error.code === 'P0001') {
       return 'Otra función ocupó esa sala en ese horario mientras cargabas. No se guardó nada: volvé a guardar para que se asigne otra sala.';
     }
-    if (codigo === '23514') {
+    if (error.code === '23514') {
       return 'Los datos de la función no cumplen las reglas de la base. Revisá los precios: el VIP tiene que ser mayor que el base.';
     }
     return generico;

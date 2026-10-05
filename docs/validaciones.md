@@ -93,7 +93,7 @@ dos falló.
 | Duración | Obligatoria · `entero(30, 300)` minutos · en la edición no se puede cambiar si la película tiene funciones futuras (D-29) |
 | Géneros | Al menos 1 · como máximo 4 |
 | Restricción de edad | Obligatoria · ninguna, 13 o 18 |
-| Estreno en Olympia Cinema | Obligatoria · `fecha` · entre 1 año atrás y 1 año adelante. El rango se exige en el alta; en la edición, solo si se cambió la fecha (D-26) |
+| Estreno en Olympia Cinema | Obligatoria · `fecha` · entre 1 año atrás y 1 año adelante. El rango se exige en el alta; en la edición, solo si se cambió la fecha (D-26) · no puede ser posterior a la primera función futura de la película (D-29) |
 | Visible | Sí o no. Si es visible, aparece en Próximamente mientras el estreno sea futuro y en cartelera desde el día del estreno: el estado sale de la fecha, no se elige (D-27) |
 | Preventa habilitada | Solo si la fecha de estreno es futura. Se exige al habilitarla; si la película ya la tenía habilitada, la edición no la bloquea (D-26) |
 | Precio de preventa | Obligatorio si hay preventa · `precio` |

@@ -13,6 +13,7 @@ import { CampoFecha } from '../../components/campo-fecha/campo-fecha';
 import {
   armarFecha,
   cantidadMarcados,
+  diaParaMostrar,
   entero,
   fechaATexto,
   fechaReal,
@@ -62,10 +63,12 @@ export class AdminPeliculaFormulario implements OnInit {
   // El input de archivo no tiene "touched" porque no está atado al
   // formulario: se anota acá si ya se usó, para mostrar su error recién ahí.
   posterTocado = signal(false);
-  // En la edición, si la película tiene funciones que todavía no empezaron,
-  // la duración no se puede cambiar: las salas se asignaron contando con
-  // esa duración, y con otra las funciones podrían superponerse (D-29).
-  duracionBloqueada = signal(false);
+  // En la edición, el inicio de la primera función de la película que
+  // todavía no empezó; null si no tiene ninguna. Mientras haya una (D-29):
+  //   - la duración no se puede cambiar: las salas se asignaron contando
+  //     con esa duración, y con otra las funciones podrían superponerse;
+  //   - el estreno no puede pasar a ser posterior a esa función.
+  primeraFuncion = signal<Date | null>(null);
 
   // Los valores del select de restricción. El select trabaja con texto y se
   // convierte a número (o null) recién al guardar. "Ninguna" es una opción
@@ -106,7 +109,7 @@ export class AdminPeliculaFormulario implements OnInit {
           anio: ['', [Validators.required]],
         },
         {
-          validators: [fechaReal(), this.estrenoEnRango()],
+          validators: [fechaReal(), this.estrenoEnRango(), this.estrenoNoPosteriorAFunciones()],
         },
       ),
       // Si aparece en el sitio. Dónde aparece lo dice la fecha de estreno:
@@ -155,6 +158,21 @@ export class AdminPeliculaFormulario implements OnInit {
       if (fechaATexto(grupo.value) === this.estrenoOriginal) return null;
       if (estreno < this.estrenoMinimo) return { fechaMinima: true };
       return estreno > this.estrenoMaximo ? { fechaMaxima: true } : null;
+    };
+  }
+
+  // Validador del grupo { dia, mes, anio }: si la película tiene funciones
+  // futuras, el estreno no puede ser posterior a la primera, porque
+  // quedarían funciones antes del estreno (D-29). El estreno se arma a las
+  // 00:00, así que el mismo día de la función todavía es válido.
+  // El error lleva el día de esa función ya escrito, para el mensaje. Es un
+  // método del componente porque necesita leer primeraFuncion.
+  estrenoNoPosteriorAFunciones(): ValidatorFn {
+    return (grupo: AbstractControl) => {
+      const estreno = armarFecha(grupo.value);
+      const primera = this.primeraFuncion();
+      if (estreno === null || primera === null) return null;
+      return estreno > primera ? { estrenoPosteriorAFuncion: diaParaMostrar(primera) } : null;
     };
   }
 
@@ -236,14 +254,16 @@ export class AdminPeliculaFormulario implements OnInit {
       }
       const pelicula = resultado.datos;
 
-      // Con funciones futuras, la duración no se puede cambiar (D-29).
-      const futuras = await this.peliculasSrv.tieneFuncionesFuturas(this.id);
-      if (futuras.error) {
-        this.errorCarga.set(futuras.error);
+      // Con funciones futuras, la duración no se puede cambiar y el estreno
+      // tiene un tope (D-29). Se anota antes de cargar el formulario, igual
+      // que los valores originales: el validador del estreno lo lee.
+      const primera = await this.peliculasSrv.primeraFuncionFutura(this.id);
+      if (primera.error) {
+        this.errorCarga.set(primera.error);
         this.cargando.set(false);
         return;
       }
-      this.duracionBloqueada.set(futuras.datos === true);
+      this.primeraFuncion.set(primera.datos);
 
       // Lo que ya estaba guardado se anota antes de cargar el formulario:
       // los validadores lo leen, y patchValue vuelve a validar.

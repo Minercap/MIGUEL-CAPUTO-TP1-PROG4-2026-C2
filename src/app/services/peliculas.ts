@@ -9,7 +9,9 @@ import {
   PeliculaPorCrear,
   PeliculaPorModificar,
 } from '../interfaces/pelicula';
+import { Funcion } from '../interfaces/funcion';
 import { Resultado, ResultadoAccion } from '../interfaces/resultado';
+import { armarFecha, diaParaMostrar, textoAFecha } from '../validadores/validadores';
 
 // ABM de películas del admin (R-34), con el CRUD de la clase 6 y el Storage
 // de la clase 7. Ningún método muestra nada: todos devuelven el error ya
@@ -105,10 +107,11 @@ export class Peliculas {
     pelicula: PeliculaPorModificar,
     generosIds: number[],
   ): Promise<ResultadoAccion> {
-    // El formulario ya deshabilita la duración si hay funciones futuras; se
-    // vuelve a controlar acá porque el formulario se puede saltear.
-    const errorDuracion = await this.errorPorDuracion(id, pelicula.duracion_minutos);
-    if (errorDuracion) return { hecho: false, error: errorDuracion };
+    // Con funciones futuras, el formulario ya deshabilita la duración y
+    // valida el estreno; se vuelve a controlar acá porque el formulario se
+    // puede saltear.
+    const errorFunciones = await this.errorPorFuncionesFuturas(id, pelicula);
+    if (errorFunciones) return { hecho: false, error: errorFunciones };
 
     const { error } = await this.sup.Sup.from('Peliculas').update(pelicula).eq('id', id);
     if (error) return { hecho: false, error: 'No se pudieron guardar los cambios.' };
@@ -184,38 +187,59 @@ export class Peliculas {
     return { datos: data.publicUrl, error: null };
   }
 
-  // Dice si la película tiene funciones que todavía no empezaron. Con
-  // funciones futuras no se le puede cambiar la duración (D-29): la sala de
-  // cada función se asignó contando con esa duración, y con otra podrían
-  // quedar superpuestas sin que el trigger lo note, porque el trigger mira
-  // Funciones y no Peliculas.
-  async tieneFuncionesFuturas(id: number): Promise<Resultado<boolean>> {
+  // El inicio de la primera función de la película que todavía no empezó,
+  // o null en datos si no tiene ninguna. Mientras tenga funciones futuras,
+  // hay dos datos de la película que no se pueden tocar libremente (D-29):
+  //   - La duración: la sala de cada función se asignó contando con ella, y
+  //     con otra podrían quedar superpuestas. El trigger no lo notaría,
+  //     porque mira Funciones y no Peliculas.
+  //   - El estreno: no puede pasar a ser posterior a esa primera función,
+  //     porque quedarían funciones antes del estreno.
+  async primeraFuncionFutura(id: number): Promise<Resultado<Date | null>> {
     // .gte() es "mayor o igual" (D-29): las funciones de esta película que
     // empiezan de ahora en adelante.
     const { data, error } = await this.sup.Sup.from('Funciones')
-      .select('id')
+      .select('*')
       .eq('pelicula_id', id)
       .gte('fecha_hora', new Date().toISOString());
     if (error) {
       return { datos: null, error: 'No se pudieron consultar las funciones de la película.' };
     }
-    return { datos: data.length > 0, error: null };
+    const filas: Funcion[] = data;
+    if (filas.length === 0) return { datos: null, error: null };
+
+    // new Date() pasa cada texto de Postgres a un instante, y getTime() lo
+    // da en milisegundos: Math.min se queda con el más chico, el primero.
+    const inicios = filas.map((fila) => new Date(fila.fecha_hora).getTime());
+    return { datos: new Date(Math.min(...inicios)), error: null };
   }
 
-  // El control de la duración al modificar: devuelve el mensaje si se la
-  // quiere cambiar y la película tiene funciones futuras, o null si se
-  // puede guardar.
-  private async errorPorDuracion(id: number, duracionNueva: number): Promise<string | null> {
+  // Los dos controles de modificar() cuando la película tiene funciones
+  // futuras. Devuelve el mensaje de lo que no se puede guardar, o null si
+  // está todo bien.
+  private async errorPorFuncionesFuturas(
+    id: number,
+    pelicula: PeliculaPorModificar,
+  ): Promise<string | null> {
+    const primera = await this.primeraFuncionFutura(id);
+    if (primera.error) return primera.error;
+    if (primera.datos === null) return null;
+
+    // El estreno queda a las 00:00 de acá: solo es posterior a la función
+    // si cae en un día que viene después del de la función.
+    const estreno = armarFecha(textoAFecha(pelicula.fecha_estreno));
+    if (estreno !== null && estreno > primera.datos) {
+      return `El estreno no puede ser posterior a la primera función que la película tiene cargada, el ${diaParaMostrar(primera.datos)}. Borrá o reprogramá esa función primero.`;
+    }
+
+    // Para saber si la duración cambió hay que leer la que está guardada.
     const { data, error } = await this.sup.Sup.from('Peliculas').select('*').eq('id', id).single();
     if (error) return 'No se pudieron guardar los cambios.';
     const actual: Pelicula = data;
-    if (actual.duracion_minutos === duracionNueva) return null;
-
-    const futuras = await this.tieneFuncionesFuturas(id);
-    if (futuras.error) return futuras.error;
-    return futuras.datos
-      ? 'No se puede cambiar la duración: la película tiene funciones futuras y podrían quedar superpuestas. Borrá o reprogramá esas funciones primero.'
-      : null;
+    if (actual.duracion_minutos !== pelicula.duracion_minutos) {
+      return 'No se puede cambiar la duración: la película tiene funciones futuras y podrían quedar superpuestas. Borrá o reprogramá esas funciones primero.';
+    }
+    return null;
   }
 
   // Inserta una fila en PeliculasGeneros por cada género marcado.

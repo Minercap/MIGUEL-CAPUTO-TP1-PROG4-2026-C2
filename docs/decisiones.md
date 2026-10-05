@@ -765,6 +765,23 @@ tiene funciones futuras, el campo duración queda deshabilitado con un mensaje q
 explica, y `modificar()` del servicio de películas rechaza el cambio aunque se saltee el
 formulario. Para cambiarla hay que borrar o reprogramar antes esas funciones.
 
+**Ninguna función antes del estreno · 05/10:** el mismo trigger rechaza también la función
+que es anterior al estreno de su película (sección 9.4 de `schema.sql`), con su propio
+mensaje. Las dos reglas llegan al front con el código `P0001`; el servicio las distingue por
+el texto del mensaje y muestra uno distinto para cada una. La regla ya estaba en el
+formulario y en el servicio: se suma a la base porque el front se puede saltear. La
+preventa adelanta la venta, no las funciones.
+
+El trigger está en `Funciones`, así que no ve cuando lo que cambia es la película. Ese lado
+lo cierra la edición de película: no deja poner un estreno posterior a la primera función
+futura, ni desde el formulario ni desde `modificar()`, y el mensaje dice la fecha de esa
+función.
+
+**Límite conocido:** `fecha_estreno` es un `date` y el servidor está en UTC, así que la
+base toma el estreno desde las 21:00 del día anterior en Argentina. Deja pasar una función
+de la víspera del estreno desde esa hora, que el formulario sí rechaza; nunca rechaza una
+función válida. Es el mismo efecto que D-25 anota para la fecha de nacimiento.
+
 **Clase de origen:** 6 + trigger 🟡 (D-25, aprobado por la cátedra). **Requisito:** funciones
 sin superposición (R-17, R-18, R-19).
 

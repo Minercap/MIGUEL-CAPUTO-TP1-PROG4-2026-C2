@@ -979,6 +979,73 @@ create trigger funciones_sin_superposicion
 -- película que ya tiene funciones podría dejarlas superpuestas. Eso lo
 -- cierra la app: con funciones futuras, la edición de película no deja
 -- cambiar la duración, ni desde el formulario ni desde el servicio (D-29).
+--
+-- OJO: la función se redefine en la sección 9.4 para sumarle la regla
+-- del estreno. La de acá es la versión original.
+
+
+-- ---------- 9.4 Ninguna función antes del estreno (D-29) ----------
+-- Una función no puede ser anterior al estreno de su película en el cine
+-- (docs/validaciones.md, 3.5). La preventa adelanta la venta, no las
+-- funciones. El formulario y el servicio ya lo validan; se suma acá por
+-- lo mismo que la superposición: el front se puede saltear.
+--
+-- "create or replace" reemplaza el cuerpo de la función sin borrarla,
+-- así que el trigger de la 9.3 sigue en pie y toma la regla nueva sin
+-- tocarlo (igual que es_empleado() en la 7.1). Es la función entera otra
+-- vez, con tres cambios: la variable estreno, el select que ahora trae
+-- dos columnas, y el primer if.
+--
+-- Límite conocido: fecha_estreno es un date, sin hora, y para compararlo
+-- con fecha_hora Postgres lo toma a las 00:00 del servidor, que está en
+-- UTC. En Argentina eso son las 21:00 del día anterior. Entonces la base
+-- deja pasar una función de las 21:00 en adelante de la víspera del
+-- estreno, que el formulario sí rechaza. Nunca rechaza una función
+-- válida (mismo criterio que la fecha de nacimiento, D-25).
+
+create or replace function public.funciones_sin_superposicion()
+returns trigger
+language plpgsql
+as $$
+declare
+  duracion_nueva  int;   -- minutos que dura la película de la fila nueva
+  estreno         date;  -- su estreno en el cine
+  superpuestas    int;   -- cuántas funciones de esa sala chocan con ella
+begin
+  -- "select a, b into x, y" guarda cada columna en su variable.
+  select duracion_minutos, fecha_estreno into duracion_nueva, estreno
+  from public."Peliculas"
+  where id = new.pelicula_id;
+
+  -- Regla del estreno. Va primero porque no necesita mirar otras filas.
+  -- El % del mensaje se reemplaza por el valor que sigue a la coma.
+  if new.fecha_hora < estreno then
+    raise exception 'La función es anterior al estreno de la película (%).', estreno;
+  end if;
+
+  -- De acá en adelante es la regla de superposición, igual que en la 9.3.
+  perform pg_advisory_xact_lock(new.sala_id);
+
+  select count(*) into superpuestas
+  from public."Funciones" f
+  join public."Peliculas" p on p.id = f.pelicula_id
+  where f.sala_id = new.sala_id
+    and f.id <> new.id
+    and new.fecha_hora < f.fecha_hora + (p.duracion_minutos + 30) * interval '1 minute'
+    and f.fecha_hora < new.fecha_hora + (duracion_nueva + 30) * interval '1 minute';
+
+  if superpuestas > 0 then
+    raise exception 'La sala ya tiene otra función en ese horario, o a menos de 30 minutos (R-18, R-19).';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Lo que esta regla NO cubre: el trigger está en Funciones. Si se corre
+-- el estreno de una película para después de una función ya cargada, la
+-- base no lo nota. Eso lo cierra la app: la edición de película no deja
+-- poner un estreno posterior a su primera función futura (D-29).
 
 
 -- ============================================================

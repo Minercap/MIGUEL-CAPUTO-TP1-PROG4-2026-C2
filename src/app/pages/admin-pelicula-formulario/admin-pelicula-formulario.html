@@ -37,7 +37,7 @@
     }
 
     <label for="duracion_minutos">Duración (minutos)</label>
-    @if (duracionBloqueada()) {
+    @if (primeraFuncion()) {
       <!-- Con funciones futuras la duración no se puede cambiar (D-29). Este
            input no está atado al formulario: solo muestra el valor, y el
            control conserva el que tenía la película. -->
@@ -93,6 +93,15 @@
       <small>
         Fecha en que la película empieza a proyectarse en el cine, no la de su estreno original.
       </small>
+      <!-- No espera al touched: si la película ya está así al abrir la
+           edición, el botón Guardar queda deshabilitado y hay que decir por
+           qué. El error trae el día de la función ya escrito (D-29). -->
+      @if (fechaEstreno.errors?.['estrenoPosteriorAFuncion']; as dia) {
+        <small class="error">
+          El estreno no puede ser posterior a la primera función que la película tiene cargada,
+          el {{ dia }}. Para estrenarla después, borrá o reprogramá primero esa función.
+        </small>
+      }
       @if (fechaEstreno.touched) {
         @if (fechaEstreno.errors?.['fechaImposible']) {
           <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>

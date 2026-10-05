@@ -309,6 +309,14 @@ export function fechaParaMostrar(texto: string): string {
   return `${dia}/${mes}/${anio}`;
 }
 
+// Lo mismo a partir de un Date: su día, en la hora de acá, como
+// 'DD/MM/AAAA'. Los meses de Date van de 0 a 11, por eso el + 1.
+export function diaParaMostrar(fecha: Date): string {
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  return `${dia}/${mes}/${fecha.getFullYear()}`;
+}
+
 // El camino inverso, para cargar un formulario de edición: de 'AAAA-MM-DD'
 // a las tres partes. Number saca los ceros de adelante ('05' pasa a '5').
 export function textoAFecha(texto: string): FechaPartes {
