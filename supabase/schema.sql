@@ -2021,7 +2021,7 @@ alter table public."ProductosCandy"
     check (char_length(trim(nombre)) between 2 and 60),
   add constraint productos_candy_precio_rango
     check (precio > 0 and precio <= 1000000),
-  -- Check cruzado: solo un combo puede incluir entrada.
+  -- Check cruzado: solo los combos pueden incluir entrada.
   -- "not A or B" se lee "si A, entonces B" (sección 7.3).
   add constraint productos_candy_entrada_solo_combo
     check (not incluye_entrada or es_combo);
