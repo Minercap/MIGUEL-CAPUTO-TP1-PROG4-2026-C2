@@ -56,15 +56,27 @@
       <ul class="horarios">
         @for (funcion of funcionesDelDia(); track funcion.id) {
           <li>
-            <a class="horario" [routerLink]="['/compra', funcion.id]">
-              <strong>
-                {{ funcion.fecha_hora | date: 'HH:mm' : '-0300' }} · {{ funcion.formato }} ·
-                {{ funcion.idioma | titlecase }}
-              </strong>
-              <span class="precios">
-                Base ${{ funcion.precio_base }} · VIP ${{ funcion.precio_vip }}
-              </span>
-            </a>
+            @if (ventaDesde(); as desde) {
+              <!-- La venta todavía no abrió (R-11): el horario se ve, pero
+                   no es un link y no lleva a la compra. -->
+              <div class="horario sin-venta">
+                <strong>
+                  {{ funcion.fecha_hora | date: 'HH:mm' : '-0300' }} · {{ funcion.formato }} ·
+                  {{ funcion.idioma | titlecase }}
+                </strong>
+                <span class="precios">Venta desde {{ desde }}</span>
+              </div>
+            } @else {
+              <a class="horario" [routerLink]="['/compra', funcion.id]">
+                <strong>
+                  {{ funcion.fecha_hora | date: 'HH:mm' : '-0300' }} · {{ funcion.formato }} ·
+                  {{ funcion.idioma | titlecase }}
+                </strong>
+                <span class="precios">
+                  Base ${{ funcion.precio_base }} · VIP ${{ funcion.precio_vip }}
+                </span>
+              </a>
+            }
           </li>
         }
       </ul>

@@ -1,5 +1,116 @@
-<p><a routerLink="/">← Cartelera</a></p>
+@if (cargando()) {
+  <p>Cargando la función…</p>
+} @else if (error()) {
+  <p><a routerLink="/">← Cartelera</a></p>
+  <p class="error" role="alert">{{ error() }}</p>
+} @else if (datos(); as d) {
+  <p><a [routerLink]="['/pelicula', d.pelicula.id]">← {{ d.pelicula.nombre }}</a></p>
 
-<h1>Compra de entradas</h1>
-<p>Función n.º {{ funcionId }}</p>
-<p>La compra de entradas está en construcción.</p>
+  <!-- Encabezado: qué se está comprando. Las fechas van con '-0300' para
+       que se vean siempre en hora argentina (D-35). -->
+  <header class="encabezado">
+    <h1>{{ d.pelicula.nombre }}</h1>
+    <p class="funcion">
+      {{ d.funcion.fecha_hora | date: 'dd/MM/yyyy' : '-0300' }} ·
+      {{ d.funcion.fecha_hora | date: 'HH:mm' : '-0300' }} hs · {{ d.sala_nombre }} ·
+      {{ d.funcion.formato }} · {{ d.funcion.idioma | titlecase }}
+    </p>
+    @if (d.pelicula.restriccion_edad) {
+      <p class="aviso-edad">
+        Película para mayores de {{ d.pelicula.restriccion_edad }} años. Debe asistir acompañado
+        por un adulto.
+      </p>
+    }
+  </header>
+
+  @if (motivoSinVenta()) {
+    <!-- No se puede comprar: el motivo va en lugar del mapa. -->
+    <p class="sin-venta" role="alert">{{ motivoSinVenta() }}</p>
+  } @else {
+    <section class="mapa">
+      <h2>Elegí tus butacas</h2>
+
+      <!-- Qué significa cada color. Los cuadraditos usan las mismas clases
+           que las butacas del mapa. -->
+      <ul class="leyenda">
+        <li><span class="butaca muestra"></span> Libre</li>
+        <li><span class="butaca muestra elegida"></span> Elegida</li>
+        <li><span class="butaca muestra ocupada"></span> Ocupada</li>
+        <li><span class="butaca muestra vip"></span> VIP</li>
+        <li><span class="butaca muestra accesible"></span> Accesible</li>
+      </ul>
+
+      <!-- La sala es más ancha que un celular: este contenedor se desliza
+           hacia los costados. -->
+      <div class="sala">
+        <div class="pantalla">Pantalla</div>
+
+        <!-- 20 filas, de la A a la T. Cada una: su letra, sus tres bloques
+             de butacas (los espacios entre bloques son los pasillos) y la
+             letra de nuevo. -->
+        @for (fila of sala; track fila.letra) {
+          <div class="fila">
+            <span class="letra">{{ fila.letra }}</span>
+
+            @for (bloque of fila.bloques; track $index) {
+              <div class="bloque">
+                @for (butaca of bloque; track butaca.numero) {
+                  <!-- Cada butaca es un botón. Las clases se prenden según
+                       su estado con [class.x] (clase 8). Una ocupada queda
+                       deshabilitada: no se puede tocar. -->
+                  <button
+                    type="button"
+                    class="butaca"
+                    [class.vip]="butaca.es_vip"
+                    [class.accesible]="butaca.es_accesible"
+                    [class.ocupada]="estaOcupada(butaca)"
+                    [class.elegida]="estaElegida(butaca)"
+                    [disabled]="estaOcupada(butaca)"
+                    [title]="'Fila ' + butaca.fila + ', butaca ' + butaca.numero"
+                    (click)="alternar(butaca)"
+                  >
+                    {{ butaca.numero }}
+                  </button>
+                }
+              </div>
+            }
+
+            <span class="letra">{{ fila.letra }}</span>
+          </div>
+        }
+      </div>
+    </section>
+
+    @if (aviso()) {
+      <p class="error" role="alert">{{ aviso() }}</p>
+    }
+
+    <!-- Resumen: cada butaca con su precio. Si es VIP se dice con todas las
+         letras, antes de pagar (R-14, mail 10/03). -->
+    <section class="resumen">
+      <h2>Tu selección</h2>
+      <ul>
+        @for (elegida of elegidas(); track elegida.fila + '-' + elegida.numero) {
+          <li>
+            <span>
+              Fila {{ elegida.fila }}, butaca {{ elegida.numero }}
+              @if (elegida.es_vip) {
+                <strong class="marca-vip">Butaca VIP</strong>
+              }
+              @if (elegida.es_accesible) {
+                <span class="marca">Accesible</span>
+              }
+            </span>
+            <span>${{ elegida.precio }}</span>
+          </li>
+        } @empty {
+          <li>Todavía no elegiste ninguna butaca. Podés elegir hasta {{ maximo }}.</li>
+        }
+      </ul>
+      <p class="total">
+        <span>Total ({{ elegidas().length }} de {{ maximo }} butacas)</span>
+        <strong>${{ total() }}</strong>
+      </p>
+    </section>
+  }
+}

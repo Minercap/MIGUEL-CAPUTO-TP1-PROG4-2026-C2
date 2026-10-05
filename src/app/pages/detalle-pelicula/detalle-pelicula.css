@@ -104,6 +104,13 @@ h2 {
   text-decoration: none;
 }
 
+/* Horario que todavía no se vende: apagado, y no es un link. */
+.sin-venta {
+  border-style: dashed;
+  border-color: var(--color-texto-suave);
+  color: var(--color-texto-suave);
+}
+
 .precios {
   color: var(--color-texto-suave);
   font-size: 0.9rem;

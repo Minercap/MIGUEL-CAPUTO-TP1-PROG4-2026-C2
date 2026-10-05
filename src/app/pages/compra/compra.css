@@ -1,4 +1,167 @@
-/* Sin colores sueltos: salen de las variables de :root (D-33). */
-h1 {
+/* Solo estructura. Todos los colores y las fuentes salen de las variables
+   de :root (src/styles.css, D-33): acá no hay ningún color suelto. El
+   diseño final se trabaja aparte. */
+
+h1,
+h2 {
   font-family: var(--fuente-titulos);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.encabezado h1 {
+  margin-bottom: 0.25rem;
+}
+
+.funcion {
+  margin-top: 0;
+  color: var(--color-texto-suave);
+}
+
+.aviso-edad,
+.sin-venta {
+  padding: 0.75rem;
+  border-left: 0.25rem solid var(--color-acento-rojo);
+  background: var(--color-superficie);
+}
+
+/* ---------- Mapa ---------- */
+
+.leyenda {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  padding: 0;
+  list-style: none;
+}
+
+.leyenda li {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* La sala se desliza hacia los costados si no entra en la pantalla. */
+.sala {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+/* min-width: max-content hace que la pantalla y las filas midan lo que
+   mide la fila más ancha, aunque el contenedor sea más angosto. Así las
+   filas no se parten en dos renglones. */
+.pantalla,
+.fila {
+  min-width: max-content;
+}
+
+.pantalla {
+  margin-bottom: 1.5rem;
+  padding: 0.25rem;
+  border-bottom: 0.25rem solid var(--color-texto);
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+
+/* Una fila: letra, tres bloques y letra, centrados. El espacio entre
+   bloques (gap) es el pasillo. Como las filas J y K tienen menos butacas,
+   quedan más angostas y centradas. */
+.fila {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 1.25rem;
+  margin-bottom: 0.25rem;
+}
+
+.letra {
+  width: 1.25rem;
+  color: var(--color-texto-suave);
+  text-align: center;
+}
+
+.bloque {
+  display: flex;
+  gap: 0.2rem;
+}
+
+/* Butaca libre. */
+.butaca {
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.3rem 0.3rem 0.1rem 0.1rem;
+  background: transparent;
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  font-size: 0.65rem;
+  cursor: pointer;
+}
+
+/* VIP y accesible se distinguen por el borde, así se siguen viendo cuando
+   la butaca además está elegida u ocupada. */
+.vip {
+  border: 2px solid var(--color-acento-dorado);
+}
+
+.accesible {
+  border: 2px solid var(--color-acento-rojo);
+}
+
+.elegida {
+  background: var(--color-texto);
+  color: var(--color-fondo);
+  font-weight: bold;
+}
+
+.ocupada {
+  background: var(--color-superficie);
+  color: var(--color-superficie);
+  border-style: dashed;
+  cursor: not-allowed;
+}
+
+/* Los cuadraditos de la leyenda no son botones: no se tocan. */
+.muestra {
+  display: inline-block;
+  cursor: default;
+}
+
+/* ---------- Resumen ---------- */
+
+.resumen {
+  max-width: 32rem;
+}
+
+.resumen ul {
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada renglón: la butaca a la izquierda y el precio a la derecha. */
+.resumen li,
+.total {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--color-superficie);
+}
+
+.marca-vip {
+  margin-left: 0.5rem;
+  color: var(--color-acento-dorado);
+}
+
+.marca {
+  margin-left: 0.5rem;
+  color: var(--color-texto-suave);
+}
+
+.total {
+  border-bottom: none;
+  font-size: 1.1rem;
 }

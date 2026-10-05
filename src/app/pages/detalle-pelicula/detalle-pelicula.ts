@@ -2,6 +2,8 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Cartelera } from '../../services/cartelera';
+import { Compras } from '../../services/compras';
+import { diaParaMostrar } from '../../validadores/validadores';
 import { DiaDeFunciones, PeliculaDeCartelera } from '../../interfaces/cartelera';
 import { Funcion } from '../../interfaces/funcion';
 
@@ -24,6 +26,7 @@ const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 })
 export class DetallePelicula implements OnInit {
   private carteleraSrv = inject(Cartelera);
+  private comprasSrv = inject(Compras);
   private ruta = inject(ActivatedRoute);
 
   // El :id de /pelicula/:id (D-20). No es un signal porque no cambia
@@ -35,6 +38,9 @@ export class DetallePelicula implements OnInit {
   error = signal<string | null>(null); // no se pudo cargar la película
   errorFunciones = signal<string | null>(null); // falló solo ese bloque
   pelicula = signal<PeliculaDeCartelera | null>(null);
+  // Si la venta de la película todavía no abrió, el día en que abre, como
+  // 'DD/MM'. null = ya se venden entradas.
+  ventaDesde = signal<string | null>(null);
 
   // Las funciones futuras, agrupadas por día, y la clave del día elegido.
   dias = signal<DiaDeFunciones[]>([]);
@@ -51,6 +57,15 @@ export class DetallePelicula implements OnInit {
       return;
     }
     this.pelicula.set(resultado.datos);
+
+    // Si la venta todavía no abrió (R-11), los horarios se muestran pero
+    // no llevan a la compra: dicen desde cuándo se vende. La regla es de
+    // la película, así que vale para todos sus horarios.
+    if (!this.comprasSrv.ventaAbierta(resultado.datos)) {
+      const inicio = this.comprasSrv.inicioDeVenta(resultado.datos);
+      // De 'DD/MM/AAAA' quedan los primeros cinco caracteres: 'DD/MM'.
+      this.ventaDesde.set(diaParaMostrar(inicio).slice(0, 5));
+    }
 
     // Si fallan las funciones, la película se muestra igual: se avisa en
     // ese bloque.
