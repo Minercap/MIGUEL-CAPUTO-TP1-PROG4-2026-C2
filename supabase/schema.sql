@@ -879,6 +879,107 @@ alter table public."Salas"
     unique (nombre);
 
 
+-- ---------- 9.2 Funciones: precios (docs/validaciones.md, 3.5; D-28) ----------
+-- Patrón precio: mayor a 0 y hasta 1.000.000. Y un check cruzado entre
+-- dos columnas de la misma fila: el precio VIP tiene que ser mayor que
+-- el base (R-14, mail del 10/03).
+-- Formato e idioma ya tienen su check de lista desde la sección 1.
+--
+-- Si alguna fila existente no cumple, el alter falla y no cambia nada.
+
+alter table public."Funciones"
+  add constraint funciones_precio_base_rango
+    check (precio_base > 0 and precio_base <= 1000000),
+  add constraint funciones_precio_vip_rango
+    check (precio_vip > 0 and precio_vip <= 1000000),
+  add constraint funciones_vip_mayor_que_base
+    check (precio_vip > precio_base);
+
+
+-- ---------- 9.3 Sin superposición: trigger (R-18, R-19, D-29) ----------
+-- "Bajo ningún concepto dos funciones pueden estar en la misma sala al
+-- mismo tiempo", y entre el fin de una y el inicio de la siguiente tienen
+-- que pasar 30 minutos.
+--
+-- El servicio de Angular ya elige una sala libre antes de guardar. Pero
+-- eso solo no alcanza: se puede saltear llamando a Supabase desde la
+-- consola del navegador, o insertando desde este editor, y dos admins
+-- que cargan a la vez pueden ver libre la misma sala. El servicio guía;
+-- la base garantiza.
+--
+-- Por qué no es un check: un check solo ve la fila que se está guardando,
+-- y esta regla necesita mirar LAS OTRAS filas de la tabla, y además la
+-- duración, que está en Peliculas.
+--
+-- Un trigger son dos piezas:
+--   1. Una función que "returns trigger". Recibe en NEW la fila que se
+--      quiere guardar. Si termina con "return new", la fila se guarda;
+--      si hace "raise exception", se rechaza y no se guarda nada de esa
+--      operación: en un insert de varias filas, no entra ninguna (D-30).
+--   2. El "create trigger", que dice cuándo se ejecuta esa función.
+--
+-- La función está en plpgsql y no en sql, como las de la sección 2,
+-- porque necesita variables y un if.
+
+create or replace function public.funciones_sin_superposicion()
+returns trigger
+language plpgsql
+as $$
+declare
+  duracion_nueva  int;  -- minutos que dura la película de la fila nueva
+  superpuestas    int;  -- cuántas funciones de esa sala chocan con ella
+begin
+  -- Candado por sala. Sin esto, dos cargas simultáneas en la misma sala
+  -- se revisan al mismo tiempo: ninguna ve a la otra, porque todavía no
+  -- terminó de guardarse, y entran las dos. Con el candado, la segunda
+  -- espera a que termine la primera y recién ahí revisa. Se suelta solo
+  -- cuando termina la operación (por eso "xact", de transacción).
+  perform pg_advisory_xact_lock(new.sala_id);
+
+  -- El fin de la función no se guarda: sale de la duración de su
+  -- película (R-19).
+  select duracion_minutos into duracion_nueva
+  from public."Peliculas"
+  where id = new.pelicula_id;
+
+  -- Dos funciones chocan si cada una empieza antes de que termine la otra
+  -- más los 30 minutos. Es la misma cuenta que hace el servicio.
+  --   minutos * interval '1 minute'  convierte un número en un tiempo que
+  --                                  se le puede sumar a una fecha.
+  --   f.id <> new.id                 en un update, la función no tiene que
+  --                                  chocar consigo misma.
+  select count(*) into superpuestas
+  from public."Funciones" f
+  join public."Peliculas" p on p.id = f.pelicula_id
+  where f.sala_id = new.sala_id
+    and f.id <> new.id
+    and new.fecha_hora < f.fecha_hora + (p.duracion_minutos + 30) * interval '1 minute'
+    and f.fecha_hora < new.fecha_hora + (duracion_nueva + 30) * interval '1 minute';
+
+  if superpuestas > 0 then
+    -- Llega al front con el código P0001, que el servicio traduce a un
+    -- mensaje para el admin (services/funciones.ts).
+    raise exception 'La sala ya tiene otra función en ese horario, o a menos de 30 minutos (R-18, R-19).';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- before: se ejecuta antes de guardar, para poder rechazar.
+-- insert or update: una función nueva o una que se movió de horario, de
+--   sala o de película.
+-- for each row: una vez por cada fila. En un insert de varias filas, cada
+--   una ya ve a las anteriores del mismo insert.
+create trigger funciones_sin_superposicion
+  before insert or update on public."Funciones"
+  for each row execute function public.funciones_sin_superposicion();
+
+-- Lo que el trigger NO cubre: si después se alarga la duración de una
+-- película que ya tiene funciones cargadas, pueden quedar superpuestas.
+-- El trigger mira Funciones, no Peliculas (D-29, límite conocido).
+
+
 -- ============================================================
 -- PUNTOS ABIERTOS — leer antes de seguir
 -- ============================================================
