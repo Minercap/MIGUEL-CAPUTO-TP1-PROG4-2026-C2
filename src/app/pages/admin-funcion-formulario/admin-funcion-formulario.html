@@ -38,7 +38,7 @@
         </option>
       }
     </select>
-    <small>Se ofrecen las películas que están en cartelera o en preventa.</small>
+    <small>Se ofrecen las películas visibles en el sitio.</small>
     @if (peliculaId?.touched && peliculaId?.errors?.['required']) {
       <small class="error">Elegí la película.</small>
     }
@@ -121,6 +121,15 @@
           }
         }
       </app-campo-fecha>
+    }
+
+    <!-- Error del formulario entero: compara la fecha con el estreno de la
+         película elegida (D-17). El error trae la fecha de estreno ya
+         escrita, y el "as" la guarda para mostrarla. -->
+    @if (formulario.errors?.['antesDelEstreno']; as estreno) {
+      <small class="error">
+        Esta película se estrena el {{ estreno }}: no puede tener funciones antes de esa fecha.
+      </small>
     }
 
     <!-- Hora sin selector de reloj (D-23, R-41): dos desplegables. -->

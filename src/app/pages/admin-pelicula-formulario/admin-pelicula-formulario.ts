@@ -62,6 +62,10 @@ export class AdminPeliculaFormulario implements OnInit {
   // El input de archivo no tiene "touched" porque no está atado al
   // formulario: se anota acá si ya se usó, para mostrar su error recién ahí.
   posterTocado = signal(false);
+  // En la edición, si la película tiene funciones que todavía no empezaron,
+  // la duración no se puede cambiar: las salas se asignaron contando con
+  // esa duración, y con otra las funciones podrían superponerse (D-29).
+  duracionBloqueada = signal(false);
 
   // Los valores del select de restricción. El select trabaja con texto y se
   // convierte a número (o null) recién al guardar. "Ninguna" es una opción
@@ -231,6 +235,15 @@ export class AdminPeliculaFormulario implements OnInit {
         return;
       }
       const pelicula = resultado.datos;
+
+      // Con funciones futuras, la duración no se puede cambiar (D-29).
+      const futuras = await this.peliculasSrv.tieneFuncionesFuturas(this.id);
+      if (futuras.error) {
+        this.errorCarga.set(futuras.error);
+        this.cargando.set(false);
+        return;
+      }
+      this.duracionBloqueada.set(futuras.datos === true);
 
       // Lo que ya estaba guardado se anota antes de cargar el formulario:
       // los validadores lo leen, y patchValue vuelve a validar.

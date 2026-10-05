@@ -105,6 +105,11 @@ export class Peliculas {
     pelicula: PeliculaPorModificar,
     generosIds: number[],
   ): Promise<ResultadoAccion> {
+    // El formulario ya deshabilita la duración si hay funciones futuras; se
+    // vuelve a controlar acá porque el formulario se puede saltear.
+    const errorDuracion = await this.errorPorDuracion(id, pelicula.duracion_minutos);
+    if (errorDuracion) return { hecho: false, error: errorDuracion };
+
     const { error } = await this.sup.Sup.from('Peliculas').update(pelicula).eq('id', id);
     if (error) return { hecho: false, error: 'No se pudieron guardar los cambios.' };
 
@@ -177,6 +182,40 @@ export class Peliculas {
     // .../storage/v1/object/public/peliculas/<ruta>.
     const { data } = this.sup.Stg.from(this.bucket).getPublicUrl(ruta);
     return { datos: data.publicUrl, error: null };
+  }
+
+  // Dice si la película tiene funciones que todavía no empezaron. Con
+  // funciones futuras no se le puede cambiar la duración (D-29): la sala de
+  // cada función se asignó contando con esa duración, y con otra podrían
+  // quedar superpuestas sin que el trigger lo note, porque el trigger mira
+  // Funciones y no Peliculas.
+  async tieneFuncionesFuturas(id: number): Promise<Resultado<boolean>> {
+    // .gte() es "mayor o igual" (D-29): las funciones de esta película que
+    // empiezan de ahora en adelante.
+    const { data, error } = await this.sup.Sup.from('Funciones')
+      .select('id')
+      .eq('pelicula_id', id)
+      .gte('fecha_hora', new Date().toISOString());
+    if (error) {
+      return { datos: null, error: 'No se pudieron consultar las funciones de la película.' };
+    }
+    return { datos: data.length > 0, error: null };
+  }
+
+  // El control de la duración al modificar: devuelve el mensaje si se la
+  // quiere cambiar y la película tiene funciones futuras, o null si se
+  // puede guardar.
+  private async errorPorDuracion(id: number, duracionNueva: number): Promise<string | null> {
+    const { data, error } = await this.sup.Sup.from('Peliculas').select('*').eq('id', id).single();
+    if (error) return 'No se pudieron guardar los cambios.';
+    const actual: Pelicula = data;
+    if (actual.duracion_minutos === duracionNueva) return null;
+
+    const futuras = await this.tieneFuncionesFuturas(id);
+    if (futuras.error) return futuras.error;
+    return futuras.datos
+      ? 'No se puede cambiar la duración: la película tiene funciones futuras y podrían quedar superpuestas. Borrá o reprogramá esas funciones primero.'
+      : null;
   }
 
   // Inserta una fila en PeliculasGeneros por cada género marcado.

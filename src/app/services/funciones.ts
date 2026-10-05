@@ -16,7 +16,7 @@ import {
 import { Pelicula } from '../interfaces/pelicula';
 import { Sala } from '../interfaces/sala';
 import { Resultado, ResultadoAccion } from '../interfaces/resultado';
-import { sumarDias } from '../validadores/validadores';
+import { armarFecha, fechaParaMostrar, sumarDias, textoAFecha } from '../validadores/validadores';
 
 // Minutos que tienen que pasar entre el fin de una función y el inicio de
 // la siguiente en la misma sala (R-19). El trigger de la base usa el mismo
@@ -150,6 +150,11 @@ export class Funciones {
     const pelicula = peliculas.find((p) => p.id === programacion.pelicula_id);
     if (!pelicula) return this.fallo('No existe esa película.');
 
+    // Los inicios están en orden: si el primero no es anterior al estreno,
+    // ninguno lo es.
+    const errorEstreno = this.errorPorEstreno(pelicula, inicios[0]);
+    if (errorEstreno) return this.fallo(errorEstreno);
+
     const asignacion = await this.asignarSalas(pelicula, inicios, peliculas, salas, null);
     if (asignacion.error || !asignacion.datos) {
       return this.fallo(asignacion.error + ' No se creó ninguna función.');
@@ -219,6 +224,9 @@ export class Funciones {
 
     const pelicula = peliculas.find((p) => p.id === datos.pelicula_id);
     if (!pelicula) return this.fallo('No existe esa película.');
+
+    const errorEstreno = this.errorPorEstreno(pelicula, datos.inicio);
+    if (errorEstreno) return this.fallo(errorEstreno);
 
     // La sala se vuelve a asignar si cambió el horario, o si cambió la
     // película, porque con otra duración la función termina a otra hora. Se
@@ -402,6 +410,18 @@ export class Funciones {
   }
 
   // ---------- Ayudas ----------
+
+  // Una función no puede ser anterior al estreno de su película en el cine
+  // (docs/validaciones.md, 3.5). La preventa adelanta la venta, no las
+  // funciones. El formulario ya lo valida; se repite acá porque el
+  // formulario se puede saltear. Devuelve el mensaje, o null si está bien.
+  private errorPorEstreno(pelicula: Pelicula, inicio: Date): string | null {
+    // El estreno queda a las 00:00 de acá: cualquier horario de ese día ya
+    // no es anterior.
+    const estreno = armarFecha(textoAFecha(pelicula.fecha_estreno));
+    if (estreno === null || inicio >= estreno) return null;
+    return `"${pelicula.nombre}" se estrena el ${fechaParaMostrar(pelicula.fecha_estreno)}: no puede tener funciones antes de esa fecha.`;
+  }
 
   private async traerPeliculasYSalas(): Promise<Resultado<PeliculasYSalas>> {
     const peliculas = await this.peliculasSrv.traerTodas();

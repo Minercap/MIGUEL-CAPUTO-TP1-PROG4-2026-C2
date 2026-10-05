@@ -975,9 +975,10 @@ create trigger funciones_sin_superposicion
   before insert or update on public."Funciones"
   for each row execute function public.funciones_sin_superposicion();
 
--- Lo que el trigger NO cubre: si después se alarga la duración de una
--- película que ya tiene funciones cargadas, pueden quedar superpuestas.
--- El trigger mira Funciones, no Peliculas (D-29, límite conocido).
+-- Lo que el trigger NO mira: Peliculas. Alargar la duración de una
+-- película que ya tiene funciones podría dejarlas superpuestas. Eso lo
+-- cierra la app: con funciones futuras, la edición de película no deja
+-- cambiar la duración, ni desde el formulario ni desde el servicio (D-29).
 
 
 -- ============================================================

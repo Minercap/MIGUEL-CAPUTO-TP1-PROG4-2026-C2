@@ -90,7 +90,7 @@ dos falló.
 | Nombre | Obligatorio · `textoLibre` · 1 a 100 |
 | Sinopsis | **Obligatoria** (mail 01/01) · 20 a 1000 · contador de caracteres |
 | Póster | **Obligatorio** en el alta (mail 01/01) · `imagen` · en la edición se conserva el actual |
-| Duración | Obligatoria · `entero(30, 300)` minutos |
+| Duración | Obligatoria · `entero(30, 300)` minutos · en la edición no se puede cambiar si la película tiene funciones futuras (D-29) |
 | Géneros | Al menos 1 · como máximo 4 |
 | Restricción de edad | Obligatoria · ninguna, 13 o 18 |
 | Estreno en Olympia Cinema | Obligatoria · `fecha` · entre 1 año atrás y 1 año adelante. El rango se exige en el alta; en la edición, solo si se cambió la fecha (D-26) |
@@ -108,10 +108,11 @@ dos falló.
 
 | Campo | Reglas |
 |---|---|
-| Película | Obligatoria · de las que están en cartelera o en preventa |
+| Película | Obligatoria · de las visibles en el sitio, en cartelera o en Próximamente (D-27) |
 | Días de la semana | Al menos 1 (mail 06/02: "lunes, martes y viernes a las 18hs") |
-| Desde / hasta | Obligatorias · `fecha` · desde no anterior a hoy · hasta no anterior a desde · rango máximo de 60 días **(a decidir)** |
-| Hora | Obligatoria · dos desplegables: hora y minutos de 15 en 15 (D-23) · horario de 10:00 a 23:45 **(a decidir)** |
+| Desde / hasta | Obligatorias · `fecha` · desde no anterior a hoy ni de acá a más de 30 días · hasta no anterior a desde · rango máximo de 60 días |
+| Estreno | Ninguna fecha de la función puede ser anterior a la fecha de estreno de la película. La preventa adelanta la venta, no las funciones (eso se controla en la compra, D-26). El mensaje dice la fecha de estreno |
+| Hora | Obligatoria · dos desplegables: hora y minutos de 15 en 15 (D-23) · horario de 10:00 a 23:45 |
 | Formato | Obligatorio · 2D, 3D, 4D o 5D |
 | Idioma | Obligatorio · castellano o subtitulada |
 | Precio base | Obligatorio · `precio` |

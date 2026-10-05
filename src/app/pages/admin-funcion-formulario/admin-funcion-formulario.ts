@@ -23,6 +23,7 @@ import {
   armarFecha,
   cantidadMarcados,
   fechaATexto,
+  fechaParaMostrar,
   fechaReal,
   hoy,
   mayorQue,
@@ -151,11 +152,16 @@ export class AdminFuncionFormulario implements OnInit {
       precio_vip: [null as number | null, [Validators.required, precio()]],
     },
     // Validadores del grupo entero, porque cada uno mira dos campos (D-17):
-    // el precio VIP contra el base, y "hasta" contra "desde".
+    // el precio VIP contra el base, la fecha contra el estreno de la
+    // película y, en el alta, "hasta" contra "desde".
     {
       validators: this.esAlta
-        ? [mayorQue('precio_vip', 'precio_base'), rangoDeFechas('desde', 'hasta', this.rangoMaximoDias)]
-        : [mayorQue('precio_vip', 'precio_base')],
+        ? [
+            mayorQue('precio_vip', 'precio_base'),
+            this.noAntesDelEstreno(),
+            rangoDeFechas('desde', 'hasta', this.rangoMaximoDias),
+          ]
+        : [mayorQue('precio_vip', 'precio_base'), this.noAntesDelEstreno()],
     },
   );
 
@@ -172,6 +178,27 @@ export class AdminFuncionFormulario implements OnInit {
       if (fechaATexto(grupo.value) === this.fechaOriginal) return null;
       if (fecha < hoy()) return { fechaMinima: true };
       return fecha > this.desdeMaximo ? { fechaMaxima: true } : null;
+    };
+  }
+
+  // Validador del formulario entero (D-17): ninguna función puede ser
+  // anterior al estreno de su película en el cine. Mira dos campos, la
+  // película y "desde", que en el alta es la primera fecha del rango: si
+  // esa no es anterior al estreno, ninguna lo es. La preventa adelanta la
+  // venta, no las funciones.
+  // El error lleva la fecha de estreno ya escrita, para mostrarla en el
+  // mensaje. Es un método del componente porque necesita la lista de
+  // películas.
+  noAntesDelEstreno(): ValidatorFn {
+    return (grupo: AbstractControl) => {
+      const peliculaId = Number(grupo.get('pelicula_id')?.value);
+      const pelicula = this.peliculas().find((p) => p.id === peliculaId);
+      const fecha = armarFecha(grupo.get('desde')?.value);
+      if (!pelicula || fecha === null) return null;
+
+      const estreno = armarFecha(textoAFecha(pelicula.fecha_estreno));
+      if (estreno === null || fecha >= estreno) return null;
+      return { antesDelEstreno: fechaParaMostrar(pelicula.fecha_estreno) };
     };
   }
 
@@ -275,14 +302,12 @@ export class AdminFuncionFormulario implements OnInit {
     this.cargando.set(false);
   }
 
-  // Una función se carga para una película que está en cartelera o en
-  // preventa (docs/validaciones.md, 3.5): visible y, además, ya estrenada o
-  // con la preventa habilitada.
+  // Una función se carga para una película visible en el sitio, esté en
+  // cartelera o en Próximamente (docs/validaciones.md, 3.5). Las de
+  // Próximamente también: el día del estreno ya tienen que tener funciones
+  // (D-27).
   private sePuedeProgramar(pelicula: Pelicula): boolean {
-    if (!pelicula.visible) return false;
-    const estreno = armarFecha(textoAFecha(pelicula.fecha_estreno));
-    const estrenada = estreno !== null && estreno <= hoy();
-    return estrenada || pelicula.preventa_habilitada;
+    return pelicula.visible;
   }
 
   // Al elegir la película en el alta, trae los precios de su última función

@@ -758,9 +758,12 @@ Lo que no se vio en clase (🟡) y se usa acá:
   de guardar, ninguna ve a la otra y entran las dos. El candado se suelta solo al terminar
   cada guardado.
 
-**Límite conocido:** el trigger mira las funciones, no las películas. Si después se alarga
-la duración de una película que ya tiene funciones cargadas, pueden quedar superpuestas sin
-que nada lo rechace.
+**Resuelto · duración de una película con funciones:** el trigger mira las funciones, no
+las películas, así que alargar la duración de una película con funciones cargadas podía
+dejarlas superpuestas sin que nada lo rechazara. Se cerró en la edición de película: si
+tiene funciones futuras, el campo duración queda deshabilitado con un mensaje que lo
+explica, y `modificar()` del servicio de películas rechaza el cambio aunque se saltee el
+formulario. Para cambiarla hay que borrar o reprogramar antes esas funciones.
 
 **Clase de origen:** 6 + trigger 🟡 (D-25, aprobado por la cátedra). **Requisito:** funciones
 sin superposición (R-17, R-18, R-19).

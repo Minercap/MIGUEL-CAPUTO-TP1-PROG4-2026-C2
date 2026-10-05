@@ -302,6 +302,13 @@ export function fechaATexto(partes: FechaPartes): string {
   return `${partes.anio}-${partes.mes.padStart(2, '0')}-${partes.dia.padStart(2, '0')}`;
 }
 
+// De 'AAAA-MM-DD' a 'DD/MM/AAAA', para mostrar una fecha de la base en un
+// mensaje.
+export function fechaParaMostrar(texto: string): string {
+  const [anio, mes, dia] = texto.split('-');
+  return `${dia}/${mes}/${anio}`;
+}
+
 // El camino inverso, para cargar un formulario de edición: de 'AAAA-MM-DD'
 // a las tres partes. Number saca los ceros de adelante ('05' pasa a '5').
 export function textoAFecha(texto: string): FechaPartes {

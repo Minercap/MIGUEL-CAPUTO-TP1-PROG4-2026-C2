@@ -37,14 +37,26 @@
     }
 
     <label for="duracion_minutos">Duración (minutos)</label>
-    <input
-      id="duracion_minutos"
-      type="number"
-      min="30"
-      max="300"
-      step="1"
-      formControlName="duracion_minutos"
-    />
+    @if (duracionBloqueada()) {
+      <!-- Con funciones futuras la duración no se puede cambiar (D-29). Este
+           input no está atado al formulario: solo muestra el valor, y el
+           control conserva el que tenía la película. -->
+      <input id="duracion_minutos" type="number" [value]="duracionMinutos?.value" disabled />
+      <small>
+        No se puede cambiar la duración porque la película tiene funciones futuras: con otra
+        duración podrían quedar superpuestas. Para cambiarla, borrá o reprogramá primero esas
+        funciones.
+      </small>
+    } @else {
+      <input
+        id="duracion_minutos"
+        type="number"
+        min="30"
+        max="300"
+        step="1"
+        formControlName="duracion_minutos"
+      />
+    }
     @if (duracionMinutos?.touched) {
       @if (duracionMinutos?.errors?.['required']) {
         <small class="error">La duración es obligatoria.</small>
