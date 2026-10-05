@@ -52,6 +52,28 @@ const rutas: Routes = [
     loadComponent: () =>
       import('./admin-sala-formulario/admin-sala-formulario').then((m) => m.AdminSalaFormulario),
   },
+  {
+    path: 'funciones',
+    title: 'Funciones · Administración',
+    loadComponent: () =>
+      import('./admin-funciones/admin-funciones').then((m) => m.AdminFunciones),
+  },
+  {
+    path: 'funciones/nueva',
+    title: 'Nuevas funciones · Administración',
+    loadComponent: () =>
+      import('./admin-funcion-formulario/admin-funcion-formulario').then(
+        (m) => m.AdminFuncionFormulario,
+      ),
+  },
+  {
+    path: 'funciones/:id',
+    title: 'Editar función · Administración',
+    loadComponent: () =>
+      import('./admin-funcion-formulario/admin-funcion-formulario').then(
+        (m) => m.AdminFuncionFormulario,
+      ),
+  },
 ];
 
 export default rutas;

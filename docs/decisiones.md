@@ -717,6 +717,7 @@ para que se pueda comprar ese día ya tiene que tener funciones cargadas.
 ## D-28 · Precio de la entrada en la función · 05/10
 
 **Elegido:** precio como columna de `Funciones`; la compra guarda el precio pagado.
+Son dos precios, base y VIP, por R-14.
 
 **Descartado:** precio en la película, porque no permite precio por horario y la compra
 necesitaría otra consulta.
@@ -739,5 +740,43 @@ Angular y suma algo no visto.
 **Cómo lo explico en el oral:** el servicio guía y la base garantiza. Aunque dos admins
 carguen a la vez o alguien use la consola, la base no deja superponer.
 
+**Cómo decide el servicio:** dos funciones chocan en una sala si cada una empieza antes de
+que termine la otra más 30 minutos. El fin es `fecha_hora` más la duración de la película.
+Las salas se recorren por nombre y se toma la primera activa que no choque con ninguna.
+
+Lo que no se vio en clase (🟡) y se usa acá:
+
+- **`.gte()` y `.lt()`** de Supabase: son filtros como `.eq()`, pero con "mayor o igual" y
+  "menor". Traen solo las funciones del rango de fechas que se está cargando, en lugar de
+  toda la tabla.
+- **Trigger**: una función de Postgres que la base ejecuta sola antes de cada insert o
+  update de `Funciones`. Recibe la fila en `new`; si la devuelve, la fila se guarda, y si
+  hace `raise exception`, se rechaza. Ese rechazo llega al front con el código `P0001`, que
+  el servicio traduce a un mensaje.
+- **`pg_advisory_xact_lock(sala)`**, dentro del trigger: hace que dos cargas simultáneas
+  sobre la misma sala pasen de a una. Sin eso, cada una revisa antes de que la otra termine
+  de guardar, ninguna ve a la otra y entran las dos. El candado se suelta solo al terminar
+  cada guardado.
+
+**Límite conocido:** el trigger mira las funciones, no las películas. Si después se alarga
+la duración de una película que ya tiene funciones cargadas, pueden quedar superpuestas sin
+que nada lo rechace.
+
 **Clase de origen:** 6 + trigger 🟡 (D-25, aprobado por la cátedra). **Requisito:** funciones
 sin superposición (R-17, R-18, R-19).
+
+---
+
+## D-30 · Funciones recurrentes: una fila por fecha · 05/10
+
+**Elegido:** el formulario toma días, desde, hasta y hora; el servicio genera una fila por
+fecha y las inserta en un único insert, todo o nada.
+
+**Descartado:** tabla `Programaciones`, porque suma tabla, ABM y sincronización sin aportar
+nada a lo que pide el mail.
+
+**Cómo lo explico en el oral:** cada función es una fila, así que compra y reportes no
+cambian. El insert de muchas filas es atómico: si una choca, no entra ninguna.
+
+**Clase de origen:** 4 (formulario) + 6 (insert). **Requisito:** mail 06/02 ("lunes, martes y
+viernes a las 18hs") / R-17.

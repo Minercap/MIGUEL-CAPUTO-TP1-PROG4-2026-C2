@@ -22,7 +22,7 @@ export class Admin {
   accesos: AccesoAdmin[] = [
     { nombre: 'Películas', descripcion: 'Cartelera, próximamente y preventa', ruta: '/admin/peliculas' },
     { nombre: 'Salas', descripcion: 'Las salas del cine', ruta: '/admin/salas' },
-    { nombre: 'Funciones', descripcion: 'Horarios, formatos y precios', ruta: null },
+    { nombre: 'Funciones', descripcion: 'Horarios, formatos y precios', ruta: '/admin/funciones' },
     { nombre: 'Candy', descripcion: 'Productos y combos', ruta: null },
     { nombre: 'Cupones', descripcion: 'Descuentos y condiciones', ruta: null },
     { nombre: 'Reportes', descripcion: 'Facturación y más vendidos', ruta: null },

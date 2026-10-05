@@ -1,0 +1,222 @@
+<p><a routerLink="/admin/funciones">← Funciones</a></p>
+
+<h1>{{ id === null ? 'Nuevas funciones' : 'Editar función' }}</h1>
+
+@if (cargando()) {
+  <p>Cargando…</p>
+} @else if (errorCarga()) {
+  <p class="error" role="alert">{{ errorCarga() }}</p>
+} @else if (asignadas(); as lista) {
+  <!-- Ya se guardó: en lugar del formulario se muestra qué sala asignó el
+       sistema a cada función (R-17). -->
+  @if (id === null) {
+    <p role="status">
+      {{ lista.length === 1 ? 'Se creó 1 función:' : 'Se crearon ' + lista.length + ' funciones:' }}
+    </p>
+  } @else {
+    <p role="status">Los cambios se guardaron. La función quedó así:</p>
+  }
+  <ul>
+    @for (asignada of lista; track asignada.cuando) {
+      <li>{{ asignada.cuando }} — <strong>{{ asignada.sala_nombre }}</strong></li>
+    }
+  </ul>
+  @if (aviso()) {
+    <p class="error" role="alert">{{ aviso() }}</p>
+  }
+  <p><a routerLink="/admin/funciones">Volver al listado</a></p>
+} @else {
+  <form [formGroup]="formulario" (ngSubmit)="guardar()">
+    <label for="pelicula_id">Película</label>
+    <!-- (change) se dispara cuando se elige otra opción: ahí se precargan
+         los precios de la última función de esa película (D-28). -->
+    <select id="pelicula_id" formControlName="pelicula_id" (change)="precargarPrecios()">
+      <option value="" disabled>Elegí una película</option>
+      @for (pelicula of peliculas(); track pelicula.id) {
+        <option [value]="pelicula.id">
+          {{ pelicula.nombre }} ({{ pelicula.duracion_minutos }} min)
+        </option>
+      }
+    </select>
+    <small>Se ofrecen las películas que están en cartelera o en preventa.</small>
+    @if (peliculaId?.touched && peliculaId?.errors?.['required']) {
+      <small class="error">Elegí la película.</small>
+    }
+
+    @if (id === null) {
+      <!-- Alta: una programación (D-30). Días de la semana y un rango de
+           fechas; se crea una función por cada fecha que caiga en un día
+           marcado. -->
+      <fieldset formArrayName="dias">
+        <legend>Días de la semana</legend>
+        @for (dia of dias; track dia.numero; let i = $index) {
+          <label class="opcion">
+            <input type="checkbox" [formControlName]="i" />
+            {{ dia.nombre }}
+          </label>
+        }
+      </fieldset>
+      @if (diasForm.dirty && diasForm.errors?.['pocosMarcados']) {
+        <small class="error">Elegí al menos un día.</small>
+      }
+
+      <!-- Fechas sin calendario (D-23). -->
+      <app-campo-fecha
+        etiqueta="Desde"
+        [grupo]="desde"
+        [anioDesde]="anioDesde()"
+        [anioHasta]="anioHasta()"
+      >
+        @if (desde.touched) {
+          @if (desde.errors?.['fechaImposible']) {
+            <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+          } @else if (desde.errors?.['fechaMinima']) {
+            <small class="error">La fecha no puede ser anterior a hoy.</small>
+          } @else if (desde.errors?.['fechaMaxima']) {
+            <small class="error">La primera fecha no puede ser de acá a más de 30 días.</small>
+          } @else if (desde.invalid) {
+            <small class="error">Elegí el día, el mes y el año.</small>
+          }
+        }
+      </app-campo-fecha>
+
+      <app-campo-fecha
+        etiqueta="Hasta"
+        [grupo]="hasta"
+        [anioDesde]="anioDesde()"
+        [anioHasta]="anioHasta()"
+      >
+        <small>Para cargar un solo día, poné la misma fecha en "Desde" y en "Hasta".</small>
+        @if (hasta.touched) {
+          @if (hasta.errors?.['fechaImposible']) {
+            <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+          } @else if (hasta.invalid) {
+            <small class="error">Elegí el día, el mes y el año.</small>
+          } @else if (formulario.errors?.['rangoInvertido']) {
+            <!-- Errores del formulario entero: comparan "hasta" con "desde" (D-17). -->
+            <small class="error">"Hasta" no puede ser anterior a "Desde".</small>
+          } @else if (formulario.errors?.['rangoLargo']) {
+            <small class="error">Entre "Desde" y "Hasta" no puede haber más de 60 días.</small>
+          }
+        }
+      </app-campo-fecha>
+    } @else {
+      <!-- Edición: una sola función, con una sola fecha. -->
+      <app-campo-fecha
+        etiqueta="Fecha"
+        [grupo]="desde"
+        [anioDesde]="anioDesde()"
+        [anioHasta]="anioHasta()"
+      >
+        <small>Si cambiás la fecha, la hora o la película, el sistema vuelve a asignar la sala.</small>
+        @if (desde.touched) {
+          @if (desde.errors?.['fechaImposible']) {
+            <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+          } @else if (desde.errors?.['fechaMinima']) {
+            <small class="error">La fecha nueva no puede ser anterior a hoy.</small>
+          } @else if (desde.errors?.['fechaMaxima']) {
+            <small class="error">La fecha nueva no puede ser de acá a más de 30 días.</small>
+          } @else if (desde.invalid) {
+            <small class="error">Elegí el día, el mes y el año.</small>
+          }
+        }
+      </app-campo-fecha>
+    }
+
+    <!-- Hora sin selector de reloj (D-23, R-41): dos desplegables. -->
+    <fieldset>
+      <legend>Hora</legend>
+      <select formControlName="hora" aria-label="Hora">
+        <option value="" disabled>Hora</option>
+        @for (opcion of horas; track opcion) {
+          <option [value]="opcion">{{ opcion }}</option>
+        }
+      </select>
+      <span>:</span>
+      <select formControlName="minutos" aria-label="Minutos">
+        <option value="" disabled>Minutos</option>
+        @for (opcion of minutos; track opcion) {
+          <option [value]="opcion">{{ opcion }}</option>
+        }
+      </select>
+    </fieldset>
+    @if (hora?.touched && minutosForm?.touched && (hora?.invalid || minutosForm?.invalid)) {
+      <small class="error">Elegí la hora y los minutos, entre las 10:00 y las 23:45.</small>
+    }
+
+    <label for="formato">Formato</label>
+    <select id="formato" formControlName="formato">
+      <option value="" disabled>Elegí un formato</option>
+      @for (opcion of formatos; track opcion) {
+        <option [value]="opcion">{{ opcion }}</option>
+      }
+    </select>
+    @if (formato?.touched && formato?.invalid) {
+      <small class="error">Elegí un formato de la lista.</small>
+    }
+
+    <label for="idioma">Idioma</label>
+    <select id="idioma" formControlName="idioma">
+      <option value="" disabled>Elegí un idioma</option>
+      <option value="castellano">Castellano</option>
+      <option value="subtitulada">Subtitulada</option>
+    </select>
+    @if (idioma?.touched && idioma?.invalid) {
+      <small class="error">Elegí un idioma de la lista.</small>
+    }
+
+    <label for="precio_base">Precio base</label>
+    <input
+      id="precio_base"
+      type="number"
+      min="0.01"
+      max="1000000"
+      step="0.01"
+      formControlName="precio_base"
+    />
+    @if (avisoPrecios()) {
+      <small class="error">{{ avisoPrecios() }}</small>
+    }
+    @if (precioBase?.touched) {
+      @if (precioBase?.errors?.['required']) {
+        <small class="error">El precio base es obligatorio.</small>
+      } @else if (precioBase?.errors?.['precio']) {
+        <small class="error">
+          El precio tiene que ser mayor a 0, de hasta 1.000.000 y con dos decimales como mucho.
+        </small>
+      }
+    }
+
+    <label for="precio_vip">Precio VIP (filas R, S y T)</label>
+    <input
+      id="precio_vip"
+      type="number"
+      min="0.01"
+      max="1000000"
+      step="0.01"
+      formControlName="precio_vip"
+    />
+    @if (precioVip?.touched) {
+      @if (precioVip?.errors?.['required']) {
+        <small class="error">El precio VIP es obligatorio.</small>
+      } @else if (precioVip?.errors?.['precio']) {
+        <small class="error">
+          El precio tiene que ser mayor a 0, de hasta 1.000.000 y con dos decimales como mucho.
+        </small>
+      } @else if (formulario.errors?.['noEsMayor']) {
+        <!-- Error del formulario entero: compara los dos precios (D-17). -->
+        <small class="error">El precio VIP tiene que ser mayor que el precio base.</small>
+      }
+    }
+
+    <small>La sala no se elige: el sistema asigna la primera que esté libre.</small>
+
+    @if (error()) {
+      <p class="error" role="alert">{{ error() }}</p>
+    }
+
+    <button type="submit" [disabled]="!formulario.valid || enviando()">
+      {{ enviando() ? 'Guardando…' : 'Guardar' }}
+    </button>
+  </form>
+}

@@ -1,0 +1,53 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<header class="encabezado">
+  <h1>Funciones</h1>
+  <a routerLink="/admin/funciones/nueva">Nuevas funciones</a>
+</header>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando las funciones…</p>
+} @else {
+  <ul class="listado">
+    @for (funcion of funciones(); track funcion.id) {
+      <li class="funcion">
+        <div class="datos">
+          <strong>{{ funcion.pelicula_nombre }}</strong>
+          <!-- El pipe date (clase 8) muestra el instante guardado en la hora
+               del navegador. -->
+          <span>{{ funcion.fecha_hora | date: 'dd/MM/yyyy HH:mm' }} · {{ funcion.sala_nombre }}</span>
+
+          <div class="etiquetas">
+            <span class="etiqueta">{{ funcion.formato }}</span>
+            <span class="etiqueta">
+              {{ funcion.idioma === 'castellano' ? 'Castellano' : 'Subtitulada' }}
+            </span>
+            <span class="etiqueta">Base ${{ funcion.precio_base }}</span>
+            <span class="etiqueta">VIP ${{ funcion.precio_vip }}</span>
+          </div>
+        </div>
+
+        <div class="acciones">
+          @if (idPorBorrar() === funcion.id) {
+            <span>¿Borrar esta función?</span>
+            <button type="button" [disabled]="borrando()" (click)="borrar(funcion)">
+              {{ borrando() ? 'Borrando…' : 'Sí, borrar' }}
+            </button>
+            <button type="button" [disabled]="borrando()" (click)="cancelarBorrado()">
+              Cancelar
+            </button>
+          } @else {
+            <a [routerLink]="['/admin/funciones', funcion.id]">Editar</a>
+            <button type="button" (click)="pedirConfirmacion(funcion.id)">Borrar</button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li>Todavía no hay funciones cargadas.</li>
+    }
+  </ul>
+}

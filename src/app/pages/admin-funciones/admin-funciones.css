@@ -1,0 +1,52 @@
+/* Estilo mínimo para que el listado se lea. El estilo visual del cine se
+   trabaja aparte. */
+.encabezado {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.listado {
+  list-style: none;
+  padding: 0;
+}
+
+/* Cada función es un renglón: datos a la izquierda y acciones a la
+   derecha. Con flex-wrap, en celular las acciones bajan solas a otro
+   renglón. */
+.funcion {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #ccc;
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.etiquetas,
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.etiqueta {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid #999;
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.error {
+  color: #b00020;
+}

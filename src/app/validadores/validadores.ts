@@ -199,6 +199,32 @@ export function camposIguales(campo: string, confirmacion: string): ValidatorFn 
   };
 }
 
+// El primer campo tiene que ser mayor que el segundo: el precio VIP y el
+// precio base de una función (R-14). Mientras falte alguno de los dos no
+// informa error: de eso se ocupa el required de cada uno.
+export function mayorQue(campoMayor: string, campoMenor: string): ValidatorFn {
+  return (grupo: AbstractControl) => {
+    const mayor: number | null = grupo.get(campoMayor)?.value;
+    const menor: number | null = grupo.get(campoMenor)?.value;
+    if (mayor === null || menor === null) return null;
+    return Number(mayor) > Number(menor) ? null : { noEsMayor: true };
+  };
+}
+
+// Dos fechas que forman un rango: "hasta" no puede ser anterior a "desde",
+// y entre las dos no puede haber más de maximoDias. Cada campo es un grupo
+// { dia, mes, anio } (D-23). Si alguna de las dos todavía no es una fecha
+// completa no informa error.
+export function rangoDeFechas(campoDesde: string, campoHasta: string, maximoDias: number): ValidatorFn {
+  return (grupo: AbstractControl) => {
+    const desde = armarFecha(grupo.get(campoDesde)?.value);
+    const hasta = armarFecha(grupo.get(campoHasta)?.value);
+    if (desde === null || hasta === null) return null;
+    if (hasta < desde) return { rangoInvertido: true };
+    return hasta > sumarDias(desde, maximoDias) ? { rangoLargo: maximoDias } : null;
+  };
+}
+
 // ---------- Fechas (D-23) ----------
 // Los validadores de fecha se cuelgan del grupo { dia, mes, anio }, porque
 // la validez depende de los tres desplegables a la vez. Mientras falte
@@ -262,6 +288,12 @@ export function hoy(): Date {
 // positiva hacia adelante.
 export function sumarAnios(fecha: Date, anios: number): Date {
   return new Date(fecha.getFullYear() + anios, fecha.getMonth(), fecha.getDate());
+}
+
+// Una fecha corrida la cantidad de días indicada. Si el día se pasa del
+// mes, Date lo acomoda solo: el 28/10 más 5 días es el 02/11.
+export function sumarDias(fecha: Date, dias: number): Date {
+  return new Date(fecha.getFullYear(), fecha.getMonth(), fecha.getDate() + dias);
 }
 
 // De las tres partes a 'AAAA-MM-DD', que es como Postgres recibe un date.
