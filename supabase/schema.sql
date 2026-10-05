@@ -15,7 +15,8 @@
 --   7. Correcciones del 01/10: roles separados (D-24), campos
 --      obligatorios y constraints check (docs/validaciones.md)
 --   8. Estado de la película: una sola columna "visible" (D-27)
---   9. Salas y funciones: reglas de contenido (D-28, D-29)
+--   9. Salas y funciones: reglas de contenido, trigger de superposición
+--      y de estreno, y fechas en hora argentina (D-28, D-29)
 -- ============================================================
 
 -- ============================================================
@@ -761,6 +762,8 @@ alter table public."Usuarios"
   -- No futura y no más de 120 años atrás. current_date es la fecha de hoy
   -- en el servidor, y restarle un interval la corre hacia atrás.
   -- Que la fecha exista (no 31/02) ya lo garantiza el tipo date.
+  -- OJO: este check se reemplaza en la sección 9.5, para que "hoy" sea el
+  -- día de Argentina y no el del servidor. El de acá es el original.
   add constraint usuarios_fecha_nacimiento_rango
     check (fecha_nacimiento <= current_date
            and fecha_nacimiento >= current_date - interval '120 years'),
@@ -1052,6 +1055,96 @@ $$;
 -- el estreno de una película para después de una función ya cargada, la
 -- base no lo nota. Eso lo cierra la app: la edición de película no deja
 -- poner un estreno posterior a su primera función futura (D-29).
+--
+-- OJO: la función se vuelve a redefinir en la sección 9.5, que corrige el
+-- límite conocido de la zona horaria. La vigente es la de la 9.5.
+
+
+-- ---------- 9.5 Fechas en hora argentina (D-25, D-29) ----------
+-- El servidor de Supabase está en UTC y el cine en Argentina, que está
+-- tres horas atrás. Entre las 21:00 y las 24:00 de acá, para el servidor
+-- ya es el día siguiente. Eso afectaba a dos reglas que comparan un
+-- instante con una fecha sin hora:
+--   - El estreno (9.4): la base dejaba pasar una función de la víspera
+--     del estreno desde las 21:00.
+--   - La fecha de nacimiento (7.3): durante esas tres horas la base
+--     aceptaba una fecha de nacimiento de "mañana".
+-- En los dos casos el formulario sí lo rechazaba; la base era más
+-- permisiva. Acá se corrigen los dos.
+--
+--   instante at time zone 'America/Argentina/Buenos_Aires'
+--       devuelve la fecha y la hora que marca el reloj en Argentina en
+--       ese instante. Las 00:30 UTC del 15 son las 21:30 del 14.
+--   (...)::date
+--       convierte ese resultado a date: se queda con el día y descarta
+--       la hora. Es un cast, un cambio de tipo.
+-- Juntas responden "¿qué día es en Argentina en este instante?", y ese
+-- día sí se puede comparar con un date sin que influya el servidor.
+
+-- Estreno: la función entera otra vez (create or replace, como en la
+-- 9.4). El único cambio es la condición del primer if: antes comparaba
+-- fecha_hora con el estreno directamente; ahora compara el DÍA de la
+-- función en Argentina. La explicación de cada parte está en la 9.3 y
+-- la 9.4.
+
+create or replace function public.funciones_sin_superposicion()
+returns trigger
+language plpgsql
+as $$
+declare
+  duracion_nueva  int;   -- minutos que dura la película de la fila nueva
+  estreno         date;  -- su estreno en el cine
+  superpuestas    int;   -- cuántas funciones de esa sala chocan con ella
+begin
+  select duracion_minutos, fecha_estreno into duracion_nueva, estreno
+  from public."Peliculas"
+  where id = new.pelicula_id;
+
+  -- OJO: no sacar la palabra "estreno" de este mensaje. Las dos reglas del
+  -- trigger llegan al front con el mismo código (P0001), y el servicio
+  -- las distingue buscando esa palabra en el texto (traducirError, en
+  -- src/app/services/funciones.ts). Si cambia acá, hay que cambiarla allá.
+  -- Por lo mismo, el mensaje de superposición no tiene que contenerla.
+  if (new.fecha_hora at time zone 'America/Argentina/Buenos_Aires')::date < estreno then
+    raise exception 'La función es anterior al estreno de la película (%).', estreno;
+  end if;
+
+  perform pg_advisory_xact_lock(new.sala_id);
+
+  select count(*) into superpuestas
+  from public."Funciones" f
+  join public."Peliculas" p on p.id = f.pelicula_id
+  where f.sala_id = new.sala_id
+    and f.id <> new.id
+    and new.fecha_hora < f.fecha_hora + (p.duracion_minutos + 30) * interval '1 minute'
+    and f.fecha_hora < new.fecha_hora + (duracion_nueva + 30) * interval '1 minute';
+
+  if superpuestas > 0 then
+    raise exception 'La sala ya tiene otra función en ese horario, o a menos de 30 minutos (R-18, R-19).';
+  end if;
+
+  return new;
+end;
+$$;
+
+-- Fecha de nacimiento: un check no se puede modificar, así que se borra
+-- y se crea de nuevo en el mismo alter. Es la misma regla de la 7.3 (no
+-- futura y no más de 120 años atrás), pero "hoy" pasa a ser el día de
+-- Argentina: now() es el instante actual, y con at time zone y ::date
+-- queda el día de acá. Antes usaba current_date, que es el día del
+-- servidor.
+--
+-- Al crear el check, Postgres revisa todas las filas que ya existen: si
+-- alguna no cumple, el alter falla y no cambia nada.
+
+alter table public."Usuarios"
+  drop constraint usuarios_fecha_nacimiento_rango,
+  add constraint usuarios_fecha_nacimiento_rango
+    check (
+      fecha_nacimiento <= (now() at time zone 'America/Argentina/Buenos_Aires')::date
+      and fecha_nacimiento >= (now() at time zone 'America/Argentina/Buenos_Aires')::date
+                              - interval '120 years'
+    );
 
 
 -- ============================================================

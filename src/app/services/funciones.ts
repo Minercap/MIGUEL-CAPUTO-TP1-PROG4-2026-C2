@@ -443,7 +443,7 @@ export class Funciones {
   // P0001 es el código con el que llega un "raise exception" de Postgres:
   // el trigger funciones_sin_superposicion rechazó la fila (D-29). Tiene
   // dos reglas, y las dos llegan con el mismo código: se distinguen por el
-  // texto que escribe el trigger (supabase/schema.sql, sección 9.4).
+  // texto que escribe el trigger (supabase/schema.sql, sección 9.5).
   //   - Estreno: la función es anterior al estreno de la película. Este
   //     servicio ya lo controla antes; llega acá solo si el estreno cambió
   //     en el medio.
@@ -452,7 +452,7 @@ export class Funciones {
   // 23514 es "violación de check": un dato no cumple una regla de la tabla.
   private traducirError(error: ErrorDeBase, generico: string): string {
     // OJO: la regla del estreno se reconoce por la palabra "estreno" en el
-    // mensaje del raise exception (supabase/schema.sql, sección 9.4). Si se
+    // mensaje del raise exception (supabase/schema.sql, sección 9.5). Si se
     // cambia ese texto en el trigger, hay que cambiar esta palabra, y al
     // revés. El mensaje de superposición no tiene que contenerla.
     if (error.code === 'P0001' && error.message.includes('estreno')) {

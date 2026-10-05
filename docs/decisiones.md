@@ -606,13 +606,22 @@ nombre escrito en otro alfabeto (cirílico, griego, chino).
   update de la fila. Cuando la película cumpla un año de estrenada, o al día siguiente del
   estreno de una que tuvo preventa, la base rechazaría cualquier cambio sobre ella. Son
   reglas del momento de la carga: quedan en el formulario.
-- El rango de la fecha de nacimiento sí usa `current_date`. El mismo problema existe solo
-  para quien cumple 120 años.
-- El servidor está en UTC y Argentina en UTC-3: de 21 a 24 hs la base ya está en el día
-  siguiente. El efecto es que acepta una fecha de nacimiento un día "en el futuro" durante
-  esas tres horas; nunca rechaza una fecha válida.
+- El rango de la fecha de nacimiento sí compara contra la fecha de hoy. El mismo problema
+  existe solo para quien cumple 120 años.
 - Las listas de tipo de sangre y color de ojos quedan escritas en dos lugares, el
   formulario y la base. Si se agrega una opción, hay que agregarla en los dos.
+
+**Resuelto · zona horaria de la fecha de nacimiento · 05/10:** el check usaba
+`current_date`, que es el día del servidor, y el servidor está en UTC. De 21 a 24 hs de
+Argentina la base ya estaba en el día siguiente y aceptaba una fecha de nacimiento un día
+"en el futuro". Ahora "hoy" es el día de Argentina (sección 9.5 de `schema.sql`), y la base
+y el formulario aceptan lo mismo a cualquier hora. Lo que no se vio en clase (🟡) y se usa:
+
+- **`now() at time zone 'America/Argentina/Buenos_Aires'`**: la fecha y la hora que marca
+  el reloj en Argentina en este instante, sin importar dónde esté el servidor.
+- **`(...)::date`**: un cast, un cambio de tipo. Se queda con el día y descarta la hora.
+- **`drop constraint`**: borra un check. Un check no se puede modificar, así que se borra
+  y se crea de nuevo en el mismo `alter table`.
 
 **Descartado:** validar solo en el formulario. Es lo visto en clase, pero deja la base
 aceptando cualquier cosa.
@@ -777,10 +786,13 @@ lo cierra la edición de película: no deja poner un estreno posterior a la prim
 futura, ni desde el formulario ni desde `modificar()`, y el mensaje dice la fecha de esa
 función.
 
-**Límite conocido:** `fecha_estreno` es un `date` y el servidor está en UTC, así que la
-base toma el estreno desde las 21:00 del día anterior en Argentina. Deja pasar una función
-de la víspera del estreno desde esa hora, que el formulario sí rechaza; nunca rechaza una
-función válida. Es el mismo efecto que D-25 anota para la fecha de nacimiento.
+**Resuelto · zona horaria del estreno · 05/10:** `fecha_estreno` es un `date` y el servidor
+está en UTC, así que la base tomaba el estreno desde las 21:00 del día anterior en
+Argentina y dejaba pasar una función de la víspera desde esa hora. Ahora el trigger compara
+el **día de la función en Argentina** con el estreno (sección 9.5 de `schema.sql`):
+`(new.fecha_hora at time zone 'America/Argentina/Buenos_Aires')::date`. `at time zone` da
+la fecha y la hora que marca el reloj en Argentina en ese instante, y `::date` se queda con
+el día (🟡, aprobado). Es el mismo arreglo que D-25 anota para la fecha de nacimiento.
 
 **Clase de origen:** 6 + trigger 🟡 (D-25, aprobado por la cátedra). **Requisito:** funciones
 sin superposición (R-17, R-18, R-19).
