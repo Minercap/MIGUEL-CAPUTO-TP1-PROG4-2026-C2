@@ -20,6 +20,7 @@
 --      La 9.6 vuelve a aplicar la sección 7 sobre la base viva, donde no
 --      se había corrido.
 --  10. Cartelera: vista de las películas más vendidas (D-31)
+--  11. Compra: ButacasOcupadas y la función realizar_compra (D-38, D-39)
 -- ============================================================
 
 -- ============================================================
@@ -1444,6 +1445,463 @@ where schemaname = 'public'
 
 
 -- ============================================================
+-- 11. COMPRA  (decisiones D-38 y D-39)
+-- ============================================================
+-- La compra deja de hacerse con inserts sueltos desde el front y pasa a
+-- ser una función de Postgres, realizar_compra, que la app llama con
+-- rpc(). La función valida todo, calcula los precios e inserta la compra,
+-- sus entradas y las butacas ocupadas en una sola transacción: entra
+-- todo o no entra nada.
+--
+-- Orden:
+--   11.1 Compras: columna medio_pago
+--   11.2 Tabla ButacasOcupadas, pública, con unique y Realtime
+--   11.3 Políticas: se cierra la escritura directa y la lectura de Entradas
+--   11.4 Función realizar_compra
+
+
+-- ---------- 11.1 Compras: medio de pago ----------
+-- De lo que la compra necesita, es lo único que le faltaba a la tabla:
+-- email, total, codigo, estado y usuario_id ya estaban (sección 1).
+-- El pago es simulado (A-01): se guarda solo qué medio se eligió. Los
+-- datos de la tarjeta no se guardan en ningún lado.
+--
+-- La columna nace not null, así que el alter falla si Compras ya tiene
+-- filas (no tendrían medio de pago). Este select tiene que dar 0; si no,
+-- hay que borrar esas compras de prueba antes.
+
+select count(*) as compras_existentes from public."Compras";
+
+alter table public."Compras"
+  add column medio_pago text not null
+    check (medio_pago in ('credito', 'debito', 'mercado_pago'));
+
+
+-- ---------- 11.2 ButacasOcupadas (R-16, D-38) ----------
+-- Qué butacas de cada función ya están vendidas. Es lo único que el mapa
+-- necesita saber, y es lo único que guarda: ni quién la compró ni cuánto
+-- pagó. Por eso puede ser pública y avisar por Realtime a cualquiera que
+-- esté mirando el mapa, mientras Compras y Entradas quedan privadas.
+--
+-- unique (funcion_id, fila, numero): no puede haber dos filas con la
+-- misma combinación de las tres columnas. La misma butaca se puede
+-- vender en dos funciones distintas, pero no dos veces en la misma. Es
+-- lo que hace imposible la doble venta: si dos personas compran la misma
+-- butaca a la vez, el segundo insert es rechazado por la base (código
+-- 23505), sin importar lo que haya mostrado el mapa de cada una.
+
+create table public."ButacasOcupadas" (
+  id          bigint generated always as identity primary key,
+  funcion_id  bigint not null references public."Funciones"(id) on delete cascade,
+  fila        char(1) not null,
+  numero      int not null,
+  unique (funcion_id, fila, numero)
+);
+
+alter table public."ButacasOcupadas" enable row level security;
+
+-- La lee cualquiera, con o sin sesión. No hay política de insert, update
+-- ni delete: nadie escribe directo. La única que inserta es
+-- realizar_compra, que es security definer.
+create policy "butacas_ocupadas: lectura publica"
+  on public."ButacasOcupadas" for select to anon, authenticated using (true);
+
+-- Realtime avisa solo de las tablas que están en esta lista. Es lo mismo
+-- que activar Realtime para la tabla desde el panel, pero escrito acá
+-- para que quede en el script (D-11).
+alter publication supabase_realtime add table public."ButacasOcupadas";
+
+
+-- ---------- 11.3 Políticas: se cierra la escritura directa ----------
+-- Hasta acá, Compras y Entradas aceptaban inserts de cualquiera, incluso
+-- sin sesión: era la forma de comprar desde el front. Con esas políticas
+-- abiertas, alguien podría saltearse la función e insertar una entrada al
+-- precio que quiera desde la consola del navegador. Se quitan: la única
+-- puerta de entrada es realizar_compra.
+--
+-- "drop policy if exists" borra la política si está; si no está, sigue.
+
+drop policy if exists "cliente crea su compra"        on public."Compras";
+drop policy if exists "anonimo crea compra"           on public."Compras";
+drop policy if exists "entradas: insert autenticado"  on public."Entradas";
+drop policy if exists "entradas: insert anonimo"      on public."Entradas";
+
+-- Entradas era de lectura pública porque el mapa de butacas salía de
+-- ahí. Ahora sale de ButacasOcupadas, así que Entradas pasa a ser
+-- privada: cada uno lee las de sus compras (para Mis películas, R-12), y
+-- el empleado y el admin las leen todas (validación y reportes).
+-- La vista PeliculasMasVendidas no se ve afectada: corre con los permisos
+-- de su dueño (sección 10).
+drop policy if exists "entradas: lectura publica" on public."Entradas";
+
+create policy "entradas: lectura propia"
+  on public."Entradas" for select to authenticated
+  using (
+    exists (
+      select 1 from public."Compras" c
+      where c.id = compra_id
+        and (c.usuario_id = auth.uid() or public.es_empleado() or public.es_admin())
+    )
+  );
+
+
+-- ---------- 11.4 Función realizar_compra (D-39) ----------
+-- La app la llama con rpc('realizar_compra', { p_funcion_id, p_butacas,
+-- p_email, p_medio_pago, p_fecha_nacimiento }). Los parámetros llevan el
+-- prefijo p_ para que no se confundan con las columnas que se llaman
+-- igual.
+--
+--   p_funcion_id        la función elegida.
+--   p_butacas           las butacas, como una lista JSON:
+--                       [{"fila": "A", "numero": 5}, {"fila": "R", "numero": 12}]
+--   p_email             el mail del comprador. Solo se usa si no hay sesión.
+--   p_medio_pago        'credito', 'debito' o 'mercado_pago'.
+--   p_fecha_nacimiento  la fecha de nacimiento que declara el comprador
+--                       (D-06). Solo se usa si no hay sesión y la película
+--                       tiene restricción de edad; si no, va null.
+--
+-- SECURITY DEFINER: corre con los permisos de quien la creó, así que
+-- puede insertar en Compras, Entradas y ButacasOcupadas aunque quien la
+-- llama no tenga permiso de escritura sobre ninguna. El search_path fijo
+-- es la precaución que acompaña siempre a security definer (igual que en
+-- rol_actual(), sección 2): nadie puede hacerle usar otra tabla con el
+-- mismo nombre.
+--
+-- TRANSACCIÓN: una función corre entera dentro de una transacción. Si
+-- cualquier paso hace "raise exception", se deshace todo lo que la
+-- función había hecho hasta ahí. No puede quedar una compra a medias.
+--
+-- ERRORES: cada regla que no se cumple hace raise exception con un
+-- mensaje escrito para el comprador. Llegan al front con el código P0001
+-- y el servicio muestra ese texto tal cual (services/compras.ts).
+--
+-- Devuelve un JSON con lo que la pantalla de confirmación necesita,
+-- porque un comprador sin sesión no tiene permiso para volver a leer su
+-- compra:
+--   { "codigo": "OLY-1A2B-3C4D", "total": 15000, "email": "...",
+--     "requiere_adulto": false,
+--     "entradas": [{"fila": "A", "numero": 5, "es_vip": false, "precio": 5000}] }
+--
+-- Cosas de plpgsql que aparecen acá por primera vez:
+--   jsonb                      un valor JSON guardado de forma que se
+--                              puede recorrer y consultar.
+--   jsonb_typeof(x)            dice qué es: 'array', 'object', 'string'...
+--   jsonb_array_length(x)      cuántos elementos tiene una lista JSON.
+--   jsonb_array_elements(x)    convierte la lista en filas, una por
+--                              elemento, para recorrerla con un for.
+--   x ->> 'clave'              el valor de esa clave, como texto.
+--   x || y                     agrega y al final de la lista x.
+--   jsonb_build_object(...)    arma un objeto JSON: clave, valor, clave,
+--                              valor...
+--   auth.uid()                 el id del usuario con sesión; null si no
+--                              hay sesión.
+--   age(a, b)                  el tiempo entre dos fechas; con
+--                              extract(year from ...) quedan los años
+--                              cumplidos.
+--   begin ... exception when   atrapa un error de la base para cambiarle
+--                              el mensaje.
+--   found                      verdadero si el último select encontró
+--                              una fila.
+--   coalesce(x, y)             x, o y si x es null.
+--   texto !~ 'patrón'          verdadero si el texto NO cumple la
+--                              expresión regular (lo contrario de ~).
+--   to_char(fecha, 'DD/MM/YYYY')  escribe la fecha con ese formato.
+--   gen_random_uuid()          un identificador al azar.
+--   insert ... returning id into x   guarda en x el id de la fila recién
+--                              insertada.
+--   loop ... exit when         repite hasta que se cumple la condición.
+
+-- La primera versión de esta función tenía cuatro parámetros, sin la
+-- fecha de nacimiento. Para Postgres, dos funciones con el mismo nombre y
+-- distintos parámetros son dos funciones distintas: "create or replace"
+-- no pisaría la vieja, quedarían las dos. Por si llegó a crearse, se
+-- borra. Si no existe, no pasa nada.
+drop function if exists public.realizar_compra(bigint, jsonb, text, text);
+
+create or replace function public.realizar_compra(
+  p_funcion_id        bigint,
+  p_butacas           jsonb,
+  p_email             text,
+  p_medio_pago        text,
+  p_fecha_nacimiento  date
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  -- La función y su película
+  v_pelicula_id     bigint;
+  v_fecha_hora      timestamptz;
+  v_precio_base     numeric(12,2);
+  v_precio_vip      numeric(12,2);
+  v_visible         boolean;
+  v_restriccion     int;
+  v_estreno         date;
+  v_preventa        boolean;
+  v_precio_preventa numeric(12,2);
+
+  -- Fechas, en hora argentina
+  v_hoy             date;
+  v_inicio_venta    date;
+  v_en_preventa     boolean;
+
+  -- El comprador
+  v_usuario         uuid;
+  v_nacimiento      date;   -- la del perfil o la declarada: con la que se calcula la edad
+  v_declarada       date;   -- lo que se guarda en fecha_nacimiento_declarada
+  v_edad            int;
+  v_email           text;
+
+  -- Las butacas
+  v_cantidad        int;
+  v_butaca          jsonb;
+  v_fila            text;
+  v_numero          int;
+  v_es_vip          boolean;
+  v_precio          numeric(12,2);
+  v_total           numeric(12,2) := 0;
+  v_entradas        jsonb := '[]'::jsonb;
+
+  -- La compra
+  v_codigo          text;
+  v_compra_id       bigint;
+begin
+  -- ----- 1. La función existe y todavía no empezó -----
+  select f.pelicula_id, f.fecha_hora, f.precio_base, f.precio_vip
+    into v_pelicula_id, v_fecha_hora, v_precio_base, v_precio_vip
+  from public."Funciones" f
+  where f.id = p_funcion_id;
+
+  -- "found" es verdadero si el select anterior encontró una fila.
+  if not found then
+    raise exception 'La función no existe.';
+  end if;
+
+  if v_fecha_hora <= now() then
+    raise exception 'La función ya empezó: no se pueden comprar entradas.';
+  end if;
+
+  select p.visible, p.restriccion_edad, p.fecha_estreno, p.preventa_habilitada, p.precio_preventa
+    into v_visible, v_restriccion, v_estreno, v_preventa, v_precio_preventa
+  from public."Peliculas" p
+  where p.id = v_pelicula_id;
+
+  -- Una película oculta se puede leer, pero no está ofrecida (D-34): no
+  -- se le venden entradas, aunque alguien llegue con el link directo.
+  if not v_visible then
+    raise exception 'Esta película no está disponible para la venta.';
+  end if;
+
+  -- ----- 2. La venta está abierta (R-11) -----
+  -- "Hoy" es el día de Argentina, no el del servidor (ver sección 9.5).
+  -- Con preventa, la venta abre 7 días antes del estreno; sin preventa,
+  -- el día del estreno. Restarle un número a un date le resta días.
+  v_hoy := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+
+  if v_preventa then
+    v_inicio_venta := v_estreno - 7;
+  else
+    v_inicio_venta := v_estreno;
+  end if;
+
+  if v_hoy < v_inicio_venta then
+    raise exception 'La venta de esta película todavía no está abierta. Abre el %.',
+      to_char(v_inicio_venta, 'DD/MM/YYYY');
+  end if;
+
+  -- Está en preventa mientras no haya llegado el día del estreno. Desde
+  -- ese día el precio vuelve al normal, sin que nadie toque nada.
+  v_en_preventa := v_preventa and v_hoy < v_estreno;
+
+  -- ----- 3. El medio de pago es uno de la lista -----
+  if p_medio_pago is null or p_medio_pago not in ('credito', 'debito', 'mercado_pago') then
+    raise exception 'Elegí un medio de pago válido.';
+  end if;
+
+  -- ----- 4. El comprador: edad y mail -----
+  v_usuario := auth.uid();
+
+  if v_usuario is not null then
+    select u.fecha_nacimiento, u.email into v_nacimiento, v_email
+    from public."Usuarios" u
+    where u.id = v_usuario;
+
+    if not found then
+      raise exception 'No se encontró tu perfil. Cerrá la sesión y volvé a ingresar.';
+    end if;
+  end if;
+
+  -- Control de edad (R-25, D-06). Solo si la película tiene restricción.
+  --   Con sesión: la fecha de nacimiento es la del perfil, que ya se leyó
+  --   arriba. Lo que venga en p_fecha_nacimiento se ignora.
+  --   Sin sesión: el comprador la declara. Es obligatoria, y se valida
+  --   con la misma regla que el check de Usuarios (sección 9.5): no
+  --   futura y no más de 120 años atrás, con "hoy" en hora argentina.
+  -- En una película sin restricción no se pide ni se guarda nada.
+  if v_restriccion is not null then
+    if v_usuario is null then
+      if p_fecha_nacimiento is null then
+        raise exception 'Esta película es para mayores de % años. Ingresá tu fecha de nacimiento.',
+          v_restriccion;
+      end if;
+      if p_fecha_nacimiento > v_hoy
+         or p_fecha_nacimiento < v_hoy - interval '120 years' then
+        raise exception 'La fecha de nacimiento no es válida.';
+      end if;
+      v_nacimiento := p_fecha_nacimiento;
+      v_declarada  := p_fecha_nacimiento;
+    end if;
+
+    -- age() da el tiempo entre las dos fechas, y extract(year ...) se
+    -- queda con los años cumplidos.
+    v_edad := extract(year from age(v_hoy, v_nacimiento));
+    if v_edad < v_restriccion then
+      raise exception 'Esta película es para mayores de % años.', v_restriccion;
+    end if;
+  end if;
+
+  -- Sin sesión, el mail es obligatorio: es a donde va la entrada (R-02).
+  -- Se guarda sin espacios y en minúsculas. El patrón es el mismo del
+  -- validador email() del front: algo@algo.algo, sin espacios.
+  -- Con sesión se usa el mail del perfil, y p_email se ignora.
+  if v_usuario is null then
+    v_email := lower(trim(coalesce(p_email, '')));
+    if v_email = '' then
+      raise exception 'Ingresá un mail para recibir la entrada.';
+    end if;
+    if char_length(v_email) > 254 or v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' then
+      raise exception 'El mail no tiene un formato válido.';
+    end if;
+  end if;
+
+  -- ----- 5. Las butacas: cantidad, validez y precio -----
+  if p_butacas is null or jsonb_typeof(p_butacas) <> 'array' then
+    raise exception 'Elegí al menos una butaca.';
+  end if;
+
+  v_cantidad := jsonb_array_length(p_butacas);
+  if v_cantidad < 1 then
+    raise exception 'Elegí al menos una butaca.';
+  end if;
+  if v_cantidad > 10 then
+    raise exception 'Se pueden comprar hasta 10 butacas por compra.';
+  end if;
+
+  for v_butaca in select * from jsonb_array_elements(p_butacas)
+  loop
+    v_fila := upper(coalesce(v_butaca ->> 'fila', ''));
+
+    -- El número tiene que ser un entero escrito solo con dígitos; recién
+    -- entonces se lo convierte. Sin este chequeo, un valor como "abc"
+    -- cortaría la función con un error técnico de Postgres.
+    if coalesce(v_butaca ->> 'numero', '') !~ '^[0-9]{1,2}$' then
+      raise exception 'Alguna de las butacas elegidas no existe en la sala.';
+    end if;
+    v_numero := (v_butaca ->> 'numero')::int;
+
+    -- La distribución de la sala (R-13, D-04): filas de la A a la T. Las
+    -- filas J y K son las accesibles y tienen 14 butacas (2, 10 y 2); las
+    -- demás tienen 28 (4, 20 y 4). Es la misma regla que usa el front
+    -- para dibujar el mapa.
+    if v_fila !~ '^[A-T]$' then
+      raise exception 'Alguna de las butacas elegidas no existe en la sala.';
+    end if;
+    if v_numero < 1
+       or (v_fila in ('J', 'K') and v_numero > 14)
+       or v_numero > 28 then
+      raise exception 'Alguna de las butacas elegidas no existe en la sala.';
+    end if;
+
+    -- El precio se decide acá, con los datos de la base. Lo que haya
+    -- mostrado o mandado el navegador no se usa.
+    --   VIP (filas R, S y T): siempre precio_vip, también en preventa.
+    --   Comunes y accesibles: precio_preventa durante la preventa;
+    --   si no, precio_base.
+    v_es_vip := v_fila in ('R', 'S', 'T');
+    if v_es_vip then
+      v_precio := v_precio_vip;
+    elsif v_en_preventa then
+      v_precio := v_precio_preventa;
+    else
+      v_precio := v_precio_base;
+    end if;
+
+    v_total := v_total + v_precio;
+    v_entradas := v_entradas || jsonb_build_object(
+      'fila', v_fila,
+      'numero', v_numero,
+      'es_vip', v_es_vip,
+      'precio', v_precio
+    );
+  end loop;
+
+  -- ----- 6. El código de la compra (D-09) -----
+  -- Formato OLY-XXXX-XXXX. Los ocho caracteres salen de un uuid al azar
+  -- (gen_random_uuid), que no se puede adivinar: se le sacan los guiones,
+  -- se pasa a mayúsculas y se toman dos bloques de cuatro. Si justo ya
+  -- existe una compra con ese código, se genera otro.
+  loop
+    v_codigo := upper(replace(gen_random_uuid()::text, '-', ''));
+    v_codigo := 'OLY-' || substr(v_codigo, 1, 4) || '-' || substr(v_codigo, 5, 4);
+    exit when not exists (select 1 from public."Compras" c where c.codigo = v_codigo);
+  end loop;
+
+  -- ----- 7. Guardar todo -----
+  -- El bloque begin ... exception atrapa un error en particular: la
+  -- violación de unique. Pasa cuando alguna de las butacas ya está en
+  -- ButacasOcupadas para esa función (otra persona la compró antes), o si
+  -- la misma butaca vino dos veces en la lista. Se le cambia el mensaje
+  -- por uno que el comprador entienda; al salir con raise exception se
+  -- deshace todo, incluida la fila de Compras de acá abajo.
+  begin
+    -- v_declarada queda en null salvo en la compra sin sesión de una
+    -- película con restricción.
+    insert into public."Compras"
+      (usuario_id, email, fecha_nacimiento_declarada, codigo, total, medio_pago)
+    values
+      (v_usuario, v_email, v_declarada, v_codigo, v_total, p_medio_pago)
+    returning id into v_compra_id;
+
+    for v_butaca in select * from jsonb_array_elements(v_entradas)
+    loop
+      insert into public."Entradas" (compra_id, funcion_id, fila, numero, es_vip, precio)
+      values (
+        v_compra_id,
+        p_funcion_id,
+        v_butaca ->> 'fila',
+        (v_butaca ->> 'numero')::int,
+        (v_butaca ->> 'es_vip')::boolean,
+        (v_butaca ->> 'precio')::numeric
+      );
+
+      insert into public."ButacasOcupadas" (funcion_id, fila, numero)
+      values (p_funcion_id, v_butaca ->> 'fila', (v_butaca ->> 'numero')::int);
+    end loop;
+  exception
+    when unique_violation then
+      raise exception 'Alguna de las butacas ya fue vendida. Elegí otras.';
+  end;
+
+  -- ----- 8. Lo que necesita la pantalla de confirmación -----
+  return jsonb_build_object(
+    'codigo', v_codigo,
+    'total', v_total,
+    'email', v_email,
+    'requiere_adulto', v_restriccion is not null,
+    'entradas', v_entradas
+  );
+end;
+$$;
+
+-- Quién puede llamarla: cualquiera, con o sin sesión (R-02). Los
+-- controles están adentro de la función.
+grant execute on function public.realizar_compra(bigint, jsonb, text, text, date)
+  to anon, authenticated;
+
+
+-- ============================================================
 -- PUNTOS ABIERTOS — leer antes de seguir
 -- ============================================================
 --
@@ -1462,14 +1920,14 @@ where schemaname = 'public'
 --    Esto se decide en el bloque de compra (03/10). Las opciones son
 --    calcularlos al vuelo desde las compras, o una función en la base.
 --
--- 3. LECTURA DE COMPRAS ANÓNIMAS.
---    El anónimo puede insertar su compra, pero no hay política que lo
---    deje leerla después. Para mostrarle la entrada alcanza con los
---    datos que la app ya tiene en memoria. Si querés que pueda volver
---    a ver su compra con el código, hace falta una política más.
---    Decisión pendiente para el bloque de compra.
+-- 3. LECTURA DE COMPRAS ANÓNIMAS.  -- RESUELTO (sección 11.4, D-39)
+--    El anónimo no puede leer su compra después de hacerla. No hace
+--    falta: realizar_compra devuelve todo lo que la pantalla de
+--    confirmación necesita. Volver a verla más tarde con el código
+--    sigue sin estar: no lo pide ningún mail.
 --
--- 4. DOBLE VENTA DE BUTACAS.
---    Falta la constraint unique sobre Entradas (funcion_id, fila,
---    numero). Es lo único que impide de verdad que dos compras
---    simultáneas tomen la misma butaca. Ya agendado para el 03/10.
+-- 4. DOBLE VENTA DE BUTACAS.  -- RESUELTO (sección 11.2, D-38)
+--    La unique no va sobre Entradas sino sobre ButacasOcupadas
+--    (funcion_id, fila, numero). Las entradas de una compra cancelada
+--    quedan como historial, y esa butaca tiene que poder venderse otra
+--    vez: con la unique en Entradas no se podría.
