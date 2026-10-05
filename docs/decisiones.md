@@ -116,6 +116,9 @@ mantener dos caminos distintos para algo que es el mismo descuento.
 
 **Requisitos:** R-23 y R-24.
 
+**Complementada por D-41 y D-43:** cuándo aplica cada cupón se deduce de las compras y
+de la edad, y hay un solo cupón de primera compra activo a la vez.
+
 ---
 
 ## D-06 · Control de edad en la compra anónima · 22/09
@@ -177,6 +180,9 @@ columna específica puede ser `NOT NULL`, ninguna clave foránea puede ser oblig
 consistencia pasa a depender de validaciones en el código en vez de la estructura.
 
 **Requisitos:** R-20 (entrada), R-21 (candy bar), R-22 (combos), R-28 (canje por puntos).
+
+**Ajustada por D-40:** como el combo pasó a ser un producto, `ItemsCandy` apunta siempre a
+`ProductosCandy` y ya no tiene `combo_id`.
 
 ---
 
@@ -1030,3 +1036,135 @@ para el comprador. Llegan al front con el código `P0001` y el servicio muestra 
 
 **Clase de origen:** función de Postgres 🟡 (D-25, aprobado por la cátedra) + `rpc()` 🟡.
 **Requisito:** integridad de la compra (R-20, R-25, R-26, R-11, R-14). Se apoya en D-06.
+
+---
+
+## D-40 · El combo es un producto con sus ítems · 05/10
+
+**Elegido:** un combo es una fila de `ProductosCandy` con `es_combo` en verdadero.
+`CombosProductos` dice qué productos trae y en qué cantidad. `incluye_entrada` marca los
+combos que traen entrada (mail 03/03, "entrada + pochoclos + bebida").
+
+**Descartado:** la tabla `Combos` aparte del modelo original, porque obligaba a
+`ItemsCandy` a tener dos claves foráneas opcionales (`producto_id` o `combo_id`), y ninguna
+podía ser `not null`. Es lo mismo que D-08 evita con las entradas.
+
+**Cómo lo explico en el oral:** para la compra, un combo se vende igual que un pochoclo: es
+un producto con precio. Lo único que tiene de más es la lista de lo que trae. Así cada
+ítem de la compra apunta a un solo producto, y el reporte del más vendido (R-37) cuenta
+combos y productos sueltos con la misma consulta.
+
+**Lo que cambia:** reemplaza `Combos` y el `CombosProductos` original (que apuntaba a
+`Combos`) del modelo de datos, y ajusta D-08: `ItemsCandy` pierde `combo_id` y
+`producto_id` pasa a ser obligatorio. `ProductosCandy` pierde `imagen_url`, porque
+ningún mail pide imagen. Los destacados de R-22 son los combos, así que no hay una
+columna `destacado` aparte.
+
+**Reglas en la base (D-25):** `check (combo_id <> producto_id)`, cantidad de 1 a 10 y
+`check (not incluye_entrada or es_combo)`.
+
+**Lectura:** cualquiera lee todos los productos, también los dados de baja
+(`activo = false`), por el mismo motivo que D-34: las compras los referencian y el
+historial los tiene que poder mostrar. La pantalla de compra filtra por `activo`.
+
+**Guardado en dos pasos:** insert del combo, y después insert de sus ítems. Si el
+segundo falla, se borra el combo y se muestra el error, para que no quede un combo vacío.
+
+**Límite conocido:** "sin combos dentro de combos" queda solo en el formulario (el
+selector ofrece solo productos que no son combo). Depende de otra fila de
+`ProductosCandy`, y un check solo ve la fila que se guarda: es el mismo criterio que los
+géneros de 1 a 4 en D-25. La tabla la escribe solo el admin.
+
+**Clase de origen:** 6 (CRUD, RLS) + 4 (`FormArray`) + `check` (D-25).
+**Requisito:** R-21, R-22.
+
+---
+
+## D-41 · Cuándo aplica cada cupón se deduce, no se guarda · 05/10
+
+**Elegido:** no hay tabla de cupones usados. `realizar_compra` calcula en el momento si
+el cupón aplica:
+- **Primera compra:** el usuario no tiene compras pagadas previas en `Compras`.
+- **Mayor de 50:** el usuario tiene más de 50 años según la fecha de nacimiento de su
+  perfil. Aplica en cada compra, mientras el cupón esté activo.
+
+Complementa a D-05, que sigue en pie: los cupones se guardan en `Cupones` y el admin los
+administra desde su ABM.
+
+**Descartado:**
+- Una tabla `CuponesUsados` (usuario, cupón), porque guarda algo que ya se deduce de
+  `Compras`, y dos datos que dicen lo mismo pueden contradecirse.
+- Una columna "ya usó el cupón" en `Usuarios`, porque el usuario edita su propia fila: se
+  podría volver a habilitar el cupón desde la consola del navegador.
+
+**Interpretación adoptada:** el cupón de bienvenida es de un solo uso (mail 01/01, "en la
+primera compra"); el de mayores de 50 es reutilizable (mail 30/01). Como cuentan las
+compras **pagadas**, si el cliente cancela su primera compra, la siguiente vuelve a ser
+la primera.
+
+**Datos iniciales:** solo el cupón de bienvenida, con 20% (mail 01/01). Es un valor
+inicial que el admin edita (mail 30/01). Los cupones para mayores de 50 los crea el admin.
+
+**A resolver en el bloque de compra:** dos compras simultáneas del mismo usuario no se
+ven entre sí mientras se guardan, así que las dos podrían verse como "la primera". Se
+evita con un candado por usuario dentro de `realizar_compra`, como el candado por sala
+del trigger de superposición (sección 9.3).
+
+**Cómo lo explico en el oral:** el cliente no puede tocar nada que le devuelva el cupón:
+la regla sale de sus compras, que solo escribe `realizar_compra` (D-39).
+
+**Clase de origen:** 6 (CRUD) + función de Postgres (D-39). **Requisito:** R-23, R-24.
+
+---
+
+## D-42 · La recompensa es una entrada o un producto del candy · 05/10
+
+**Elegido:** `Recompensas` tiene un `tipo` (`entrada` o `producto`) y un `producto_id`
+que apunta a `ProductosCandy` solo cuando el tipo es producto. Un check cruzado lo exige:
+si el tipo es producto, `producto_id` está cargado, y si es entrada, está vacío. El costo
+en puntos es un entero de 1 a 100.000.
+
+**Descartado:**
+- Una recompensa que solo apunta a un producto, porque el mail del 03/03 pide canjear por
+  "entradas gratis o por productos del candy bar".
+- Un campo `nombre` libre, porque el nombre sale del producto o de "Entrada": escribirlo
+  dos veces permite que no coincidan.
+
+**Lectura:** cualquiera lee todas las recompensas, también las inactivas, por el mismo
+motivo que D-34: los canjes las referencian y el historial de canjes del perfil (R-03)
+las tiene que poder mostrar.
+
+**Cómo lo explico en el oral:** el admin no inventa premios, elige qué se puede canjear
+(una entrada o algo del candy que ya existe) y cuánto cuesta. Así el empleado entrega un
+producto real y el reporte del más vendido lo reconoce.
+
+**Clase de origen:** 6 (CRUD, RLS) + `check` cruzado (D-25). **Requisito:** R-28.
+
+---
+
+## D-43 · Un solo cupón de primera compra activo, con un índice único parcial · 05/10
+
+**Elegido:** `create unique index cupones_un_bienvenida_activo on "Cupones" (condicion)
+where condicion = 'primera_compra' and activo`.
+
+**Por qué:** `validaciones.md` 3.7 pide que haya un solo cupón de primera compra activo a
+la vez. Con dos, la compra no sabría cuál aplicar. Un check no alcanza, porque solo ve
+la fila que se está guardando y esta regla mira las otras.
+
+**Descartado:** controlarlo solo en el formulario, porque se saltea desde la consola del
+navegador o con dos pestañas del admin abiertas a la vez.
+
+**Lo que no se vio en clase (🟡):** un **índice único parcial** es un `unique` que vale
+solo para las filas que cumplen el `where`. Entre los cupones de primera compra activos,
+`condicion` no se puede repetir, así que hay uno solo. Los inactivos y los de mayores de
+50 no cuentan. Activar un segundo devuelve 23505, igual que el nombre repetido de una
+sala.
+
+**Antes de crearlo:** un `select` lista los cupones de primera compra activos si hay más
+de uno. Tiene que dar vacío; si no, el `create` falla y hay que desactivar los que
+sobran. Es el mismo criterio que la sección 9.6.
+
+**Cómo lo explico en el oral:** es el `unique` de siempre, pero solo para los cupones de
+bienvenida activos.
+
+**Clase de origen:** índice único parcial 🟡. **Requisito:** R-23.

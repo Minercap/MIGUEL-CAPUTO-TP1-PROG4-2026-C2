@@ -220,6 +220,11 @@ El administrador puede crear cupones que apliquen solo a usuarios de **más de 5
 > ("primera compra" o "mayor de 50 años"). El cupón de bienvenida nace con 20% como valor
 > inicial, editable desde el panel. El mail posterior pisa al anterior.
 
+> **Interpretación adoptada (D-41).** El cupón de bienvenida es de **un solo uso**: aplica
+> si el usuario no tiene compras pagadas previas. El cupón para mayores de 50 es
+> **reutilizable**: aplica cada vez que el usuario tenga más de 50 años, mientras el cupón
+> esté activo. Las dos cosas se deducen en la compra; no se guardan.
+
 ### R-25 · Restricción de edad en la compra
 
 A los usuarios menores de 18 o de 13 años no se les permite comprar entradas para las
@@ -369,6 +374,9 @@ adelante sin cambios estructurales.
 | D-39 | Venta y preventa | Abre 7 días antes del estreno con preventa, o el día del estreno sin ella. En preventa, comunes y accesibles a precio de preventa; VIP a precio VIP |
 | D-39 | Butacas accesibles | Al precio base |
 | D-39 | Entrada de la compra anónima | Se genera en PDF al terminar la compra. El mail identifica al comprador; no se envían correos |
+| D-40 | Combos | Un combo es un producto del candy con la lista de lo que trae; puede incluir entrada. Los destacados de la compra son los combos |
+| D-41 | Uso de cupones | El de bienvenida, si no hay compras pagadas previas; el de mayores de 50, en cada compra de un mayor de 50 |
+| D-42 | Recompensas | Una entrada o un producto del candy, con su costo en puntos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
 

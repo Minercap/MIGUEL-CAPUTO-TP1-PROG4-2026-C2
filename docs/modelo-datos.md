@@ -182,29 +182,23 @@ Cubre R-13 a R-16, R-20.
 | `id` | int | |
 | `categoria_id` | int | R-21 |
 | `nombre` | text | |
-| `precio` | numeric | |
-| `imagen_url` | text | |
-| `activo` | bool | |
+| `precio` | numeric | En un combo, el precio fijo configurable (R-22) |
+| `es_combo` | bool | Los combos son los destacados de la compra (R-22) |
+| `incluye_entrada` | bool | Solo si `es_combo` (mail 03/03) |
+| `activo` | bool | Baja lógica: las compras lo siguen referenciando |
 
-### `Combos`
-
-| Campo | Tipo | Notas |
-|---|---|---|
-| `id` | int | |
-| `nombre` | text | |
-| `precio` | numeric | Precio fijo configurable (R-22) |
-| `incluye_entrada` | bool | |
-| `activo` | bool | |
+> Un combo es un producto más (D-40). No hay tabla `Combos`: lo que trae está en
+> `CombosProductos`. Sin imagen: ningún mail la pide.
 
 ### `CombosProductos`
 
-Qué productos del candy trae cada combo.
+Qué productos del candy trae cada combo. Clave primaria (`combo_id`, `producto_id`).
 
-| Campo | Tipo |
-|---|---|
-| `combo_id` | int |
-| `producto_id` | int |
-| `cantidad` | int |
+| Campo | Tipo | Notas |
+|---|---|---|
+| `combo_id` | int | → `ProductosCandy` con `es_combo` |
+| `producto_id` | int | → `ProductosCandy` sin `es_combo` |
+| `cantidad` | int | 1 a 10 |
 
 ### `ItemsCandy`
 
@@ -212,8 +206,7 @@ Qué productos del candy trae cada combo.
 |---|---|---|
 | `id` | int | |
 | `compra_id` | int | |
-| `producto_id` | int | Nulo si es combo |
-| `combo_id` | int | Nulo si es producto suelto |
+| `producto_id` | int | Producto suelto o combo (D-40) |
 | `cantidad` | int | |
 | `precio_unitario` | numeric | Histórico |
 
@@ -239,6 +232,10 @@ Cubre R-23, R-24.
 
 > El cupón de bienvenida se carga como un registro con `condicion = primera_compra` y
 > `porcentaje = 20`. El admin lo edita; no hay ningún 20 escrito en el código.
+> Solo puede haber uno activo a la vez (índice único parcial, D-43).
+>
+> Cuándo aplica no se guarda (D-41): el de bienvenida, si el usuario no tiene compras
+> pagadas previas; el de mayores de 50, cada vez que el usuario tenga más de 50 años.
 
 ### `Recompensas`
 
@@ -246,8 +243,8 @@ Cubre R-23, R-24.
 |---|---|---|
 | `id` | int | |
 | `tipo` | text | `entrada` o `producto` |
-| `producto_id` | int | Nulo si es entrada |
-| `costo_puntos` | int | Configurable (R-28) |
+| `producto_id` | int | Nulo si es entrada (check cruzado, D-42) |
+| `costo_puntos` | int | Configurable (R-28), 1 a 100.000 |
 | `activa` | bool | |
 
 ### `Canjes`
@@ -337,8 +334,10 @@ Estos no tienen tabla propia: salen de consultas.
 19 tablas:
 
 `Usuarios`, `Peliculas`, `Generos`, `PeliculasGeneros`, `Salas`, `Funciones`, `Compras`,
-`Entradas`, `CategoriasCandy`, `ProductosCandy`, `Combos`, `CombosProductos`, `ItemsCandy`,
+`Entradas`, `CategoriasCandy`, `ProductosCandy`, `CombosProductos`, `ItemsCandy`,
 `Cupones`, `Recompensas`, `Canjes`, `Resenias`, `Alertas`, `LogActividad`.
+
+`Combos` se reemplazó por `ProductosCandy` con `es_combo` (D-40).
 
 ---
 

@@ -128,11 +128,13 @@ dos falló.
 | Producto | Nombre | Obligatorio · `textoLibre` · 2 a 60 |
 | | Categoría | Obligatoria · de las existentes |
 | | Precio | Obligatorio · `precio` |
-| | Imagen | Opcional · `imagen` |
 | Combo | Nombre | Obligatorio · `textoLibre` · 2 a 60 |
-| | Productos | Al menos 1 · cantidad por producto `entero(1, 10)` · sin productos repetidos |
+| | Categoría | Obligatoria · de las existentes (el combo es un producto, D-40) |
+| | Productos | Al menos 1 · solo productos que no son combo · cantidad por producto `entero(1, 10)` · sin productos repetidos |
 | | Incluye entrada | Sí o no |
 | | Precio fijo | Obligatorio · `precio` |
+
+Los productos no llevan imagen: ningún mail la pide (D-40).
 
 ### 3.7 Cupón
 
