@@ -711,3 +711,33 @@ cálculo. Y como una película pasa sola de Próximamente a cartelera el día de
 para que se pueda comprar ese día ya tiene que tener funciones cargadas.
 
 **Clase de origen:** 8 (pipes propios). **Requisitos:** R-05, R-10 y R-11. Se apoya en D-26.
+
+---
+
+## D-28 · Precio de la entrada en la función · 05/10
+
+**Elegido:** precio como columna de `Funciones`; la compra guarda el precio pagado.
+
+**Descartado:** precio en la película, porque no permite precio por horario y la compra
+necesitaría otra consulta.
+
+**Cómo lo explico en el oral:** el cliente compra una función, así que el precio es de la
+función. La compra guarda lo que pagó para que los reportes no cambien si cambia el precio.
+
+**Clase de origen:** 6 (CRUD). **Requisito:** compra / preventa.
+
+---
+
+## D-29 · Asignación automática de sala con 30 minutos de margen · 05/10
+
+**Elegido:** el servicio elige la primera sala libre y un trigger de Postgres rechaza
+superposiciones.
+
+**Descartado:** todo en una función SQL llamada con `rpc()`, porque saca la lógica de
+Angular y suma algo no visto.
+
+**Cómo lo explico en el oral:** el servicio guía y la base garantiza. Aunque dos admins
+carguen a la vez o alguien use la consola, la base no deja superponer.
+
+**Clase de origen:** 6 + trigger 🟡 (D-25, aprobado por la cátedra). **Requisito:** funciones
+sin superposición (R-17, R-18, R-19).
