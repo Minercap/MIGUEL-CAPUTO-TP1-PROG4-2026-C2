@@ -26,6 +26,46 @@
     </div>
   </article>
 
+  <!-- La alerta de Próximamente (R-10, D-52). Se ofrece mientras la venta
+       no abrió: ventaDesde() trae el día en que abre. -->
+  @if (ventaDesde(); as desde) {
+    <section class="alerta">
+      <h2>Las entradas salen a la venta el {{ desde }}</h2>
+
+      @if (!auth.usuarioActual()) {
+        <p><a routerLink="/login">Ingresá</a> para que te avisemos cuando salgan a la venta.</p>
+      } @else if (alerta()) {
+        <p><strong>Alerta activada.</strong> Te vamos a avisar cuando salgan a la venta.</p>
+
+        @if (preguntarPush()) {
+          <p>¿Querés que te avisemos con una notificación?</p>
+          <div class="botones">
+            <button type="button" [disabled]="suscribiendo()" (click)="aceptarPush()">
+              {{ suscribiendo() ? 'Activando…' : 'Sí, avisame' }}
+            </button>
+            <button type="button" [disabled]="suscribiendo()" (click)="rechazarPush()">
+              Solo en la app
+            </button>
+          </div>
+        }
+        @if (mensajePush()) {
+          <p>{{ mensajePush() }}</p>
+        }
+        @if (errorPush()) {
+          <p class="error" role="alert">{{ errorPush() }}</p>
+        }
+      } @else {
+        <button type="button" [disabled]="activando()" (click)="activarAlerta()">
+          {{ activando() ? 'Activando…' : 'Avisarme cuando salgan a la venta' }}
+        </button>
+      }
+
+      @if (errorAlerta()) {
+        <p class="error" role="alert">{{ errorAlerta() }}</p>
+      }
+    </section>
+  }
+
   <section class="funciones">
     <h2>Funciones</h2>
 

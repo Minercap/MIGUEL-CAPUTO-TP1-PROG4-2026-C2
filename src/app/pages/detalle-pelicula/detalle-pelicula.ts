@@ -3,7 +3,11 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Cartelera } from '../../services/cartelera';
 import { Compras } from '../../services/compras';
+import { Auth } from '../../services/auth';
+import { Alertas } from '../../services/alertas';
+import { Notificaciones } from '../../services/notificaciones';
 import { diaParaMostrar } from '../../validadores/validadores';
+import { Alerta } from '../../interfaces/alerta';
 import { DiaDeFunciones, PeliculaDeCartelera } from '../../interfaces/cartelera';
 import { Funcion } from '../../interfaces/funcion';
 
@@ -27,7 +31,11 @@ const DIAS_CORTOS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 export class DetallePelicula implements OnInit {
   private carteleraSrv = inject(Cartelera);
   private comprasSrv = inject(Compras);
+  private alertasSrv = inject(Alertas);
+  private notificaciones = inject(Notificaciones);
   private ruta = inject(ActivatedRoute);
+  // Público: el template pregunta si hay sesión.
+  auth = inject(Auth);
 
   // El :id de /pelicula/:id (D-20). No es un signal porque no cambia
   // mientras la pantalla está abierta.
@@ -49,6 +57,18 @@ export class DetallePelicula implements OnInit {
   // elegirDia().
   funcionesDelDia = signal<Funcion[]>([]);
 
+  // La alerta de Próximamente (R-10, D-52). Solo se usa mientras la venta
+  // no abrió.
+  alerta = signal<Alerta | null>(null); // null = no la activó
+  errorAlerta = signal<string | null>(null);
+  activando = signal(false);
+  // Después de activar la alerta: se pregunta si además quiere una
+  // notificación en este dispositivo.
+  preguntarPush = signal(false);
+  suscribiendo = signal(false);
+  mensajePush = signal<string | null>(null); // cómo se le va a avisar
+  errorPush = signal<string | null>(null);
+
   async ngOnInit() {
     const resultado = await this.carteleraSrv.traerPelicula(this.id);
     if (resultado.error || !resultado.datos) {
@@ -65,6 +85,16 @@ export class DetallePelicula implements OnInit {
       const inicio = this.comprasSrv.inicioDeVenta(resultado.datos);
       // De 'DD/MM/AAAA' quedan los primeros cinco caracteres: 'DD/MM'.
       this.ventaDesde.set(diaParaMostrar(inicio).slice(0, 5));
+
+      // Con sesión, se busca si ya tenía activada la alerta de esta
+      // película. Se espera a auth.listo porque la página puede abrirse
+      // antes de que termine de cargar la sesión guardada (D-13).
+      await this.auth.listo;
+      if (this.auth.usuarioActual()) {
+        const alerta = await this.alertasSrv.traerMia(this.id);
+        this.errorAlerta.set(alerta.error);
+        this.alerta.set(alerta.datos);
+      }
     }
 
     // Si fallan las funciones, la película se muestra igual: se avisa en
@@ -85,6 +115,57 @@ export class DetallePelicula implements OnInit {
   elegirDia(dia: DiaDeFunciones) {
     this.diaElegido.set(dia.clave);
     this.funcionesDelDia.set(dia.funciones);
+  }
+
+  // Activa la alerta. Se guarda siempre; la notificación push es un paso
+  // aparte y opcional (D-52).
+  async activarAlerta() {
+    if (this.activando()) return;
+    this.errorAlerta.set(null);
+    this.activando.set(true);
+
+    const resultado = await this.alertasSrv.activar(this.id);
+    if (resultado.error || !resultado.datos) {
+      this.activando.set(false);
+      this.errorAlerta.set(resultado.error);
+      return;
+    }
+    this.alerta.set(resultado.datos);
+
+    // ¿Este dispositivo ya recibe notificaciones?
+    //   Sí: no se pregunta nada. suscribir() no vuelve a pedir permiso;
+    //       solo comprueba que la suscripción esté guardada para este
+    //       usuario.
+    //   No: se le pregunta si quiere recibirlas.
+    if (await this.notificaciones.tieneSuscripcion()) {
+      const error = await this.notificaciones.suscribir();
+      this.errorPush.set(error);
+      if (!error) this.mensajePush.set('Te vamos a avisar con una notificación.');
+    } else {
+      this.preguntarPush.set(true);
+    }
+    this.activando.set(false);
+  }
+
+  // "Sí, avisame": pide el permiso y guarda la suscripción.
+  async aceptarPush() {
+    if (this.suscribiendo()) return;
+    this.errorPush.set(null);
+    this.suscribiendo.set(true);
+
+    const error = await this.notificaciones.suscribir();
+
+    this.suscribiendo.set(false);
+    this.preguntarPush.set(false);
+    // Si falla, la alerta sigue activa: el aviso le llega dentro de la app.
+    this.errorPush.set(error);
+    if (!error) this.mensajePush.set('Te vamos a avisar con una notificación.');
+  }
+
+  // "Solo en la app": no se pide ningún permiso.
+  rechazarPush() {
+    this.preguntarPush.set(false);
+    this.mensajePush.set('Vas a ver el aviso cuando entres a la app.');
   }
 
   // Arma un grupo por cada día que tenga funciones. Llegan ordenadas por

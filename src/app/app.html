@@ -28,4 +28,29 @@
   <p class="error" role="alert">{{ errorSesion() }}</p>
 }
 
+<!-- El aviso de Próximamente dentro de la app (R-10, D-52): las alertas
+     del usuario cuya película ya está a la venta. Es para quien no recibe
+     notificaciones push. Al cerrarlo, quedan marcadas como notificadas. -->
+@if (alertas.avisos().length > 0) {
+  <aside class="aviso" role="status">
+    <strong>Ya están a la venta:</strong>
+    <ul>
+      @for (aviso of alertas.avisos(); track aviso.alerta_id) {
+        <li>
+          <a [routerLink]="['/pelicula', aviso.pelicula_id]">{{ aviso.pelicula_nombre }}</a>
+        </li>
+      }
+    </ul>
+    <button type="button" [disabled]="cerrandoAviso()" (click)="cerrarAviso()">
+      {{ cerrandoAviso() ? 'Cerrando…' : 'Cerrar' }}
+    </button>
+    @if (errorAviso()) {
+      <p class="error" role="alert">{{ errorAviso() }}</p>
+    }
+  </aside>
+}
+@if (alertas.errorAvisos()) {
+  <p class="error" role="alert">{{ alertas.errorAvisos() }}</p>
+}
+
 <router-outlet />

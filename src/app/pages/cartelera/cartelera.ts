@@ -1,8 +1,9 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Cartelera as CarteleraSrv } from '../../services/cartelera';
 import { PeliculaDeCartelera } from '../../interfaces/cartelera';
-import { Genero } from '../../interfaces/pelicula';
+import { Genero, Pelicula } from '../../interfaces/pelicula';
 
 // Página principal (R-05): la cartelera, sin login. Arriba las 3 más
 // vendidas (R-06) y abajo todas las películas en cartelera, con buscador
@@ -10,7 +11,7 @@ import { Genero } from '../../interfaces/pelicula';
 // El servicio y la página se llaman igual, así que el servicio se importa
 // con otro nombre (CarteleraSrv).
 @Component({
-  imports: [RouterLink],
+  imports: [RouterLink, DatePipe],
   selector: 'app-cartelera',
   styleUrl: './cartelera.css',
   templateUrl: './cartelera.html',
@@ -38,7 +39,21 @@ export class Cartelera implements OnInit {
   texto = signal('');
   generosElegidos = signal<number[]>([]);
 
+  // Próximamente (R-10): las visibles con estreno futuro. Es un bloque
+  // aparte, con su propio error, igual que las más vendidas.
+  proximamente = signal<Pelicula[]>([]);
+  errorProximamente = signal<string | null>(null);
+
   async ngOnInit() {
+    // Próximamente se carga primero y por separado: se muestra aunque no
+    // haya ninguna película en cartelera, o aunque la cartelera falle.
+    const proximas = await this.carteleraSrv.traerProximamente();
+    if (proximas.error || !proximas.datos) {
+      this.errorProximamente.set(proximas.error);
+    } else {
+      this.proximamente.set(proximas.datos);
+    }
+
     const resultado = await this.carteleraSrv.traerCartelera();
     if (resultado.error || !resultado.datos) {
       this.error.set(resultado.error);

@@ -61,6 +61,20 @@ export class Cartelera {
     return { datos: peliculas, error: null };
   }
 
+  // Las películas de Próximamente (R-10): visibles y con estreno futuro,
+  // de la que se estrena antes a la que se estrena después. Es la otra
+  // mitad del criterio de traerCartelera (D-27).
+  async traerProximamente(): Promise<Resultado<Pelicula[]>> {
+    const { data, error } = await this.sup.Sup.from('Peliculas').select('*').eq('visible', true);
+    if (error) return { datos: null, error: 'No se pudieron cargar los próximos estrenos.' };
+    const visibles: Pelicula[] = data;
+
+    const proximas = visibles.filter((pelicula) => !yaSeEstreno(pelicula.fecha_estreno));
+    // 'AAAA-MM-DD' ordenada como texto queda ordenada por fecha.
+    proximas.sort((a, b) => a.fecha_estreno.localeCompare(b.fecha_estreno));
+    return { datos: proximas, error: null };
+  }
+
   // Una película con sus géneros, para la página de detalle. Sirve para
   // las que están en cartelera y para las de Próximamente: la condición es
   // que sea visible. Una oculta no se muestra al público, aunque la base

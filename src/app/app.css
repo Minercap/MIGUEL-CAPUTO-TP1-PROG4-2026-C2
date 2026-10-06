@@ -11,3 +11,26 @@ nav {
 .error {
   color: var(--color-error);
 }
+
+/* El aviso de Próximamente: una caja con borde dorado, arriba de la
+   página. Con flex-wrap, en celular el botón baja a otro renglón. */
+.aviso {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-left: 0.25rem solid var(--color-acento-dorado);
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+.aviso ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

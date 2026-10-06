@@ -2,6 +2,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
 import { Auth } from '../../services/auth';
+import { Alertas } from '../../services/alertas';
 import { CuentaDePrueba } from '../../interfaces/cuenta-de-prueba';
 import { email, normalizarEmail, obligatorio } from '../../validadores/validadores';
 
@@ -25,6 +26,7 @@ const CUENTAS_DE_PRUEBA: CuentaDePrueba[] = [
 export class Login {
   private fb = inject(FormBuilder);
   private auth = inject(Auth);
+  private alertas = inject(Alertas);
   private router = inject(Router);
 
   error = signal<string | null>(null);
@@ -68,6 +70,10 @@ export class Login {
       this.error.set(mensaje);
       return;
     }
+
+    // Con la sesión recién iniciada, se busca si hay alertas de
+    // Próximamente para avisarle (D-52). El aviso lo muestra el App.
+    await this.alertas.cargarAvisos();
 
     // La redirección se hace acá y no en onAuthStateChange, porque ese
     // evento también se dispara al recargar y sacaría al usuario de la

@@ -90,3 +90,36 @@
     </ul>
   </section>
 }
+
+<!-- Próximamente (R-10): visibles con estreno futuro. Va fuera del @if de
+     arriba para que se vea aunque todavía no haya películas en cartelera.
+     Cada una lleva a su detalle, donde se activa la alerta. -->
+@if (!cargando()) {
+  @if (errorProximamente()) {
+    <section class="proximamente">
+      <h2>Próximamente</h2>
+      <p class="error" role="alert">{{ errorProximamente() }}</p>
+    </section>
+  } @else if (proximamente().length > 0) {
+    <section class="proximamente">
+      <h2>Próximamente</h2>
+      <ul class="grilla">
+        @for (pelicula of proximamente(); track pelicula.id) {
+          <li>
+            <a class="tarjeta" [routerLink]="['/pelicula', pelicula.id]">
+              <img class="poster" [src]="pelicula.imagen_url" [alt]="'Póster de ' + pelicula.nombre" />
+              <strong class="nombre">{{ pelicula.nombre }}</strong>
+              <!-- fecha_estreno es un día ('AAAA-MM-DD'). Con el mediodía de
+                   Argentina pasa a ser un instante que el pipe date puede
+                   leer; '-0300' lo muestra en hora argentina (D-35). -->
+              <span class="dato">
+                Estreno:
+                {{ pelicula.fecha_estreno + 'T12:00:00-03:00' | date: 'dd/MM/yyyy' : '-0300' }}
+              </span>
+            </a>
+          </li>
+        }
+      </ul>
+    </section>
+  }
+}
