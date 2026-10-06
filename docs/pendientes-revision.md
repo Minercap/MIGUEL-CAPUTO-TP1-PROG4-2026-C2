@@ -85,16 +85,25 @@ de Vercel instala bien.
 **Propuesta:** probar el deploy de la rama en Vercel. Si falla, agregar un `.npmrc` al repo
 con `allow-remote=root`, o usar el `xlsx` del registro de npm (versión 0.18.5, más vieja).
 
-### 3.2 El bundle inicial pasó el presupuesto por 640 bytes
+### 3.2 El bundle inicial · RESUELTO (06/10)
 
-**Qué:** `ng build` termina sin errores, pero avisa: el bundle inicial pesa 500,64 kB y el
-aviso de `angular.json` está en 500 kB. Apareció al sumar la pantalla de reportes.
+El aviso del presupuesto inicial pasó de 500 kB a 550 kB en `angular.json`. El bundle
+inicial pesa 500,64 kB (128 kB comprimido).
 
-**Por qué:** no medí la causa. Mi sospecha es el código de `CurrencyPipe` y `DecimalPipe`,
-que se usan por primera vez.
+Medido con `ng build --stats-json`: **`html5-qrcode`, `xlsx`, `jspdf` y `qrcode` no están en
+el bundle inicial.** Cada una queda en un chunk lazy, que se descarga recién al entrar a la
+pantalla que la usa. Lo que ocupa el inicial:
 
-**Propuesta:** subir `maximumWarning` del presupuesto inicial a 550 kB. No lo cambié porque
-es bajar una vara de `angular.json` sin que la veas.
+| Paquete | Tamaño |
+|---|---|
+| Angular (`core` 162, `router` 91, `common` 40, `platform-browser` 15, `service-worker` 7) | 315 kB |
+| Supabase (`auth-js` 131, `realtime-js` 41, `phoenix` 33, `storage-js` 29, `postgrest-js` 22, `supabase-js` 14, otros 10) | 280 kB |
+| `rxjs` y `tslib` | 23 kB |
+| Código propio (`app`, rutas, guards, servicios de sesión) | 7 kB |
+
+Los tamaños por paquete salen del `stats.json` y suman más que el total (626 contra 500 kB),
+no sé por qué: sirven como proporción, no como medida exacta. El inicial es casi todo
+framework y cliente de Supabase: no hay nada propio para sacar.
 
 ### 3.3 Entradas e ItemsCandy se leen enteras
 
