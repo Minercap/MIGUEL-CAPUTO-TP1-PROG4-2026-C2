@@ -94,7 +94,7 @@ Con la app desplegada en Vercel (las notificaciones no andan con `ng serve`):
    Tiene que responder un JSON como este, y la notificación tiene que llegar al celular:
 
    ```json
-   { "alertas_revisadas": 1, "enviadas": 1, "sin_suscripcion": 0, "suscripciones_borradas": 0, "errores": [] }
+   { "hoy": "2026-10-06", "candidatas": 1, "sin_pelicula_visible": 0, "venta_sin_abrir": 0, "alertas_revisadas": 1, "enviadas": 1, "sin_suscripcion": 0, "suscripciones_borradas": 0, "errores": [] }
    ```
 
 5. Tocar la notificación: tiene que abrir el detalle de la película.
@@ -108,6 +108,10 @@ Si algo falla, el detalle está en Edge Functions → `enviar-alertas` → Logs,
 
 | Campo | Qué cuenta |
 |---|---|
+| `hoy` | El día que la función tomó como hoy, en hora argentina |
+| `candidatas` | Alertas sin notificar que leyó, antes de filtrar. Si da 0 y en la base hay alertas pendientes, el problema es de lectura (permisos o proyecto), no de la regla |
+| `sin_pelicula_visible` | Candidatas descartadas porque su película no existe o está oculta |
+| `venta_sin_abrir` | Candidatas descartadas porque la venta todavía no abrió |
 | `alertas_revisadas` | Alertas sin notificar de películas visibles cuya venta ya abrió |
 | `enviadas` | Alertas avisadas con al menos un push, y marcadas como notificadas |
 | `sin_suscripcion` | Alertas de usuarios sin ningún dispositivo: las ven como aviso en la app |

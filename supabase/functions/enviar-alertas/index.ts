@@ -44,6 +44,14 @@ interface Suscripcion {
 
 // Lo que devuelve la función: un resumen de lo que hizo.
 interface Resumen {
+  // Los primeros cuatro campos son para diagnosticar. Si la función no
+  // avisa a nadie, dicen en qué paso se quedó: si no leyó ninguna alerta
+  // (candidatas en 0) es un problema de lectura; si las leyó y las
+  // descartó, es de la regla, y cada descarte dice por cuál.
+  hoy: string; // el día que la función tomó como hoy, en Argentina
+  candidatas: number; // alertas sin notificar que leyó, antes de filtrar
+  sin_pelicula_visible: number; // descartadas: la película no existe o está oculta
+  venta_sin_abrir: number; // descartadas: la venta todavía no abrió
   alertas_revisadas: number; // alertas sin notificar cuya venta ya abrió
   enviadas: number; // alertas avisadas con al menos un push
   sin_suscripcion: number; // el usuario no tiene ningún dispositivo suscripto
@@ -157,6 +165,10 @@ export default {
     const base = ctx.supabaseAdmin;
 
     const resumen: Resumen = {
+      hoy: hoyEnArgentina(),
+      candidatas: 0,
+      sin_pelicula_visible: 0,
+      venta_sin_abrir: 0,
       alertas_revisadas: 0,
       enviadas: 0,
       sin_suscripcion: 0,
@@ -173,6 +185,8 @@ export default {
       return Response.json({ error: 'No se pudieron leer las alertas.' }, { status: 500 });
     }
     const alertas: Alerta[] = dAlertas;
+    // Lo que se leyó, antes de cualquier filtro.
+    resumen.candidatas = alertas.length;
 
     // ----- 2. Las películas visibles -----
     // Una película oculta no se avisa: no se puede ver ni comprar.
@@ -185,12 +199,19 @@ export default {
     }
     const peliculas: Pelicula[] = dPeliculas;
 
-    const hoy = hoyEnArgentina();
+    const hoy = resumen.hoy;
 
     for (const alerta of alertas) {
       const pelicula = peliculas.find((p) => p.id === alerta.pelicula_id);
+      if (!pelicula) {
+        resumen.sin_pelicula_visible++;
+        continue;
+      }
       // Las fechas 'AAAA-MM-DD' se comparan bien como texto.
-      if (!pelicula || hoy < inicioDeVenta(pelicula)) continue;
+      if (hoy < inicioDeVenta(pelicula)) {
+        resumen.venta_sin_abrir++;
+        continue;
+      }
       resumen.alertas_revisadas++;
 
       // ----- 3. Los dispositivos de ESE usuario -----

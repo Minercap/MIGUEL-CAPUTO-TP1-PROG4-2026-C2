@@ -70,6 +70,14 @@ export class Notificaciones {
     const usuario = this.auth.usuarioActual();
     if (!usuario) return 'Iniciá sesión para activar las notificaciones.';
 
+    // Notification.permission es lo que el navegador tiene guardado para
+    // este sitio: 'default' (todavía no se preguntó), 'granted' o 'denied'.
+    // Con 'denied' el navegador ya no muestra el cartel: rechaza el pedido
+    // sin preguntar. Solo el usuario lo puede cambiar, desde el candado.
+    if ('Notification' in window && Notification.permission === 'denied') {
+      return 'Las notificaciones están bloqueadas en este navegador. Habilitalas desde el candado, a la izquierda de la dirección, y volvé a intentar.';
+    }
+
     let suscripcion: PushSubscription;
     try {
       // requestSubscription le pide permiso al usuario (el cartel del
