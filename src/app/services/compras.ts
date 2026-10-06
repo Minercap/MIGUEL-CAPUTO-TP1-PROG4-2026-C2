@@ -6,15 +6,47 @@ import {
   ButacaOcupada,
   CompraConfirmada,
   FilaDeSala,
+  CandyComprado,
+  CanjeComprado,
+  EntradaComprada,
   FuncionParaComprar,
   MedioGuardado,
   PedidoDeCompra,
+  ProductoElegido,
+  RecompensaParaCanjear,
+  ResumenDeCompra,
 } from '../interfaces/compra';
 import { Funcion } from '../interfaces/funcion';
 import { Pelicula } from '../interfaces/pelicula';
 import { Sala } from '../interfaces/sala';
+import { Cupon } from '../interfaces/cupon';
+import { Usuario } from '../interfaces/usuario';
 import { Resultado } from '../interfaces/resultado';
-import { armarFecha, hoy, sumarDias, textoAFecha } from '../validadores/validadores';
+import {
+  armarFecha,
+  edadEnAnios,
+  hoy,
+  sumarDias,
+  textoAFecha,
+} from '../validadores/validadores';
+
+// Lo que necesita calcularResumen para armar la vista previa del pago.
+export interface DatosDelResumen {
+  datos: FuncionParaComprar;
+  butacas: Butaca[]; // en el orden en que se eligieron (D-46)
+  candy: ProductoElegido[];
+  canjes: RecompensaParaCanjear[]; // una por canje: si se repite, viene dos veces
+  cupon: Cupon | null;
+  credito: number; // lo que el cliente pide usar
+  conSesion: boolean;
+}
+
+// Redondea a centavos. Las cuentas con decimales en JavaScript dejan restos
+// (0.1 + 0.2 da 0.30000000000000004): se redondea después de cada cuenta,
+// igual que round(x, 2) en la base.
+function centavos(monto: number): number {
+  return Math.round(monto * 100) / 100;
+}
 
 // ---------- La sala (R-13, D-04) ----------
 // Todas las salas tienen la misma forma, así que no se guarda en la base:
@@ -286,5 +318,138 @@ export class Compras {
       return pelicula.precio_preventa;
     }
     return funcion.precio_base;
+  }
+
+  // ---------- Vista previa del pago (D-45 a D-47) ----------
+
+  // Arma el resumen del pago con las mismas cuentas, en el mismo orden, que
+  // realizar_compra (schema.sql, 13.3 y 13.6). Es solo para mostrar: lo
+  // que vale es lo que devuelve la base al pagar.
+  //   1. Precios: butacas, productos y combos.
+  //   2. Canjes: la entrada gratis o el producto canjeado van a $0.
+  //   3. Un solo cupón, sobre el subtotal.
+  //   4. Crédito, hasta cubrir el total.
+  //   5. El resto, con el medio de pago.
+  calcularResumen(d: DatosDelResumen): ResumenDeCompra {
+    const { funcion, pelicula } = d.datos;
+    let subtotal = 0;
+
+    // Candy: los productos y combos elegidos, al precio del catálogo.
+    const candy: CandyComprado[] = d.candy.map((e) => ({
+      producto_id: e.producto.id,
+      nombre: e.producto.nombre,
+      cantidad: e.cantidad,
+      precio_unitario: e.producto.precio,
+      es_combo: e.producto.es_combo,
+      incluye_entrada: e.producto.incluye_entrada,
+      es_canje: false,
+    }));
+    for (const item of candy) subtotal = centavos(subtotal + item.precio_unitario * item.cantidad);
+
+    // Canjes: los productos canjeados van al candy a $0; las entradas
+    // gratis cubren una butaca.
+    const canjes: CanjeComprado[] = d.canjes.map((r) => ({
+      recompensa_id: r.id,
+      nombre: r.nombre,
+      tipo: r.tipo,
+      puntos: r.costo_puntos,
+    }));
+    for (const r of d.canjes) {
+      if (r.tipo === 'producto') {
+        candy.push({
+          producto_id: r.producto_id ?? 0,
+          nombre: r.nombre,
+          cantidad: 1,
+          precio_unitario: 0,
+          es_combo: false,
+          incluye_entrada: false,
+          es_canje: true,
+        });
+      }
+    }
+
+    // Las butacas que cubren los combos y las entradas gratis: las primeras
+    // de la lista, en ese orden (D-46).
+    let cubreCombo = 0;
+    for (const e of d.candy) if (e.producto.incluye_entrada) cubreCombo += e.cantidad;
+    const cubreCanje = d.canjes.filter((r) => r.tipo === 'entrada').length;
+
+    const entradas: EntradaComprada[] = d.butacas.map((butaca, i) => {
+      let cubierta_por: 'combo' | 'canje' | null = null;
+      if (i < cubreCombo) cubierta_por = 'combo';
+      else if (i < cubreCombo + cubreCanje) cubierta_por = 'canje';
+
+      // Cubierta: 0, o la diferencia VIP si la butaca es VIP. Si no, el
+      // precio de la butaca, con preventa si corresponde.
+      let precio: number;
+      if (cubierta_por !== null) {
+        precio = butaca.es_vip ? centavos(funcion.precio_vip - funcion.precio_base) : 0;
+      } else {
+        precio = this.precioDe(butaca, funcion, pelicula);
+      }
+      return { fila: butaca.fila, numero: butaca.numero, es_vip: butaca.es_vip, precio, cubierta_por };
+    });
+    for (const entrada of entradas) subtotal = centavos(subtotal + entrada.precio);
+
+    // El cupón: solo con sesión, sobre el subtotal (D-47).
+    const cupon = d.conSesion ? d.cupon : null;
+    const descuento = cupon ? centavos((subtotal * cupon.porcentaje) / 100) : 0;
+    const total = centavos(subtotal - descuento);
+
+    // El crédito: si pide más que el total, se usa solo lo necesario.
+    const pedido = d.conSesion && d.credito > 0 ? centavos(d.credito) : 0;
+    const credito_usado = Math.min(pedido, total);
+    const a_pagar = centavos(total - credito_usado);
+
+    let puntos_usados = 0;
+    for (const r of d.canjes) puntos_usados += r.costo_puntos;
+
+    return {
+      en_preventa: this.enPreventa(pelicula),
+      entradas,
+      candy,
+      canjes,
+      subtotal,
+      cupon: cupon ? { nombre: cupon.nombre, porcentaje: cupon.porcentaje } : null,
+      descuento,
+      total,
+      credito_usado,
+      a_pagar,
+      puntos_usados,
+      // 1 punto por peso pagado con el medio de pago (R-27).
+      puntos_generados: d.conSesion ? Math.floor(a_pagar) : 0,
+    };
+  }
+
+  // El cupón que le corresponde al cliente, con la misma regla que la base
+  // (D-41, D-47): entre los activos, el de mayor porcentaje de los que
+  // aplican. null si no le corresponde ninguno.
+  //   Primera compra: no tiene compras pagadas.
+  //   Mayor de 50: tiene más de 50 años según su perfil.
+  async cuponQueAplica(perfil: Usuario): Promise<Resultado<Cupon | null>> {
+    const { data, error } = await this.sup.Sup.from('Cupones').select('*').eq('activo', true);
+    if (error) return { datos: null, error: 'No se pudieron cargar los cupones.' };
+    const cupones: Cupon[] = data;
+
+    // Sus compras pagadas. RLS ya deja leer solo las propias; el eq por
+    // usuario hace falta igual para el admin y el empleado, que leen todas.
+    const { data: dataCompras, error: errorCompras } = await this.sup.Sup.from('Compras')
+      .select('id')
+      .eq('usuario_id', perfil.id)
+      .eq('estado', 'pagada');
+    if (errorCompras) return { datos: null, error: 'No se pudieron revisar tus compras.' };
+    const pagadas: { id: number }[] = dataCompras;
+
+    const nacimiento = armarFecha(textoAFecha(perfil.fecha_nacimiento));
+    const mayorDe50 = nacimiento !== null && edadEnAnios(nacimiento) > 50;
+
+    const queAplican = cupones.filter(
+      (c) =>
+        (c.condicion === 'primera_compra' && pagadas.length === 0) ||
+        (c.condicion === 'mayor_50' && mayorDe50),
+    );
+    // El de mayor porcentaje; si empatan, el de menor id, como en la base.
+    queAplican.sort((a, b) => b.porcentaje - a.porcentaje || a.id - b.id);
+    return { datos: queAplican[0] ?? null, error: null };
   }
 }

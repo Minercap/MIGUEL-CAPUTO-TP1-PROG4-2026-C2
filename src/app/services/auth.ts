@@ -92,6 +92,14 @@ export class Auth {
     return null;
   }
 
+  // Vuelve a leer el perfil del usuario con sesión. Lo usan la compra y la
+  // cancelación, que cambian los puntos y el crédito en la base (D-47,
+  // D-48). Si falla, el mensaje queda en errorPerfil, como en la carga.
+  async recargarPerfil(): Promise<void> {
+    const usuario = this.usuarioActual();
+    if (usuario) await this.cargarPerfil(usuario.id);
+  }
+
   // Lee la fila de Usuarios, que es donde está el rol (clase 7 y D-12).
   // Va sin .single(): si la fila todavía no existe (justo después del
   // signUp) vuelve una lista vacía en lugar de un error.

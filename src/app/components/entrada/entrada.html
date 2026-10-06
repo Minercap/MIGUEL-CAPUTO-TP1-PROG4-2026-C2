@@ -30,23 +30,10 @@
             {{ d.sala_nombre }} · {{ d.funcion.formato }} · {{ d.funcion.idioma | titlecase }}
           </p>
 
-          <ul class="butacas">
-            @for (entrada of c.entradas; track entrada.fila + '-' + entrada.numero) {
-              <li>
-                <span>
-                  Fila {{ entrada.fila }}, butaca {{ entrada.numero }}
-                  @if (entrada.es_vip) {
-                    <strong class="marca-vip">Butaca VIP</strong>
-                  }
-                </span>
-                <span>${{ entrada.precio }}</span>
-              </li>
-            }
-          </ul>
-          <p class="total">
-            <span>Total</span>
-            <strong>${{ c.total }}</strong>
-          </p>
+          <!-- El mismo detalle que se vio en el pago, ahora con lo que
+               cobró la base (A-01). -->
+          <app-resumen-compra [resumen]="c" />
+          <p>Medio de pago: {{ nombreDelMedio(c.medio_pago) }}</p>
 
           <!-- Toda entrada de una película con restricción de edad lleva
                esta leyenda (R-26, mail del 12/02). -->

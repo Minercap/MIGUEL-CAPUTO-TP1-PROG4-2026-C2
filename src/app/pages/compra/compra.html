@@ -129,6 +129,9 @@
       }
 
       @case ('candy') {
+        @if (errorBeneficios()) {
+          <p class="error" role="alert">{{ errorBeneficios() }}</p>
+        }
         @if (errorCandy()) {
           <p class="error" role="alert">
             {{ errorCandy() }} Podés seguir con la compra de las entradas.
@@ -153,8 +156,11 @@
              [input] y avisa con (output). El pago en sí lo hace esta
              pantalla, en pagar(). -->
         <app-pago
+          [datos]="d"
           [elegidas]="elegidas()"
-          [total]="total()"
+          [candy]="candy()"
+          [recompensas]="recompensas()"
+          [cupon]="cupon()"
           [restriccion]="d.pelicula.restriccion_edad"
           [enviando]="pagando()"
           (pagar)="pagar($event)"

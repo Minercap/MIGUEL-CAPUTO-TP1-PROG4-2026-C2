@@ -64,6 +64,7 @@ export interface ProductoPedido {
 export interface RecompensaParaCanjear {
   id: number;
   tipo: 'entrada' | 'producto';
+  producto_id: number | null; // null si es una entrada
   nombre: string;
   costo_puntos: number;
 }

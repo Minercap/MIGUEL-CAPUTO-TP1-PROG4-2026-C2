@@ -1,0 +1,95 @@
+@if (resumen(); as r) {
+  <!-- Cada descuento va en su propio renglón (A-01): preventa, canjes,
+       cupón y crédito. -->
+  <ul class="detalle">
+    @for (entrada of r.entradas; track entrada.fila + '-' + entrada.numero) {
+      <li>
+        <span>
+          Fila {{ entrada.fila }}, butaca {{ entrada.numero }}
+          @if (entrada.es_vip) {
+            <strong class="marca-vip">Butaca VIP</strong>
+          }
+          @switch (entrada.cubierta_por) {
+            @case ('combo') {
+              <span class="marca">Incluida en el combo</span>
+            }
+            @case ('canje') {
+              <span class="marca">Entrada gratis con puntos</span>
+            }
+            @default {
+              @if (r.en_preventa && !entrada.es_vip) {
+                <span class="marca">Precio de preventa</span>
+              }
+            }
+          }
+        </span>
+        <span>${{ precioDeEntrada(entrada) }}</span>
+      </li>
+    }
+
+    @for (entrada of conDiferenciaVip(); track entrada.fila + '-' + entrada.numero) {
+      <li>
+        <span>Diferencia VIP (fila {{ entrada.fila }}, butaca {{ entrada.numero }})</span>
+        <span>${{ entrada.precio }}</span>
+      </li>
+    }
+
+    @for (item of candyPagado(); track item.producto_id) {
+      <li>
+        <span>
+          {{ item.cantidad }} × {{ item.nombre }}
+          @if (item.es_combo) {
+            <span class="marca">Combo</span>
+          }
+        </span>
+        <span>${{ importeDe(item) }}</span>
+      </li>
+    }
+
+    @for (canje of r.canjes; track $index) {
+      <li>
+        <span>Canje: {{ canje.nombre }} ({{ canje.puntos }} puntos)</span>
+        <span>$0</span>
+      </li>
+    }
+  </ul>
+
+  <ul class="detalle cuentas">
+    <li>
+      <span>Subtotal</span>
+      <span>${{ r.subtotal }}</span>
+    </li>
+    @if (r.cupon; as cupon) {
+      <li class="descuento">
+        <span>Cupón {{ cupon.nombre }} ({{ cupon.porcentaje }}%)</span>
+        <span>−${{ r.descuento }}</span>
+      </li>
+    }
+    <li>
+      <span>Total</span>
+      <span>${{ r.total }}</span>
+    </li>
+    @if (r.credito_usado > 0) {
+      <li class="descuento">
+        <span>Crédito del cine</span>
+        <span>−${{ r.credito_usado }}</span>
+      </li>
+    }
+  </ul>
+
+  <p class="total">
+    <span>A pagar</span>
+    <strong>${{ r.a_pagar }}</strong>
+  </p>
+
+  @if (r.puntos_usados > 0 || r.puntos_generados > 0) {
+    <p class="puntos">
+      @if (r.puntos_usados > 0) {
+        <span>Puntos canjeados: {{ r.puntos_usados }}</span>
+      }
+      @if (r.puntos_generados > 0) {
+        <span>Puntos que suma esta compra: {{ r.puntos_generados }}</span>
+      }
+    </p>
+  }
+}

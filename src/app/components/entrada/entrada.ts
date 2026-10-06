@@ -2,16 +2,18 @@ import { Component, OnInit, inject, input, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LEYENDA_ADULTO, Tickets } from '../../services/tickets';
+import { nombreDelMedio } from '../../services/compras';
 import { CompraConfirmada, FuncionParaComprar } from '../../interfaces/compra';
+import { ResumenCompra } from '../resumen-compra/resumen-compra';
 
 // La entrada que ve el comprador cuando la compra salió bien (R-20): el QR
-// con el código, los datos de la función, las butacas, el total y el botón
-// para descargar el PDF.
+// con el código, los datos de la función, el detalle de la compra, el
+// medio de pago y el botón para descargar el PDF.
 //
 // Es un componente hijo de la pantalla de compra (clase 3): recibe por
 // input() la compra que devolvió la base y los datos de la función.
 @Component({
-  imports: [RouterLink, DatePipe, TitleCasePipe],
+  imports: [RouterLink, DatePipe, TitleCasePipe, ResumenCompra],
   selector: 'app-entrada',
   styleUrl: './entrada.css',
   templateUrl: './entrada.html',
@@ -25,6 +27,9 @@ export class Entrada implements OnInit {
   datos = input<FuncionParaComprar | null>(null);
 
   leyendaAdulto = LEYENDA_ADULTO;
+  // "Tarjeta de crédito" en lugar de 'credito', para que no se confunda con
+  // el crédito del cine.
+  nombreDelMedio = nombreDelMedio;
 
   // Estado que lee el template: va en signals (D-03).
   // La imagen del QR, como data URL para el [src] del <img>.

@@ -1,25 +1,10 @@
 <section class="pago">
   <h2>Pago</h2>
 
-  <!-- Detalle final de lo que se compra (A-01): cada butaca con su precio,
-       y si es VIP se dice antes de pagar (R-14). -->
-  <ul class="detalle">
-    @for (elegida of elegidas(); track elegida.fila + '-' + elegida.numero) {
-      <li>
-        <span>
-          Fila {{ elegida.fila }}, butaca {{ elegida.numero }}
-          @if (elegida.es_vip) {
-            <strong class="marca-vip">Butaca VIP</strong>
-          }
-        </span>
-        <span>${{ elegida.precio }}</span>
-      </li>
-    }
-  </ul>
-  <p class="total">
-    <span>Total</span>
-    <strong>${{ total() }}</strong>
-  </p>
+  <!-- Resumen detallado de lo que se compra (A-01). Es una vista previa con
+       las mismas cuentas que la base: lo que vale es lo que devuelve la
+       compra al pagar. -->
+  <app-resumen-compra [resumen]="resumen()" />
 
   <form [formGroup]="formulario" (ngSubmit)="confirmar()">
     @if (sinSesion()) {
@@ -65,6 +50,73 @@
       </app-campo-fecha>
     }
 
+    @if (!sinSesion()) {
+      <!-- Beneficios del cliente registrado (R-23, R-27, R-28, R-30). El
+           anónimo no tiene cupón, crédito ni puntos (R-02). -->
+      @if (cupon(); as c) {
+        <p class="beneficio">
+          Se aplica tu cupón <strong>{{ c.nombre }}</strong> ({{ c.porcentaje }}% de descuento).
+        </p>
+      }
+
+      @if (recompensas().length > 0) {
+        <fieldset class="canjes">
+          <legend>Canjear puntos</legend>
+          <small>Tenés {{ saldoPuntos() }} puntos. Te quedan {{ puntosDisponibles() }}.</small>
+          <ul class="recompensas">
+            @for (recompensa of recompensas(); track recompensa.id) {
+              <li>
+                <span>{{ recompensa.nombre }} · {{ recompensa.costo_puntos }} puntos</span>
+                <button
+                  type="button"
+                  [disabled]="!sePuedeCanjear(recompensa)"
+                  (click)="canjear(recompensa)"
+                >
+                  Canjear
+                </button>
+              </li>
+            }
+          </ul>
+          <!-- Una entrada gratis cubre una de las butacas elegidas (D-46). -->
+          <small>Cada entrada gratis cubre una de tus butacas.</small>
+
+          @if (formulario.controls.canjes.length > 0) {
+            <ul class="recompensas">
+              @for (canje of formulario.controls.canjes.controls; track $index; let i = $index) {
+                <li>
+                  <span>Canje: {{ nombreDelCanje(canje.value) }}</span>
+                  <button type="button" (click)="quitarCanje(i)">Quitar</button>
+                </li>
+              }
+            </ul>
+          }
+          @if (formulario.errors?.['puntosInsuficientes']) {
+            <small class="error">No te alcanzan los puntos para todos los canjes elegidos.</small>
+          } @else if (formulario.errors?.['faltanButacas']) {
+            <small class="error">
+              Cada entrada gratis y cada combo con entrada necesitan una butaca. Quitá algún canje.
+            </small>
+          }
+        </fieldset>
+      }
+
+      @if (saldoCredito() > 0) {
+        <!-- Crédito del cine (R-30): de una compra cancelada. -->
+        <label for="credito">Crédito del cine a usar</label>
+        <small>Tenés ${{ saldoCredito() }} de crédito.</small>
+        <div class="en-linea">
+          <input id="credito" type="text" inputmode="decimal" maxlength="12" formControlName="credito" />
+          <button type="button" (click)="usarTodoElCredito()">Usar todo</button>
+        </div>
+        @if (credito?.errors?.['creditoFormato']) {
+          <small class="error">Escribí un monto en pesos, con dos decimales como mucho.</small>
+        } @else if (credito?.errors?.['creditoInsuficiente']; as saldo) {
+          <small class="error">Tenés ${{ saldo }} de crédito: no podés usar más que eso.</small>
+        }
+      }
+    }
+
+    @if (hayQuePagar()) {
     <label for="medio_pago">Medio de pago</label>
     <select id="medio_pago" formControlName="medio_pago">
       <option value="" disabled>Elegí un medio de pago</option>
@@ -72,7 +124,7 @@
         <option [value]="medio.valor">{{ medio.nombre }}</option>
       }
     </select>
-    @if (medioPago?.touched && medioPago?.invalid) {
+    @if (medioPago?.touched && (medioPago?.invalid || formulario.errors?.['medioObligatorio'])) {
       <small class="error">Elegí un medio de pago de la lista.</small>
     }
 
@@ -160,13 +212,18 @@
     @if (medioPago?.value === 'mercado_pago') {
       <small>Pago con Mercado Pago simulado: no se hace ningún cobro.</small>
     }
+    } @else {
+      <!-- El crédito y los canjes cubren todo: no hay nada que cobrar, así
+           que no se pide medio de pago ni tarjeta (D-47). -->
+      <p class="beneficio">No queda nada por pagar: no hace falta medio de pago.</p>
+    }
 
     <div class="botones">
       <button type="button" [disabled]="enviando()" (click)="volver.emit()">
-        Volver al mapa
+        Volver al candy
       </button>
       <button type="submit" class="principal" [disabled]="!formulario.valid || enviando()">
-        {{ enviando() ? 'Procesando…' : 'Pagar $' + total() }}
+        {{ enviando() ? 'Procesando…' : hayQuePagar() ? 'Pagar $' + (resumen()?.a_pagar ?? 0) : 'Confirmar' }}
       </button>
     </div>
   </form>

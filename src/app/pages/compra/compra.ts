@@ -3,6 +3,8 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Compras, MAXIMO_BUTACAS } from '../../services/compras';
 import { Productos } from '../../services/productos';
+import { Recompensas } from '../../services/recompensas';
+import { Auth } from '../../services/auth';
 import { Pago } from '../../components/pago/pago';
 import { Entrada } from '../../components/entrada/entrada';
 import { Candy } from '../../components/candy/candy';
@@ -14,7 +16,9 @@ import {
   DatosDePago,
   FuncionParaComprar,
   ProductoElegido,
+  RecompensaParaCanjear,
 } from '../../interfaces/compra';
+import { Cupon } from '../../interfaces/cupon';
 import { Categoria, ComboItem, Producto } from '../../interfaces/producto';
 import { diaParaMostrar } from '../../validadores/validadores';
 
@@ -39,6 +43,8 @@ type PasoDeCompra = 'mapa' | 'candy' | 'pago' | 'entrada';
 export class Compra implements OnInit, OnDestroy {
   private comprasSrv = inject(Compras);
   private productosSrv = inject(Productos);
+  private recompensasSrv = inject(Recompensas);
+  private auth = inject(Auth);
   private ruta = inject(ActivatedRoute);
 
   // El :funcionId de /compra/:funcionId (D-20). No es un signal porque no
@@ -78,6 +84,13 @@ export class Compra implements OnInit, OnDestroy {
   errorCandy = signal<string | null>(null);
   // Lo que el comprador agregó del candy, con su cantidad.
   candy = signal<ProductoElegido[]>([]);
+
+  // Para el cliente registrado: lo que puede canjear y el cupón que le
+  // corresponde (D-41, D-45). Se cargan al pasar al pago, porque dependen
+  // de la sesión, que puede haber cambiado desde que se abrió la pantalla.
+  recompensas = signal<RecompensaParaCanjear[]>([]);
+  cupon = signal<Cupon | null>(null);
+  errorBeneficios = signal<string | null>(null);
 
   // En qué paso está la compra. La pantalla muestra una cosa u otra con un
   // @switch: el mapa, el formulario de pago o la entrada ya comprada.
@@ -194,7 +207,7 @@ export class Compra implements OnInit, OnDestroy {
   // Del candy al pago. Si después de elegir los combos se sacaron butacas
   // del mapa, puede haber más combos con entrada que butacas: cada uno
   // cubre una (D-46), así que hay que sacar alguno antes de seguir.
-  irAlPago() {
+  async irAlPago() {
     if (this.combosConEntrada() > this.elegidas().length) {
       this.aviso.set(
         `Tenés ${this.combosConEntrada()} combos con entrada y ${this.elegidas().length} butacas: cada combo cubre una butaca. Sacá algún combo o elegí más butacas.`,
@@ -203,7 +216,65 @@ export class Compra implements OnInit, OnDestroy {
     }
     this.aviso.set(null);
     this.errorPago.set(null);
+
+    // Si no se pudieron cargar los beneficios, se queda en el candy con el
+    // error: pagar sin ver el cupón o los puntos confundiría al cliente.
+    if (!(await this.cargarBeneficios())) return;
     this.paso.set('pago');
+  }
+
+  // El cupón y las recompensas del cliente registrado. Sin sesión no hay
+  // beneficios (R-02): quedan vacíos. Devuelve si se pudo cargar todo.
+  private async cargarBeneficios(): Promise<boolean> {
+    this.errorBeneficios.set(null);
+    this.recompensas.set([]);
+    this.cupon.set(null);
+
+    const perfil = this.auth.perfil();
+    if (this.auth.usuarioActual() === null || perfil === null) return true;
+
+    const cupon = await this.comprasSrv.cuponQueAplica(perfil);
+    if (cupon.error) {
+      this.errorBeneficios.set(cupon.error);
+      return false;
+    }
+
+    const recompensas = await this.recompensasSrv.traerTodas();
+    if (recompensas.error || !recompensas.datos) {
+      this.errorBeneficios.set(recompensas.error);
+      return false;
+    }
+
+    // Solo las activas, y las de producto solo si el producto está a la
+    // venta: son los mismos controles que hace la base al canjear (D-45).
+    const paraCanjear: RecompensaParaCanjear[] = [];
+    for (const r of recompensas.datos) {
+      if (!r.activa) continue;
+      if (r.tipo === 'entrada') {
+        paraCanjear.push({
+          id: r.id,
+          tipo: 'entrada',
+          producto_id: null,
+          nombre: 'Entrada',
+          costo_puntos: r.costo_puntos,
+        });
+        continue;
+      }
+      const producto = this.productosCandy().find((p) => p.id === r.producto_id);
+      if (producto) {
+        paraCanjear.push({
+          id: r.id,
+          tipo: 'producto',
+          producto_id: producto.id,
+          nombre: producto.nombre,
+          costo_puntos: r.costo_puntos,
+        });
+      }
+    }
+
+    this.cupon.set(cupon.datos);
+    this.recompensas.set(paraCanjear);
+    return true;
   }
 
   volverAlMapa() {
@@ -271,6 +342,9 @@ export class Compra implements OnInit, OnDestroy {
     this.compra.set(resultado.datos);
     this.elegidas.set([]);
     this.candy.set([]);
+    // Los puntos y el crédito cambiaron en la base: se vuelve a leer el
+    // perfil para que el resto de la app muestre los saldos nuevos.
+    await this.auth.recargarPerfil();
     this.total.set(0);
     this.paso.set('entrada');
   }

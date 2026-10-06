@@ -86,3 +86,44 @@ fieldset {
   color: var(--color-texto-suave);
   cursor: not-allowed;
 }
+
+/* ---------- Beneficios del cliente registrado ---------- */
+
+.beneficio {
+  padding: 0.6rem 0.75rem;
+  border-left: 0.25rem solid var(--color-acento-dorado);
+  background: var(--color-superficie);
+}
+
+.canjes {
+  flex-direction: column;
+  flex-wrap: nowrap;
+}
+
+.recompensas {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada recompensa: el nombre a la izquierda y el botón a la derecha. Con
+   flex-wrap, en celular el botón baja solo a otro renglón. */
+.recompensas li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  border-bottom: 1px solid var(--color-superficie);
+}
+
+.en-linea {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.en-linea input {
+  flex: 1 1 8rem;
+}
