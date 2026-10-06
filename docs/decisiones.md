@@ -1312,3 +1312,25 @@ es la butaca ocupada, para que se pueda volver a vender.
 
 **Clase de origen:** función de Postgres con `rpc()` (D-39) + candado (D-47).
 **Requisito:** R-29, R-30.
+
+---
+
+## D-49 · El total del pago es una vista previa calculada en el front · 06/10
+
+**Elegido:** `calcularResumen` (`services/compras.ts`) arma el resumen del pago en el
+navegador, con el mismo orden de cuentas que `realizar_compra` (D-47): precios, canjes,
+cupón, crédito y lo que queda a pagar. Se recalcula con cada cambio del pedido: un canje,
+el crédito, una butaca. Lo que vale es lo que devuelve `realizar_compra` al confirmar,
+y eso es lo que muestran la entrada y el PDF.
+
+**Descartado:** pedirle la vista previa a la base en cada cambio. Son muchos pedidos para
+algo que la base vuelve a calcular igual al confirmar.
+
+**Cómo lo explico en el oral:** el front muestra, la base decide. Si alguien cambia el
+precio desde la consola del navegador, cambia lo que ve, no lo que paga.
+
+**Lo que cuesta:** las reglas de la cuenta quedan escritas dos veces, en SQL y en
+TypeScript. Si cambia una, hay que cambiar la otra. `compras.spec.ts` prueba la vista
+previa con los casos de D-46 y D-47.
+
+**Clase de origen:** 3 (servicios) + 4 (formularios reactivos). **Requisito:** A-01.
