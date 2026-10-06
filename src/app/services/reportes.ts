@@ -4,13 +4,13 @@ import { CompraGuardada, EntradaGuardada, ItemCandyGuardado } from '../interface
 import { Funcion } from '../interfaces/funcion';
 import { Pelicula } from '../interfaces/pelicula';
 import { Producto } from '../interfaces/producto';
-import { Resultado } from '../interfaces/resultado';
 import {
   FilaFacturacion,
   PeliculaVista,
   PeriodoMasVistas,
   PeriodoReporte,
   ProductoVendido,
+  ResultadoReporte,
   TotalesFacturacion,
 } from '../interfaces/reporte';
 
@@ -241,32 +241,49 @@ export function agruparProductos(
   return lista.sort((a, b) => b.cantidad - a.cantidad || a.nombre.localeCompare(b.nombre, 'es'));
 }
 
+// Cuántas filas devuelve Supabase, como mucho, en una consulta (D-57). Si
+// una consulta trae justo esta cantidad, lo más probable es que haya más
+// filas y se hayan quedado afuera.
+export const LIMITE_DE_FILAS = 1000;
+
 // Los reportes del admin (R-35 a R-37). Se calculan en el front (D-55): el
 // admin tiene lectura por RLS sobre Compras, Entradas e ItemsCandy (D-24),
 // así que el servicio trae las filas con selects comunes y las agrupa con
 // las funciones de arriba. No hay vistas ni funciones de Postgres.
 //
 // En los tres métodos, desde y hasta son días 'AAAA-MM-DD' de Argentina, y
-// los dos entran en el rango.
+// los dos entran en el rango. Los tres devuelven un ResultadoReporte: el
+// resultado de siempre más "incompleto", que avisa si alguna consulta
+// llegó al límite de filas (D-57).
 @Service()
 export class Reportes {
   private sup = inject(SupabaseService);
 
   // Facturación y entradas vendidas por día de compra.
-  async traerFacturacion(desde: string, hasta: string): Promise<Resultado<FilaFacturacion[]>> {
+  async traerFacturacion(
+    desde: string,
+    hasta: string,
+  ): Promise<ResultadoReporte<FilaFacturacion[]>> {
     const error = 'No se pudo cargar la facturación.';
 
     const compras = await this.traerCompras(desde, hasta);
-    if (!compras) return { datos: null, error };
-    if (compras.length === 0) return { datos: [], error: null };
+    if (!compras) return { datos: null, error, incompleto: false };
+    if (compras.length === 0) return { datos: [], error: null, incompleto: false };
 
-    // Entradas no tiene fecha: la fecha es la de su compra. Se lee entera
-    // y agruparFacturacion se queda con las de las compras del rango.
-    const { data, error: e1 } = await this.sup.Sup.from('Entradas').select('*');
-    if (e1) return { datos: null, error };
+    // Entradas no tiene fecha: la fecha es la de su compra. Por eso se
+    // piden las entradas de las compras del rango, con .in() (D-57):
+    // "compra_id está en esta lista de ids".
+    const { data, error: e1 } = await this.sup.Sup.from('Entradas')
+      .select('*')
+      .in('compra_id', compras.map((c) => c.id));
+    if (e1) return { datos: null, error, incompleto: false };
     const entradas: EntradaGuardada[] = data;
 
-    return { datos: agruparFacturacion(compras, entradas), error: null };
+    return {
+      datos: agruparFacturacion(compras, entradas),
+      error: null,
+      incompleto: this.llegoAlLimite(compras, entradas),
+    };
   }
 
   // Películas más vistas, por semana o por mes de la función.
@@ -274,7 +291,7 @@ export class Reportes {
     desde: string,
     hasta: string,
     periodo: PeriodoReporte,
-  ): Promise<Resultado<PeriodoMasVistas[]>> {
+  ): Promise<ResultadoReporte<PeriodoMasVistas[]>> {
     const error = 'No se pudieron cargar las películas más vistas.';
 
     // Acá el rango es sobre la fecha de la función, no la de la compra.
@@ -282,25 +299,42 @@ export class Reportes {
       .select('*')
       .gte('fecha_hora', inicioDelDia(desde))
       .lt('fecha_hora', inicioDelDia(diaSiguiente(hasta)));
-    if (e1) return { datos: null, error };
+    if (e1) return { datos: null, error, incompleto: false };
     const funciones: Funcion[] = dFunciones;
-    if (funciones.length === 0) return { datos: [], error: null };
+    if (funciones.length === 0) return { datos: [], error: null, incompleto: false };
 
-    // Una entrada de una función del rango se pudo comprar antes del
-    // rango (una preventa), así que las compras no se pueden filtrar por
-    // fecha: se leen todas, para saber cuáles están canceladas.
-    const { data: dEntradas, error: e2 } = await this.sup.Sup.from('Entradas').select('*');
-    const { data: dCompras, error: e3 } = await this.sup.Sup.from('Compras').select('*');
-    const { data: dPeliculas, error: e4 } = await this.sup.Sup.from('Peliculas').select('*');
-    if (e2 || e3 || e4) return { datos: null, error };
-
+    // Las entradas de esas funciones.
+    const { data: dEntradas, error: e2 } = await this.sup.Sup.from('Entradas')
+      .select('*')
+      .in('funcion_id', funciones.map((f) => f.id));
+    if (e2) return { datos: null, error, incompleto: false };
     const entradas: EntradaGuardada[] = dEntradas;
+    if (entradas.length === 0) return { datos: [], error: null, incompleto: false };
+
+    // Las compras de esas entradas, para saber cuáles están canceladas. No
+    // se pueden pedir por fecha: una entrada de una función del rango se
+    // pudo comprar antes del rango (una preventa). Una compra tiene varias
+    // entradas, así que su id se repite: se arma la lista sin repetidos.
+    const idsDeCompras: number[] = [];
+    for (const entrada of entradas) {
+      if (!idsDeCompras.includes(entrada.compra_id)) idsDeCompras.push(entrada.compra_id);
+    }
+
+    const { data: dCompras, error: e3 } = await this.sup.Sup.from('Compras')
+      .select('*')
+      .in('id', idsDeCompras);
+    // Peliculas es una tabla pública y chica: se lee entera para buscar
+    // los nombres.
+    const { data: dPeliculas, error: e4 } = await this.sup.Sup.from('Peliculas').select('*');
+    if (e3 || e4) return { datos: null, error, incompleto: false };
+
     const compras: CompraGuardada[] = dCompras;
     const peliculas: Pelicula[] = dPeliculas;
 
     return {
       datos: agruparMasVistas(funciones, entradas, compras, peliculas, periodo, Date.now()),
       error: null,
+      incompleto: this.llegoAlLimite(funciones, entradas, compras, peliculas),
     };
   }
 
@@ -308,21 +342,28 @@ export class Reportes {
   async traerProductosMasVendidos(
     desde: string,
     hasta: string,
-  ): Promise<Resultado<ProductoVendido[]>> {
+  ): Promise<ResultadoReporte<ProductoVendido[]>> {
     const error = 'No se pudieron cargar los productos más vendidos.';
 
     const compras = await this.traerCompras(desde, hasta);
-    if (!compras) return { datos: null, error };
-    if (compras.length === 0) return { datos: [], error: null };
+    if (!compras) return { datos: null, error, incompleto: false };
+    if (compras.length === 0) return { datos: [], error: null, incompleto: false };
 
-    const { data: dItems, error: e1 } = await this.sup.Sup.from('ItemsCandy').select('*');
+    // Igual que con las entradas: los ítems de las compras del rango (D-57).
+    const { data: dItems, error: e1 } = await this.sup.Sup.from('ItemsCandy')
+      .select('*')
+      .in('compra_id', compras.map((c) => c.id));
     const { data: dProductos, error: e2 } = await this.sup.Sup.from('ProductosCandy').select('*');
-    if (e1 || e2) return { datos: null, error };
+    if (e1 || e2) return { datos: null, error, incompleto: false };
 
     const items: ItemCandyGuardado[] = dItems;
     const productos: Producto[] = dProductos;
 
-    return { datos: agruparProductos(compras, items, productos), error: null };
+    return {
+      datos: agruparProductos(compras, items, productos),
+      error: null,
+      incompleto: this.llegoAlLimite(compras, items, productos),
+    };
   }
 
   // Las compras hechas entre los dos días, de cualquier estado. Devuelve
@@ -339,5 +380,13 @@ export class Reportes {
 
     const compras: CompraGuardada[] = data;
     return compras;
+  }
+
+  // Dice si alguna de las listas vino con el máximo de filas (D-57).
+  // Supabase no avisa cuando corta: devuelve las primeras 1000 y nada más.
+  // "...listas" junta todos los argumentos en un array, para poder pasarle
+  // dos, tres o cuatro listas de cualquier tipo; solo se mira el largo.
+  private llegoAlLimite(...listas: { length: number }[]): boolean {
+    return listas.some((lista) => lista.length >= LIMITE_DE_FILAS);
   }
 }

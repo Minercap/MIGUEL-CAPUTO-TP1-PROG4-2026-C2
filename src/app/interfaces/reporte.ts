@@ -1,4 +1,14 @@
+import { Resultado } from './resultado';
+
 // Los reportes del admin (R-35 a R-37). Qué cuenta cada uno está en D-56.
+
+// Lo que devuelve cada reporte: el Resultado de siempre y un dato más.
+//   incompleto true -> alguna consulta trajo el máximo de filas que
+//                      Supabase devuelve de una vez (1000, D-57): puede
+//                      haber datos que quedaron afuera, y la pantalla avisa.
+export interface ResultadoReporte<T> extends Resultado<T> {
+  incompleto: boolean;
+}
 
 // Un renglón de la facturación: un día, en hora argentina.
 export interface FilaFacturacion {

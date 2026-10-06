@@ -116,3 +116,9 @@ tfoot td {
 .error {
   color: var(--color-error);
 }
+
+.aviso {
+  padding: 0.6rem 0.75rem;
+  border-left: 0.25rem solid var(--color-acento-dorado);
+  background: var(--color-superficie);
+}

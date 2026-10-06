@@ -1443,8 +1443,8 @@ volumen del TP, agrupar en memoria alcanza, y cada cuenta se lee en un solo arch
 y agrupa por día, por semana o por producto.
 
 **Lo que cuesta:** el filtro de fechas va sobre `Compras` (por `creado_en`) y sobre
-`Funciones` (por `fecha_hora`). `Entradas` e `ItemsCandy` no tienen fecha, así que se leen
-enteras y se cruzan en memoria con las compras del rango.
+`Funciones` (por `fecha_hora`). `Entradas` e `ItemsCandy` no tienen fecha: se piden por los
+ids de las compras del rango, con `.in()` (D-57).
 
 **Clase de origen:** 3 (servicios) + 6 (select con filtros). **Requisito:** R-35 a R-37.
 
@@ -1471,3 +1471,45 @@ la que entró, y el crédito que se acreditó se descuenta solo cuando se usa en
 convirtió en crédito; cuando ese crédito paga otra compra, esa parte no se vuelve a contar.
 
 **Clase de origen:** interpretación adoptada. **Requisito:** R-35 a R-37.
+
+---
+
+## D-57 · Filtro `.in()` y aviso por el límite de 1000 filas · 06/10
+
+**Elegido:** en los reportes, `Entradas` e `ItemsCandy` se piden con
+`.in('compra_id', ids)`, donde `ids` son los de las compras del rango. Las películas más
+vistas hacen lo mismo en cadena: funciones del rango, entradas de esas funciones
+(`.in('funcion_id', ids)`) y compras de esas entradas (`.in('id', ids)`). Si cualquier
+consulta devuelve 1000 filas, la pantalla avisa: "El reporte puede estar incompleto: hay más
+datos de los que se pueden traer de una vez".
+
+**Lo que no se vio en clase (🟡):** `.in()` es un filtro de Supabase como `.eq()`, pero en
+vez de comparar con un valor compara con una lista: "la columna es alguno de estos". Es el
+`in (...)` de SQL.
+
+**Por qué hace falta:** `Entradas` e `ItemsCandy` no tienen fecha; la fecha es la de su
+compra. Sin `.in()` había que leer las dos tablas enteras para quedarse con una parte
+(D-55).
+
+**El límite de 1000 filas:** Supabase devuelve como máximo 1000 filas por consulta (es el
+valor por defecto del proyecto) y no avisa cuando corta: trae las primeras 1000 y nada más.
+Un reporte armado con datos cortados daría un total menor sin que nadie lo note. Por eso el
+servicio mira el largo de cada respuesta y devuelve `incompleto` en true si alguna llegó a
+1000.
+
+**Descartado:**
+- Seguir leyendo las tablas enteras: llega al límite mucho antes, porque cuenta todas las
+  entradas del cine y no solo las del rango.
+- Pedir de a páginas con `.range()` hasta traer todo: es otra cosa no vista, y para el
+  volumen del TP alcanza con avisar.
+
+**Lo que cuesta:** el aviso también aparece si hay exactamente 1000 filas y no falta
+ninguna: no se puede distinguir. Y la lista de ids viaja en la dirección del pedido, así que
+con muchísimas compras en el rango el pedido puede fallar por largo; en ese caso el reporte
+muestra su error y hay que achicar el rango.
+
+**Cómo lo explico en el oral:** primero traigo las compras del rango, y después las entradas
+de esas compras. Si alguna respuesta llega al tope, aviso que el reporte puede estar
+incompleto en lugar de mostrar un número que parece bueno.
+
+**Clase de origen:** 6 (select con filtros) + `.in()` 🟡. **Requisito:** R-35 a R-37.

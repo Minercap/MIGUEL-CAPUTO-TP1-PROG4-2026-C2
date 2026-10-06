@@ -55,6 +55,10 @@ export class AdminReportes implements OnInit {
   cargando = signal(true);
   error = signal<string | null>(null);
   errorExportar = signal<string | null>(null);
+  // Alguna consulta llegó al máximo de filas que trae Supabase (D-57). Son
+  // dos porque el selector Semana / Mes vuelve a pedir solo las películas.
+  incompletoVentas = signal(false);
+  incompletoVistas = signal(false);
   filas = signal<FilaFacturacion[]>([]);
   totales = signal<TotalesFacturacion>({ compras: 0, entradas: 0, facturado: 0 });
   periodo = signal<PeriodoReporte>('semana');
@@ -138,6 +142,8 @@ export class AdminReportes implements OnInit {
     if (vistas.error) errores.push(vistas.error);
     if (vendidos.error) errores.push(vendidos.error);
     this.error.set(errores.length > 0 ? errores.join(' ') : null);
+    this.incompletoVentas.set(facturacion.incompleto || vendidos.incompleto);
+    this.incompletoVistas.set(vistas.incompleto);
 
     const filas = facturacion.datos ?? [];
     this.filas.set(filas);
@@ -169,6 +175,7 @@ export class AdminReportes implements OnInit {
 
     this.cargandoVistas.set(false);
     this.error.set(vistas.error);
+    this.incompletoVistas.set(vistas.incompleto);
     this.masVistas.set(
       (vistas.datos ?? []).map((p) => ({
         etiqueta: p.etiqueta,

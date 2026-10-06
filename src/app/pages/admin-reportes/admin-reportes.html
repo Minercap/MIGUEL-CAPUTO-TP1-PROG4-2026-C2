@@ -45,6 +45,13 @@
   <p class="error" role="alert">{{ error() }}</p>
 }
 
+<!-- Supabase trae hasta 1000 filas por consulta y no avisa si corta (D-57). -->
+@if (incompletoVentas() || incompletoVistas()) {
+  <p class="aviso" role="alert">
+    El reporte puede estar incompleto: hay más datos de los que se pueden traer de una vez.
+  </p>
+}
+
 @if (cargando()) {
   <p>Cargando los reportes…</p>
 } @else {
