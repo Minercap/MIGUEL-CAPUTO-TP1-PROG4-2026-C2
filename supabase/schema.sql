@@ -2101,6 +2101,7 @@ alter table public."Recompensas"
 --   13.3 realizar_compra completa (D-45, D-46, D-47)
 --   13.4 cancelar_compra (D-48)
 --   13.5 Pruebas (comentadas)
+--   13.6 realizar_compra rechaza butacas repetidas
 
 
 -- ---------- 13.1 Columnas y reglas nuevas ----------
@@ -2283,6 +2284,9 @@ create policy "empleado valida compras"
 --     "total", "credito_usado", "a_pagar", "medio_pago", "puntos_usados",
 --     "puntos_generados" }
 
+-- OJO: la función se vuelve a definir en la sección 13.6, que agrega el
+-- control de butacas repetidas. La vigente es la de la 13.6.
+--
 -- La función vieja tiene cinco parámetros y la nueva ocho. Para Postgres
 -- son dos funciones distintas (mismo motivo que en la 11.4): se borra la
 -- vieja para que no queden las dos.
@@ -3096,6 +3100,597 @@ grant execute on function public.cancelar_compra(bigint) to authenticated;
 -- select count(*) from public."ButacasOcupadas"
 -- where funcion_id = ID_FUNCION and fila = 'D' and numero = 9;
 -- rollback;
+
+
+-- ---------- 13.6 Butacas repetidas en realizar_compra ----------
+-- Hasta acá, una butaca repetida en p_butacas terminaba en la violación
+-- de unique de ButacasOcupadas, con el mensaje "Alguna de las butacas ya
+-- fue vendida", que no dice lo que pasó. Ahora se rechaza antes, en el
+-- paso 5, con su propio mensaje. Es el mismo criterio que los productos
+-- repetidos del candy (paso 6).
+--
+-- Una función no se puede cambiar por partes: "create or replace" la
+-- reemplaza entera. Por eso esta sección repite toda la función de la
+-- 13.3, con un solo bloque nuevo, marcado con "13.6" en el paso 5. Tiene
+-- los mismos parámetros, así que reemplaza a la de la 13.3 sin crear
+-- otra, y el grant de la 13.3 sigue valiendo. La vigente es esta.
+--
+-- Se puede correr sola: no depende de nada que no esté ya en la base.
+
+create or replace function public.realizar_compra(
+  p_funcion_id        bigint,
+  p_butacas           jsonb,
+  p_email             text,
+  p_medio_pago        text,
+  p_fecha_nacimiento  date,
+  p_candy             jsonb   default '[]'::jsonb,
+  p_canjes            jsonb   default '[]'::jsonb,
+  p_credito           numeric default 0
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  -- La función y su película
+  v_pelicula_id     bigint;
+  v_fecha_hora      timestamptz;
+  v_precio_base     numeric(12,2);
+  v_precio_vip      numeric(12,2);
+  v_visible         boolean;
+  v_restriccion     int;
+  v_estreno         date;
+  v_preventa        boolean;
+  v_precio_preventa numeric(12,2);
+
+  -- Fechas, en hora argentina
+  v_hoy             date;
+  v_inicio_venta    date;
+  v_en_preventa     boolean;
+
+  -- El comprador
+  v_usuario         uuid;
+  v_nacimiento      date;   -- la del perfil o la declarada: con la que se calcula la edad
+  v_declarada       date;   -- lo que se guarda en fecha_nacimiento_declarada
+  v_edad            int;
+  v_email           text;
+  v_saldo_puntos    int := 0;
+  v_saldo_credito   numeric(12,2) := 0;
+
+  -- Las butacas
+  v_cantidad        int;
+  v_butaca          jsonb;
+  v_fila            text;
+  v_numero          int;
+  v_es_vip          boolean;
+  v_precio          numeric(12,2);
+  v_butacas         jsonb := '[]'::jsonb;  -- las validadas, todavía sin precio
+  v_posicion        int;
+  v_cubierta        text;
+  v_entradas        jsonb := '[]'::jsonb;
+
+  -- El candy
+  v_item            jsonb;
+  v_producto_id     bigint;
+  v_unidades        int;
+  v_nombre          text;
+  v_precio_producto numeric(12,2);
+  v_es_combo        boolean;
+  v_con_entrada     boolean;
+  v_activo          boolean;
+  v_candy           jsonb := '[]'::jsonb;
+  v_cubre_combo     int := 0;   -- butacas que cubren los combos con entrada
+
+  -- Los canjes
+  v_recompensa_id   bigint;
+  v_tipo            text;
+  v_costo           int;
+  v_canjes          jsonb := '[]'::jsonb;
+  v_cubre_canje     int := 0;   -- butacas que cubren las entradas gratis
+  v_puntos_usados   int := 0;
+
+  -- La cuenta (D-47)
+  v_subtotal        numeric(12,2) := 0;
+  v_cupon_id        bigint;
+  v_cupon_nombre    text;
+  v_cupon_pct       int;
+  v_descuento       numeric(12,2) := 0;
+  v_total           numeric(12,2);
+  v_credito_usado   numeric(12,2) := 0;
+  v_a_pagar         numeric(12,2);
+  v_medio_pago      text;
+  v_puntos_generados int := 0;
+
+  -- La compra
+  v_codigo          text;
+  v_compra_id       bigint;
+begin
+  -- ----- 1. La función existe y todavía no empezó -----
+  select f.pelicula_id, f.fecha_hora, f.precio_base, f.precio_vip
+    into v_pelicula_id, v_fecha_hora, v_precio_base, v_precio_vip
+  from public."Funciones" f
+  where f.id = p_funcion_id;
+
+  if not found then
+    raise exception 'La función no existe.';
+  end if;
+
+  if v_fecha_hora <= now() then
+    raise exception 'La función ya empezó: no se pueden comprar entradas.';
+  end if;
+
+  select p.visible, p.restriccion_edad, p.fecha_estreno, p.preventa_habilitada, p.precio_preventa
+    into v_visible, v_restriccion, v_estreno, v_preventa, v_precio_preventa
+  from public."Peliculas" p
+  where p.id = v_pelicula_id;
+
+  -- Una película oculta se puede leer, pero no está ofrecida (D-34).
+  if not v_visible then
+    raise exception 'Esta película no está disponible para la venta.';
+  end if;
+
+  -- ----- 2. La venta está abierta (R-11) -----
+  -- Igual que en la 11.4: con preventa abre 7 días antes del estreno; sin
+  -- preventa, el día del estreno. "Hoy" es el día de Argentina (9.5).
+  v_hoy := (now() at time zone 'America/Argentina/Buenos_Aires')::date;
+
+  if v_preventa then
+    v_inicio_venta := v_estreno - 7;
+  else
+    v_inicio_venta := v_estreno;
+  end if;
+
+  if v_hoy < v_inicio_venta then
+    raise exception 'La venta de esta película todavía no está abierta. Abre el %.',
+      to_char(v_inicio_venta, 'DD/MM/YYYY');
+  end if;
+
+  v_en_preventa := v_preventa and v_hoy < v_estreno;
+
+  -- ----- 3. El medio de pago -----
+  -- Se controla en el paso 10, cuando ya se sabe si queda algo para
+  -- cobrar: si no queda nada, no hace falta (D-47).
+
+  -- ----- 4. El comprador: candado, saldos, edad y mail -----
+  v_usuario := auth.uid();
+
+  -- Los parámetros que no vienen se toman como vacíos.
+  p_candy   := coalesce(p_candy, '[]'::jsonb);
+  p_canjes  := coalesce(p_canjes, '[]'::jsonb);
+  p_credito := coalesce(p_credito, 0);
+
+  if jsonb_typeof(p_candy) <> 'array' or jsonb_typeof(p_canjes) <> 'array' then
+    raise exception 'Los productos elegidos no tienen un formato válido.';
+  end if;
+
+  if v_usuario is not null then
+    -- El candado va antes de leer los saldos: así lo que se lee ya no lo
+    -- puede cambiar otra compra del mismo usuario hasta que esta termine.
+    perform pg_advisory_xact_lock(1, hashtext(v_usuario::text));
+
+    select u.fecha_nacimiento, u.email, u.puntos, u.credito
+      into v_nacimiento, v_email, v_saldo_puntos, v_saldo_credito
+    from public."Usuarios" u
+    where u.id = v_usuario;
+
+    if not found then
+      raise exception 'No se encontró tu perfil. Cerrá la sesión y volvé a ingresar.';
+    end if;
+  else
+    -- El anónimo no tiene cupón, crédito ni puntos (R-02).
+    if jsonb_array_length(p_canjes) > 0 then
+      raise exception 'Para canjear puntos tenés que iniciar sesión.';
+    end if;
+    if p_credito <> 0 then
+      raise exception 'Para usar crédito tenés que iniciar sesión.';
+    end if;
+  end if;
+
+  -- Control de edad (R-25, D-06). Igual que en la 11.4.
+  if v_restriccion is not null then
+    if v_usuario is null then
+      if p_fecha_nacimiento is null then
+        raise exception 'Esta película es para mayores de % años. Ingresá tu fecha de nacimiento.',
+          v_restriccion;
+      end if;
+      if p_fecha_nacimiento > v_hoy
+         or p_fecha_nacimiento < v_hoy - interval '120 years' then
+        raise exception 'La fecha de nacimiento no es válida.';
+      end if;
+      v_nacimiento := p_fecha_nacimiento;
+      v_declarada  := p_fecha_nacimiento;
+    end if;
+
+    v_edad := extract(year from age(v_hoy, v_nacimiento));
+    if v_edad < v_restriccion then
+      raise exception 'Esta película es para mayores de % años.', v_restriccion;
+    end if;
+  end if;
+
+  -- El mail del anónimo. Igual que en la 11.4.
+  if v_usuario is null then
+    v_email := lower(trim(coalesce(p_email, '')));
+    if v_email = '' then
+      raise exception 'Ingresá tu mail para registrar la compra.';
+    end if;
+    if char_length(v_email) > 254 or v_email !~ '^[^\s@]+@[^\s@]+\.[^\s@]+$' then
+      raise exception 'El mail no tiene un formato válido.';
+    end if;
+  end if;
+
+  -- ----- 5. Las butacas: cantidad y validez -----
+  -- Las mismas reglas de la 11.4. El precio todavía no se calcula: depende
+  -- de si la butaca la cubre un combo o un canje, y eso se sabe recién
+  -- después de mirar el candy y los canjes (paso 8).
+  if p_butacas is null or jsonb_typeof(p_butacas) <> 'array' then
+    raise exception 'Elegí al menos una butaca.';
+  end if;
+
+  v_cantidad := jsonb_array_length(p_butacas);
+  if v_cantidad < 1 then
+    raise exception 'Elegí al menos una butaca.';
+  end if;
+  if v_cantidad > 10 then
+    raise exception 'Se pueden comprar hasta 10 butacas por compra.';
+  end if;
+
+  for v_butaca in select * from jsonb_array_elements(p_butacas)
+  loop
+    v_fila := upper(coalesce(v_butaca ->> 'fila', ''));
+
+    if coalesce(v_butaca ->> 'numero', '') !~ '^[0-9]{1,2}$' then
+      raise exception 'Alguna de las butacas elegidas no existe en la sala.';
+    end if;
+    v_numero := (v_butaca ->> 'numero')::int;
+
+    -- Distribución de la sala (R-13, D-04): A a T, con J y K de 14.
+    if v_fila !~ '^[A-T]$' then
+      raise exception 'Alguna de las butacas elegidas no existe en la sala.';
+    end if;
+    if v_numero < 1
+       or (v_fila in ('J', 'K') and v_numero > 14)
+       or v_numero > 28 then
+      raise exception 'Alguna de las butacas elegidas no existe en la sala.';
+    end if;
+
+    -- Sin repetidas (13.6): la misma butaca no puede venir dos veces. Se
+    -- busca en las que ya se validaron, que tienen la fila en mayúscula y
+    -- el número convertido: así "a" y "A", o "05" y "5", cuentan como la
+    -- misma butaca.
+    if (select count(*) from jsonb_array_elements(v_butacas) e
+        where e ->> 'fila' = v_fila and (e ->> 'numero')::int = v_numero) > 0 then
+      raise exception 'Elegiste la misma butaca dos veces.';
+    end if;
+
+    v_butacas := v_butacas || jsonb_build_object(
+      'fila', v_fila,
+      'numero', v_numero,
+      'es_vip', v_fila in ('R', 'S', 'T')
+    );
+  end loop;
+
+  -- ----- 6. El candy: productos y combos (R-21, R-22) -----
+  -- Cada producto aparece una sola vez, con su cantidad de 1 a 10
+  -- (validaciones.md 3.10), y tiene que estar activo. El precio sale de
+  -- la base, no de lo que mande el navegador.
+  for v_item in select * from jsonb_array_elements(p_candy)
+  loop
+    if coalesce(v_item ->> 'producto_id', '') !~ '^[0-9]{1,18}$'
+       or coalesce(v_item ->> 'cantidad', '') !~ '^[0-9]{1,2}$' then
+      raise exception 'Alguno de los productos elegidos no es válido.';
+    end if;
+    v_producto_id := (v_item ->> 'producto_id')::bigint;
+    v_unidades    := (v_item ->> 'cantidad')::int;
+
+    if v_unidades < 1 or v_unidades > 10 then
+      raise exception 'Se pueden llevar de 1 a 10 unidades de cada producto.';
+    end if;
+
+    -- Sin repetidos: se cuenta cuántas veces aparece este producto en la
+    -- lista que mandó el navegador.
+    if (select count(*) from jsonb_array_elements(p_candy) e
+        where e ->> 'producto_id' = v_item ->> 'producto_id') > 1 then
+      raise exception 'Hay un producto repetido en el pedido.';
+    end if;
+
+    select pr.nombre, pr.precio, pr.es_combo, pr.incluye_entrada, pr.activo
+      into v_nombre, v_precio_producto, v_es_combo, v_con_entrada, v_activo
+    from public."ProductosCandy" pr
+    where pr.id = v_producto_id;
+
+    if not found or not v_activo then
+      raise exception 'Alguno de los productos elegidos ya no está disponible.';
+    end if;
+
+    -- Cada combo con entrada cubre una butaca por unidad (D-46).
+    if v_con_entrada then
+      v_cubre_combo := v_cubre_combo + v_unidades;
+    end if;
+
+    v_subtotal := v_subtotal + v_precio_producto * v_unidades;
+    v_candy := v_candy || jsonb_build_object(
+      'producto_id', v_producto_id,
+      'nombre', v_nombre,
+      'cantidad', v_unidades,
+      'precio_unitario', v_precio_producto,
+      'es_combo', v_es_combo,
+      'incluye_entrada', v_con_entrada,
+      'es_canje', false
+    );
+  end loop;
+
+  -- ----- 7. Los canjes de puntos (R-28, D-45) -----
+  -- Solo con sesión (el anónimo ya se cortó en el paso 4). Una entrada
+  -- gratis cubre una butaca; un producto se lleva a $0.
+  for v_item in select * from jsonb_array_elements(p_canjes)
+  loop
+    if coalesce(v_item ->> 'recompensa_id', '') !~ '^[0-9]{1,18}$' then
+      raise exception 'Alguna de las recompensas elegidas no es válida.';
+    end if;
+    v_recompensa_id := (v_item ->> 'recompensa_id')::bigint;
+
+    -- left join: si la recompensa es una entrada no tiene producto, y la
+    -- fila tiene que aparecer igual.
+    select r.tipo, r.producto_id, r.costo_puntos, r.activa and coalesce(pr.activo, true), pr.nombre
+      into v_tipo, v_producto_id, v_costo, v_activo, v_nombre
+    from public."Recompensas" r
+    left join public."ProductosCandy" pr on pr.id = r.producto_id
+    where r.id = v_recompensa_id;
+
+    if not found or not v_activo then
+      raise exception 'Alguna de las recompensas elegidas ya no está disponible.';
+    end if;
+
+    v_puntos_usados := v_puntos_usados + v_costo;
+
+    if v_tipo = 'entrada' then
+      v_cubre_canje := v_cubre_canje + 1;
+      v_nombre := 'Entrada';
+    else
+      -- El producto canjeado va al candy con precio 0 y marcado como
+      -- canje. No suma al subtotal.
+      v_candy := v_candy || jsonb_build_object(
+        'producto_id', v_producto_id,
+        'nombre', v_nombre,
+        'cantidad', 1,
+        'precio_unitario', 0,
+        'es_combo', false,
+        'incluye_entrada', false,
+        'es_canje', true
+      );
+    end if;
+
+    v_canjes := v_canjes || jsonb_build_object(
+      'recompensa_id', v_recompensa_id,
+      'nombre', v_nombre,
+      'tipo', v_tipo,
+      'puntos', v_costo
+    );
+  end loop;
+
+  if v_puntos_usados > v_saldo_puntos then
+    raise exception 'No te alcanzan los puntos: tenés % y los canjes elegidos suman %.',
+      v_saldo_puntos, v_puntos_usados;
+  end if;
+
+  -- ----- 8. El precio de cada butaca (D-46) -----
+  -- Cada combo con entrada y cada entrada gratis necesita su butaca.
+  if v_cubre_combo + v_cubre_canje > v_cantidad then
+    raise exception 'Cada combo con entrada y cada entrada gratis cubre una butaca: elegiste % butacas para % entradas incluidas.',
+      v_cantidad, v_cubre_combo + v_cubre_canje;
+  end if;
+
+  -- Las butacas se cubren en el orden en que vienen: primero las de los
+  -- combos, después las de los canjes, y las demás se cobran.
+  --   Cubierta:     0, o la diferencia VIP si la butaca es VIP.
+  --   No cubierta:  VIP a precio_vip; comunes y accesibles a
+  --                 precio_preventa en preventa, si no a precio_base.
+  v_posicion := 0;
+  for v_butaca in select * from jsonb_array_elements(v_butacas)
+  loop
+    v_posicion := v_posicion + 1;
+    v_es_vip := (v_butaca ->> 'es_vip')::boolean;
+
+    if v_posicion <= v_cubre_combo then
+      v_cubierta := 'combo';
+    elsif v_posicion <= v_cubre_combo + v_cubre_canje then
+      v_cubierta := 'canje';
+    else
+      v_cubierta := null;
+    end if;
+
+    if v_cubierta is not null then
+      if v_es_vip then
+        v_precio := v_precio_vip - v_precio_base;
+      else
+        v_precio := 0;
+      end if;
+    elsif v_es_vip then
+      v_precio := v_precio_vip;
+    elsif v_en_preventa then
+      v_precio := v_precio_preventa;
+    else
+      v_precio := v_precio_base;
+    end if;
+
+    v_subtotal := v_subtotal + v_precio;
+    v_entradas := v_entradas || jsonb_build_object(
+      'fila', v_butaca ->> 'fila',
+      'numero', (v_butaca ->> 'numero')::int,
+      'es_vip', v_es_vip,
+      'precio', v_precio,
+      'cubierta_por', v_cubierta
+    );
+  end loop;
+
+  -- ----- 9. El cupón (R-23, R-24, D-41, D-47) -----
+  -- Solo con sesión. Se aplica uno solo: el de mayor porcentaje entre los
+  -- activos que le corresponden.
+  --   Primera compra: el usuario no tiene compras pagadas. Las canceladas
+  --   no cuentan (D-41).
+  --   Mayor de 50: tiene más de 50 años según la fecha de su perfil. Se
+  --   aplica en cada compra.
+  if v_usuario is not null then
+    v_edad := extract(year from age(v_hoy, v_nacimiento));
+
+    select c.id, c.nombre, c.porcentaje
+      into v_cupon_id, v_cupon_nombre, v_cupon_pct
+    from public."Cupones" c
+    where c.activo
+      and (
+        (c.condicion = 'primera_compra'
+          and not exists (
+            select 1 from public."Compras" co
+            where co.usuario_id = v_usuario and co.estado = 'pagada'
+          ))
+        or (c.condicion = 'mayor_50' and v_edad > 50)
+      )
+    order by c.porcentaje desc, c.id
+    limit 1;
+
+    if v_cupon_id is not null then
+      v_descuento := round(v_subtotal * v_cupon_pct / 100.0, 2);
+    end if;
+  end if;
+
+  v_total := v_subtotal - v_descuento;
+
+  -- ----- 10. El crédito (R-30, D-47) -----
+  -- Hasta el saldo que tiene. Si pide más de lo que cuesta la compra, se
+  -- usa solo lo necesario para cubrirla: el total nunca queda negativo.
+  p_credito := round(p_credito, 2);
+  if p_credito < 0 then
+    raise exception 'El crédito a usar no puede ser negativo.';
+  end if;
+  if p_credito > v_saldo_credito then
+    raise exception 'Tenés $% de crédito: no podés usar más que eso.', v_saldo_credito;
+  end if;
+
+  if p_credito > v_total then
+    v_credito_usado := v_total;
+  else
+    v_credito_usado := p_credito;
+  end if;
+
+  v_a_pagar := v_total - v_credito_usado;
+
+  -- El medio de pago. Si no queda nada para cobrar (el crédito y los
+  -- canjes cubren todo), es 'sin_cargo' y lo que haya mandado el
+  -- navegador no se usa. Si queda algo, tiene que ser uno de la lista;
+  -- 'sin_cargo' no se puede elegir.
+  if v_a_pagar = 0 then
+    v_medio_pago := 'sin_cargo';
+  elsif p_medio_pago is null or p_medio_pago not in ('credito', 'debito', 'mercado_pago') then
+    raise exception 'Elegí un medio de pago válido.';
+  else
+    v_medio_pago := p_medio_pago;
+  end if;
+
+  -- 1 punto por peso pagado con el medio de pago (R-27). El crédito no
+  -- genera puntos: ya los generó la compra que lo originó.
+  if v_usuario is not null then
+    v_puntos_generados := floor(v_a_pagar);
+  end if;
+
+  -- ----- 11. El código de la compra (D-09) -----
+  loop
+    v_codigo := upper(replace(gen_random_uuid()::text, '-', ''));
+    v_codigo := 'OLY-' || substr(v_codigo, 1, 4) || '-' || substr(v_codigo, 5, 4);
+    exit when not exists (select 1 from public."Compras" c where c.codigo = v_codigo);
+  end loop;
+
+  -- ----- 12. Guardar todo -----
+  -- Igual que en la 11.4, la violación de unique de ButacasOcupadas se
+  -- traduce a un mensaje para el comprador, y al salir con raise
+  -- exception se deshace todo.
+  begin
+    insert into public."Compras"
+      (usuario_id, email, fecha_nacimiento_declarada, codigo, total, medio_pago,
+       cupon_id, descuento_aplicado, credito_usado, puntos_generados)
+    values
+      (v_usuario, v_email, v_declarada, v_codigo, v_total, v_medio_pago,
+       v_cupon_id, v_descuento, v_credito_usado, v_puntos_generados)
+    returning id into v_compra_id;
+
+    for v_butaca in select * from jsonb_array_elements(v_entradas)
+    loop
+      insert into public."Entradas"
+        (compra_id, funcion_id, fila, numero, es_vip, precio, cubierta_por)
+      values (
+        v_compra_id,
+        p_funcion_id,
+        v_butaca ->> 'fila',
+        (v_butaca ->> 'numero')::int,
+        (v_butaca ->> 'es_vip')::boolean,
+        (v_butaca ->> 'precio')::numeric,
+        v_butaca ->> 'cubierta_por'
+      );
+
+      insert into public."ButacasOcupadas" (funcion_id, fila, numero)
+      values (p_funcion_id, v_butaca ->> 'fila', (v_butaca ->> 'numero')::int);
+    end loop;
+  exception
+    when unique_violation then
+      raise exception 'Alguna de las butacas ya fue vendida. Elegí otras.';
+  end;
+
+  for v_item in select * from jsonb_array_elements(v_candy)
+  loop
+    insert into public."ItemsCandy" (compra_id, producto_id, cantidad, precio_unitario, es_canje)
+    values (
+      v_compra_id,
+      (v_item ->> 'producto_id')::bigint,
+      (v_item ->> 'cantidad')::int,
+      (v_item ->> 'precio_unitario')::numeric,
+      (v_item ->> 'es_canje')::boolean
+    );
+  end loop;
+
+  for v_item in select * from jsonb_array_elements(v_canjes)
+  loop
+    insert into public."Canjes" (usuario_id, recompensa_id, puntos_gastados, compra_id)
+    values (
+      v_usuario,
+      (v_item ->> 'recompensa_id')::bigint,
+      (v_item ->> 'puntos')::int,
+      v_compra_id
+    );
+  end loop;
+
+  -- Los saldos del usuario. La función es security definer, así que puede
+  -- escribir puntos y crédito aunque el usuario no tenga permiso sobre
+  -- esas columnas (sección 4).
+  if v_usuario is not null then
+    update public."Usuarios"
+    set puntos  = puntos - v_puntos_usados + v_puntos_generados,
+        credito = credito - v_credito_usado
+    where id = v_usuario;
+  end if;
+
+  -- ----- 13. Lo que necesitan la confirmación y el PDF -----
+  return jsonb_build_object(
+    'codigo', v_codigo,
+    'email', v_email,
+    'requiere_adulto', v_restriccion is not null,
+    'en_preventa', v_en_preventa,
+    'entradas', v_entradas,
+    'candy', v_candy,
+    'canjes', v_canjes,
+    'subtotal', v_subtotal,
+    'cupon', case when v_cupon_id is null then null
+                  else jsonb_build_object('nombre', v_cupon_nombre, 'porcentaje', v_cupon_pct)
+             end,
+    'descuento', v_descuento,
+    'total', v_total,
+    'credito_usado', v_credito_usado,
+    'a_pagar', v_a_pagar,
+    'medio_pago', v_medio_pago,
+    'puntos_usados', v_puntos_usados,
+    'puntos_generados', v_puntos_generados
+  );
+end;
+$$;
 
 
 -- ============================================================
