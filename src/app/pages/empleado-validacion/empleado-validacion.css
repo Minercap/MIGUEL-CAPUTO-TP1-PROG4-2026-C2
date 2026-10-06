@@ -1,0 +1,146 @@
+/* Pensada primero para el celular, que es donde se usa: una sola columna,
+   botones grandes para tocar con el dedo. En una pantalla ancha queda la
+   misma columna, centrada. Los colores salen de :root (D-33). */
+
+:host {
+  display: block;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+h1,
+h2 {
+  font-family: var(--fuente-titulos);
+}
+
+h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+/* Los botones de esta pantalla son más altos que los del resto. */
+button {
+  min-height: 2.75rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
+}
+
+/* Entrada / Candy: dos botones que se reparten el ancho. */
+.tipos {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.tipos button {
+  flex: 1;
+  border: 2px solid var(--color-texto-suave);
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+  color: var(--color-texto);
+}
+
+.tipos .activo {
+  border-color: var(--color-acento-dorado);
+  color: var(--color-acento-dorado);
+  font-weight: bold;
+}
+
+.camara,
+form,
+.resultado {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+/* El recuadro del video. La librería pone el video adentro del div y le
+   da el alto según la cámara; apagado, se le deja un alto para que el
+   recuadro no desaparezca. */
+.visor {
+  overflow: hidden;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.5rem;
+}
+
+.visor.apagado {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 10rem;
+  color: var(--color-texto-suave);
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.botones button {
+  flex: 1;
+}
+
+form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* 1rem o más: con una letra más chica, el iPhone hace zoom al tocar el
+   campo. */
+input {
+  min-height: 2.75rem;
+  padding: 0 0.75rem;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+/* La tarjeta del resultado: el borde y el título dicen si salió bien. */
+.resultado {
+  border: 2px solid;
+}
+
+.resultado p,
+.resultado ul {
+  margin: 0.4rem 0;
+}
+
+.ok {
+  border-color: var(--color-exito);
+}
+
+.ok h2 {
+  color: var(--color-exito);
+}
+
+.mal {
+  border-color: var(--color-error);
+}
+
+.mal h2 {
+  color: var(--color-error);
+}
+
+.codigo {
+  font-size: 1.2rem;
+  letter-spacing: 0.05em;
+}
+
+.etiqueta {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-acento-dorado);
+  border-radius: 1rem;
+  color: var(--color-acento-dorado);
+  font-size: 0.8rem;
+}
+
+.aviso {
+  padding: 0.5rem 0.75rem;
+  border-left: 0.25rem solid var(--color-acento-dorado);
+}
+
+.error {
+  color: var(--color-error);
+}

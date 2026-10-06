@@ -42,7 +42,8 @@ export const routes: Routes = [
     path: 'empleado',
     title: 'Validación · Olympia Cinema',
     canActivate: [empleadoGuard],
-    loadComponent: () => import('./pages/empleado/empleado').then((m) => m.Empleado),
+    loadComponent: () =>
+      import('./pages/empleado-validacion/empleado-validacion').then((m) => m.EmpleadoValidacion),
   },
   {
     // /admin y todas sus rutas hijas (admin.routes.ts). El guard va acá, en

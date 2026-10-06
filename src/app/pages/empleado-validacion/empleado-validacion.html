@@ -1,0 +1,139 @@
+<h1>Validación</h1>
+
+<!-- Qué se valida. El activo va resaltado; aria-pressed le dice lo mismo a
+     un lector de pantalla. -->
+<div class="tipos">
+  <button
+    type="button"
+    [class.activo]="tipo() === 'entrada'"
+    [attr.aria-pressed]="tipo() === 'entrada'"
+    [disabled]="enviando()"
+    (click)="elegirTipo('entrada')"
+  >
+    Entrada
+  </button>
+  <button
+    type="button"
+    [class.activo]="tipo() === 'candy'"
+    [attr.aria-pressed]="tipo() === 'candy'"
+    [disabled]="enviando()"
+    (click)="elegirTipo('candy')"
+  >
+    Candy
+  </button>
+</div>
+
+<section class="camara">
+  <h2>Escanear el QR</h2>
+
+  <!-- El video lo pone acá adentro la librería del lector (D-50). El div
+       está siempre en la página, aunque la cámara esté apagada: el lector
+       lo busca por su id cuando se activa. -->
+  <div class="visor" [class.apagado]="!camaraActiva()">
+    <div [id]="idLector"></div>
+    @if (!camaraActiva()) {
+      <p>{{ abriendoCamara() ? 'Abriendo la cámara…' : 'La cámara está apagada.' }}</p>
+    }
+  </div>
+
+  @if (errorCamara()) {
+    <p class="error" role="alert">{{ errorCamara() }}</p>
+  }
+
+  <div class="botones">
+    @if (camaraActiva()) {
+      @if (camaraEnPausa()) {
+        <button type="button" [disabled]="enviando()" (click)="escanearOtro()">Escanear otro</button>
+      }
+      <button type="button" [disabled]="enviando()" (click)="detenerCamara()">Detener</button>
+    } @else {
+      <button type="button" [disabled]="abriendoCamara()" (click)="activarCamara()">
+        Activar cámara
+      </button>
+    }
+  </div>
+</section>
+
+<!-- Carga manual (R-32). El maxlength deja lugar para los espacios que se
+     puedan escribir entre los grupos; se sacan antes de validar. -->
+<form [formGroup]="formulario" (ngSubmit)="validarManual()">
+  <h2>Cargar el código a mano</h2>
+
+  <label for="codigo">Código de la compra</label>
+  <input
+    id="codigo"
+    type="text"
+    formControlName="codigo"
+    maxlength="20"
+    placeholder="OLY-XXXX-XXXX"
+    autocomplete="off"
+    autocapitalize="characters"
+  />
+  @if (codigo?.touched) {
+    @if (codigo?.errors?.['required']) {
+      <small class="error">El código es obligatorio.</small>
+    } @else if (codigo?.errors?.['codigoCompra']) {
+      <small class="error">El código tiene la forma OLY-XXXX-XXXX, con letras y números.</small>
+    }
+  }
+
+  <div class="botones">
+    <button type="submit" [disabled]="!formulario.valid || enviando()">
+      {{ enviando() ? 'Validando…' : tipo() === 'entrada' ? 'Validar entrada' : 'Validar candy' }}
+    </button>
+  </div>
+</form>
+
+<!-- El resultado: verde si se validó, roja si no. role="alert" hace que un
+     lector de pantalla lo anuncie apenas aparece. -->
+@if (enviando()) {
+  <p>Validando…</p>
+}
+@if (resultado(); as r) {
+  @if (r.hecho) {
+    <section class="resultado ok" role="alert">
+      <h2>{{ tipo() === 'entrada' ? 'Entrada válida' : 'Candy para entregar' }}</h2>
+
+      @if (r.detalle; as d) {
+        <p class="codigo">{{ d.codigo }}</p>
+
+        @if (d.entrada; as e) {
+          <p>
+            <strong>{{ e.pelicula_nombre }}</strong>
+          </p>
+          <!-- '-0300': siempre en hora argentina (D-35). -->
+          <p>
+            {{ e.funcion_fecha_hora | date: 'dd/MM/yyyy' : '-0300' }} ·
+            {{ e.funcion_fecha_hora | date: 'HH:mm' : '-0300' }} hs · {{ e.sala_nombre }}
+          </p>
+          <ul>
+            @for (butaca of e.butacas; track butaca.fila + butaca.numero) {
+              <li>
+                Fila {{ butaca.fila }}, butaca {{ butaca.numero }}
+                @if (butaca.es_vip) {
+                  <span class="etiqueta">VIP</span>
+                }
+              </li>
+            }
+          </ul>
+        } @else {
+          <ul>
+            @for (producto of d.productos; track producto.nombre) {
+              <li>{{ producto.cantidad }} × {{ producto.nombre }}</li>
+            }
+          </ul>
+        }
+      }
+
+      <!-- Se validó, pero falló el log o la lectura del detalle. -->
+      @if (r.error) {
+        <p class="aviso">{{ r.error }}</p>
+      }
+    </section>
+  } @else {
+    <section class="resultado mal" role="alert">
+      <h2>No se validó</h2>
+      <p>{{ r.error }}</p>
+    </section>
+  }
+}

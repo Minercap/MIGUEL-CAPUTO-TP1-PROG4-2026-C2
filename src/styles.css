@@ -19,6 +19,7 @@
   --color-acento-rojo: #a81c2b; /* rojo butaca */
   --color-acento-dorado: #d9ae52;
   --color-error: #ff8a8a; /* un rojo claro: el rojo butaca no se lee sobre el fondo */
+  --color-exito: #7ed99a; /* un verde claro, para lo que salió bien (entrada validada) */
 
   /* Fuentes. Por ahora son las del sistema: títulos condensados y texto
      común. */
