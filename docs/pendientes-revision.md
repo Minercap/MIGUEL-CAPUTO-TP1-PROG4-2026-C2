@@ -1,15 +1,84 @@
 # Pendientes de revisión — 06/10
 
+## Traspaso para seguir en otra compu (06/10, tarde)
+
+### Al llegar
+
+1. `git pull` en `main`. Todo el trabajo está en `main`; no hay nada en otra rama ni sin
+   commitear.
+2. `npm install`. Trae dos dependencias nuevas de hoy:
+   - `html5-qrcode`, desde el registro de npm.
+   - SheetJS (`xlsx`), desde `vendor/xlsx-0.20.3.tgz`, que está en el repo. No necesita
+     ninguna opción especial.
+3. Revisar `src/environments/environment.ts`: tiene que tener `PUBLIC_VAPID`, `SUPABASE_URL`
+   y `SUPABASE_KEY`. Las tres están commiteadas (son públicas), así que llegan con el pull.
+4. `npx ng build` para confirmar que compila.
+5. Git no tiene `user.name` ni `user.email` en esta compu; los commits de hoy salieron con
+   una identidad automática. En la otra, revisar con `git config user.email`.
+
+### En `main` y probado en producción
+
+- **Notificaciones de Próximamente**, de punta a punta, el 06/10 a las 17:24: alerta, venta
+  abierta con preventa, Cron ejecutado a mano y push recibido en Chrome (Windows). El
+  registro está en `docs/pruebas.md`.
+
+  La respuesta de esa prueba dio `candidatas: 1` y `enviadas: 1`. Un rato antes la función
+  respondía `alertas_revisadas: 0` con el mismo dato; **la causa de ese fallo no quedó
+  identificada**: revisando el código no apareció un error de permisos ni de filtro, y
+  funcionó después de redesplegar con los campos de diagnóstico.
+
+### En `main`, mergeado, pero sin probar a mano
+
+- **Empleado:** validación con la cámara y con el código a mano.
+- **Reportes:** los números con datos reales, el selector Semana / Mes y los gráficos.
+- **Exportación:** PDF y Excel de la facturación.
+- **De notificaciones, lo que la prueba de las 17:24 no cubre:** el aviso dentro de la app
+  para quien no tiene suscripción, el mensaje con el permiso bloqueado, el clic en la
+  notificación abriendo la película, la ejecución automática de Cron a las 09:00 y el push
+  en un celular.
+
+Las listas de qué probar están en la sección 3 de este archivo.
+
+### En ramas sin mergear
+
+**No hay ninguna.** `main` contiene todas las ramas del remoto (`feat/empleado`,
+`feat/reportes`, `feat/notificaciones` y las anteriores): ninguna tiene commits que `main`
+no tenga.
+
+**`feat/cliente` (bloque E) no existe**, ni en esta compu ni en el remoto. Si se empezó, no
+quedó en git. Hay que crearla desde `main`.
+
+### Secretos
+
+Revisado el 06/10 en todos los archivos y en el historial de todas las ramas: no hay
+ninguna `sb_secret_`, ninguna clave `service_role`, ninguna clave privada ni valores reales
+de Vault. Los únicos JWT del repo son la clave anon (D-10). La `PUBLIC_VAPID` está, y tiene
+que estar.
+
+### Lo de abajo es anterior al merge
+
+El resto del archivo se escribió antes de integrar a `main` y de desplegar la función. Sirve
+por las listas de pruebas (sección 3) y las dudas abiertas (sección 4), pero estas partes
+quedaron viejas:
+
+- La introducción y la sección 1 dicen que nada se integró y que la función no se desplegó.
+- El punto 4.1 (clave secret nueva): resuelto en la práctica. La función corre con la clave
+  `cron_alertas` (`auth: 'secret:cron_alertas'`).
+- Sigue pendiente lo del punto 4.1 sobre `CLAUDE.md`, que dice que la secret no se usa en
+  ningún lado, y el punto 4.3: revisar la sección Próximamente y el botón de la alerta, que
+  son diseño de pantallas.
+
+---
+
+## Resumen anterior al merge
+
 Resumen del trabajo hecho sin supervisión en los bloques A (empleado), B y C (reportes) y D
 (notificaciones). Las ramas salen una de la otra: `feat/empleado` → `feat/reportes` →
-`feat/notificaciones`. Este archivo está al día solo en `feat/notificaciones`, que contiene
-los cuatro bloques. Nada se integró a `main`.
+`feat/notificaciones`.
 
-**Lo que no se probó:** todo compila (`ng build` sin errores ni avisos) y pasa los tests
-(`ng test`: 38 archivos, 54 tests), pero **nada se probó en el navegador ni contra
-Supabase**. La cámara, las descargas, los números de los reportes con datos reales y todo
-el circuito de notificaciones quedan para la prueba a mano. **La Edge Function nunca se
-desplegó ni se ejecutó.**
+**Lo que no se probó (al momento de escribirlo):** todo compila (`ng build` sin errores ni
+avisos) y pasa los tests (`ng test`: 38 archivos, 54 tests), pero nada se había probado en
+el navegador ni contra Supabase.
 
 ---
 
