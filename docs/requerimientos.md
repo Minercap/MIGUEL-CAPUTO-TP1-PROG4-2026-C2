@@ -377,6 +377,11 @@ adelante sin cambios estructurales.
 | D-40 | Combos | Un combo es un producto del candy con la lista de lo que trae; puede incluir entrada. Los destacados de la compra son los combos |
 | D-41 | Uso de cupones | El de bienvenida, si no hay compras pagadas previas; el de mayores de 50, en cada compra de un mayor de 50 |
 | D-42 | Recompensas | Una entrada o un producto del candy, con su costo en puntos |
+| D-45 | Canje de puntos | Se canjean en el paso de pago de una compra: la entrada gratis es una butaca a $0 y el producto, ese producto a $0 |
+| D-46 | Combos con entrada | Cada combo con entrada cubre una de las butacas elegidas, que va a $0. Si es VIP, se cobra la diferencia VIP. Igual con la entrada gratis por puntos |
+| D-47 | Orden del total | Precios, canjes, un solo cupón (el de mayor porcentaje), crédito y el resto con el medio de pago. Los puntos se generan por lo pagado con el medio. Si no queda nada para pagar, no se pide medio de pago |
+| D-48 | Cancelación | Hasta 2 horas antes, sin la entrada validada y sin el candy retirado. Acredita el total como crédito, devuelve los puntos canjeados y descuenta los generados |
+| R-02 | Comprador anónimo | Sin cupón, sin crédito y sin puntos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
 

@@ -132,11 +132,12 @@ Según D-08, la compra tiene dos tipos de ítem en tablas separadas.
 | `email` | text | Siempre presente, también en anónimas |
 | `fecha_nacimiento_declarada` | date | Solo en anónimas con restricción (R-25) |
 | `codigo` | text | Único. Formato `OLY-XXXX-XXXX` (D-09) |
-| `total` | numeric | |
+| `total` | numeric | Después del cupón. Lo cobrado con el medio es `total − credito_usado` (D-47) |
+| `medio_pago` | text | `credito`, `debito`, `mercado_pago` o `sin_cargo` (no quedó nada para cobrar). Los datos de tarjeta no se guardan |
 | `cupon_id` | int | Nulo si no aplicó (R-23, R-24) |
 | `descuento_aplicado` | numeric | Monto, no porcentaje |
 | `credito_usado` | numeric | R-30 |
-| `puntos_generados` | int | R-27 |
+| `puntos_generados` | int | 1 por peso pagado con el medio (R-27, D-47) |
 | `estado` | text | `pagada` o `cancelada` |
 | `entrada_validada_en` | timestamptz | R-33 |
 | `entrada_validada_por` | uuid | Empleado |
@@ -161,7 +162,8 @@ Una fila por butaca vendida. No existen filas para butacas libres (D-07).
 | `fila` | char(1) | `A` a `T` |
 | `numero` | int | Posición dentro de la fila |
 | `es_vip` | bool | Derivado de la fila, guardado para el precio histórico |
-| `precio` | numeric | Precio al momento de la compra |
+| `precio` | numeric | Precio al momento de la compra. 0 si la cubre un combo o un canje, o la diferencia VIP si es VIP (D-46) |
+| `cubierta_por` | text | Nulo, `combo` o `canje` (D-45, D-46) |
 
 Cubre R-13 a R-16, R-20.
 
@@ -208,7 +210,8 @@ Qué productos del candy trae cada combo. Clave primaria (`combo_id`, `producto_
 | `compra_id` | int | |
 | `producto_id` | int | Producto suelto o combo (D-40) |
 | `cantidad` | int | |
-| `precio_unitario` | numeric | Histórico |
+| `precio_unitario` | numeric | Histórico. 0 si es un canje |
+| `es_canje` | bool | El producto se llevó con puntos (D-45) |
 
 Cubre R-21, R-22.
 
@@ -257,7 +260,11 @@ Historial de canjes que el usuario ve en su perfil (R-03, R-28).
 | `usuario_id` | uuid |
 | `recompensa_id` | int |
 | `puntos_gastados` | int |
+| `compra_id` | int |
 | `creado_en` | timestamptz |
+
+> Los puntos se canjean dentro de una compra (D-45): `compra_id` dice en cuál, y la
+> cancelación lo usa para devolverlos (D-48).
 
 ---
 
@@ -348,8 +355,8 @@ Se deciden cuando llegue su bloque, no antes.
 1. **Constraint `unique` sobre `Entradas`** (`funcion_id`, `fila`, `numero`), para impedir
    que dos compras simultáneas tomen la misma butaca. Es 🟡. Se decide en el bloque de
    compra, el 01/10.
-2. **Combos con entrada.** Si un combo incluye entrada, hay que definir cómo se elige la
-   butaca y cómo se reparte el precio fijo entre la entrada y el candy. Se decide en el
-   bloque de compra.
-3. **Orden de aplicación de descuentos.** Cupón, puntos y crédito pueden concurrir en una
-   misma compra; falta definir en qué orden se aplican. Se decide en el bloque de compra.
+2. **Combos con entrada.** *Resuelto en D-46:* cada combo con entrada cubre una butaca
+   elegida, que va a $0; el combo lleva el precio fijo, y si la butaca es VIP se cobra la
+   diferencia VIP.
+3. **Orden de aplicación de descuentos.** *Resuelto en D-47:* precios, canjes, un solo
+   cupón, crédito y el resto con el medio de pago.

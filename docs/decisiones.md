@@ -1202,3 +1202,113 @@ formulario vacío y sin errores, lista para cargar el siguiente.
 
 **Clase de origen:** 4 (formularios reactivos) + `reset()` 🟡. **Requisito:** R-34
 (`validaciones.md`, principio 9: los errores aparecen al tocar el campo).
+
+---
+
+## D-45 · Los puntos se canjean dentro de la compra · 05/10
+
+**Elegido:** en el paso de pago, el cliente registrado elige recompensas según su saldo.
+Una entrada gratis es una de sus butacas a $0; un producto es ese producto a $0 en
+`ItemsCandy`, marcado con `es_canje`. `realizar_compra` descuenta los puntos e inserta
+cada canje en `Canjes`, con el `compra_id` de la compra.
+
+**Descartado:** el canje desde el perfil, con un código propio. Suma un tercer tipo de
+código para el empleado, y no cumple "puntos en su línea" del resumen de pago (A-01).
+
+**Cómo lo explico en el oral:** canjear es comprar sin pagar esa parte. Por eso pasa por
+la misma función, con el mismo control de saldo, y queda en el mismo ticket.
+
+**Lo que cambia en la base:** `Canjes` suma `compra_id`, `ItemsCandy` suma `es_canje` y
+`Entradas` suma `cubierta_por` (`canje`). El cliente pierde el insert directo en `Canjes`
+(sección 13.2).
+
+**Clase de origen:** función de Postgres con `rpc()` (D-39). **Requisito:** R-27, R-28.
+
+---
+
+## D-46 · Cada combo con entrada cubre una de las butacas elegidas · 05/10
+
+**Elegido:** el cliente elige sus butacas en el mapa, como siempre, y cada combo con
+entrada cubre una de ellas: con N butacas se pueden llevar hasta N combos con entrada.
+La butaca cubierta va a $0 y la línea del combo lleva su precio fijo. Si la butaca es
+VIP, se cobra aparte la "Diferencia VIP" (`precio_vip − precio_base`), que queda guardada
+como el precio de esa entrada. La entrada gratis por puntos (D-45) sigue la misma regla.
+
+**Qué butaca cubre cada una:** en el orden en que llegan las butacas. Primero las de los
+combos, después las de los canjes, y las demás se cobran. El front sigue la misma regla
+para mostrarlo antes de pagar.
+
+**Descartado:** que el combo cubra solo butacas que no son VIP. Es una restricción que
+el cliente no pidió.
+
+**Cómo lo explico en el oral:** el combo reemplaza el precio de la entrada, no la butaca.
+La diferencia VIP es lo que separa una butaca común de una VIP, y eso no lo cubre ningún
+combo.
+
+**Clase de origen:** función de Postgres (D-39). **Requisito:** R-14, R-22. Cierra el
+punto abierto 2 del modelo de datos.
+
+---
+
+## D-47 · Orden de las cuentas de la compra · 05/10
+
+**Elegido:**
+1. Precios: butacas (con preventa), productos y combos.
+2. Canjes: la entrada o el producto canjeado van a $0.
+3. **Un solo cupón**, el de mayor porcentaje entre los que aplican, sobre el subtotal.
+   Bienvenida: el usuario no tiene compras pagadas previas. Mayor de 50: tiene más de 50
+   años según su perfil.
+4. Crédito, hasta cubrir el total.
+5. El resto, con el medio de pago. Si no queda nada (el crédito y los canjes cubren
+   todo), no se pide medio ni datos de tarjeta, y la compra queda con medio
+   `sin_cargo`. Un check cruzado lo exige: `sin_cargo` solo si `total − credito_usado`
+   es 0.
+
+Los puntos generados son 1 por peso pagado con el medio de pago, no con crédito: el
+crédito viene de una compra cancelada que ya los generó. El total nunca es negativo, y
+la base lo exige con un check.
+
+**Descartado:** que el cliente elija el cupón. Le pide una decisión que siempre tiene
+la misma respuesta.
+
+**Cómo lo explico en el oral:** primero cuánto vale lo que lleva, después lo que no
+paga, después el descuento y al final con qué lo paga. La cuenta la hace la base; el front
+solo muestra una vista previa.
+
+**Lo que no se vio en clase (🟡):** el **candado por usuario**,
+`pg_advisory_xact_lock(1, hashtext(id))`, el mismo recurso que el candado por sala de la
+sección 9.3. Dos compras simultáneas del mismo usuario se hacen una después de la otra,
+así que no pueden tomar las dos el cupón de bienvenida ni gastar dos veces los mismos
+puntos o el mismo crédito. `hashtext` convierte el uuid en el número que pide el
+candado. También aparecen `round`, `floor`, `left join`, `case` y `order by ... limit 1`,
+explicados en el script.
+
+**`Compras.total`:** es lo que cuesta la compra después del cupón. Lo cobrado con el
+medio de pago es `total − credito_usado`.
+
+**Clase de origen:** función de Postgres (D-39) + candado (9.3). **Requisito:** R-23,
+R-24, R-27, R-30. Cierra el punto abierto 3 del modelo de datos.
+
+---
+
+## D-48 · La cancelación es una función de Postgres · 05/10
+
+**Elegido:** `cancelar_compra(p_compra_id)` con `rpc()`. Solo el dueño, hasta 2 horas
+antes de la función, si la entrada no se validó y si el candy no se retiró (si no, se
+llevaría los productos y cobraría todo en crédito). Acredita lo que costó la compra (lo
+pagado con el medio más el crédito usado) como crédito, devuelve los puntos canjeados,
+descuenta los generados, borra sus butacas de `ButacasOcupadas` (Realtime libera el mapa)
+y marca la compra como cancelada. Si el usuario ya gastó los puntos que le dio la
+compra, la cancelación se rechaza con un mensaje.
+
+**Descartado:** cancelar con un update desde Angular. Es el hueco del 01/10: con la
+política "cliente cancela su compra", el cliente podía editar cualquier columna de su
+compra. La política se borra en la sección 13.2, y el update queda solo para el
+empleado, que marca las validaciones.
+
+**Cómo lo explico en el oral:** cancelar mueve plata y puntos, así que tiene que ser todo
+o nada, igual que comprar. Las entradas y el candy quedan como historial; lo que se borra
+es la butaca ocupada, para que se pueda volver a vender.
+
+**Clase de origen:** función de Postgres con `rpc()` (D-39) + candado (D-47).
+**Requisito:** R-29, R-30.
