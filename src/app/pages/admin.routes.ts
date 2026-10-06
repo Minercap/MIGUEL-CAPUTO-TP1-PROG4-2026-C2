@@ -108,6 +108,12 @@ const rutas: Routes = [
     loadComponent: () =>
       import('./admin-recompensas/admin-recompensas').then((m) => m.AdminRecompensas),
   },
+  {
+    path: 'reportes',
+    title: 'Reportes · Administración',
+    loadComponent: () =>
+      import('./admin-reportes/admin-reportes').then((m) => m.AdminReportes),
+  },
 ];
 
 export default rutas;

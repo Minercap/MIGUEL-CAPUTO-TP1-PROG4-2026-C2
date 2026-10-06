@@ -1,0 +1,53 @@
+/* Los colores salen de las variables de :root (D-33). */
+
+.grafico {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada renglón: etiqueta, barra y valor. La columna del medio (1fr) se
+   queda con todo el lugar que sobra. */
+.grafico li {
+  display: grid;
+  grid-template-columns: 9rem 1fr auto;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  padding: 0.35rem 0;
+}
+
+/* El riel es el 100%: la barra se mide contra él. */
+.riel {
+  height: 1rem;
+  border-radius: 0.25rem;
+  background: var(--color-fondo);
+}
+
+.barra {
+  height: 100%;
+  /* Un mínimo, para que un valor muy chico igual se vea. */
+  min-width: 2px;
+  border-radius: 0.25rem;
+  background: var(--color-acento-rojo);
+}
+
+.destacada {
+  background: var(--color-acento-dorado);
+}
+
+.valor {
+  min-width: 2.5rem;
+  text-align: right;
+}
+
+/* En celular la etiqueta va arriba, en su propio renglón, y la barra con
+   el valor debajo: un nombre largo no le saca lugar a la barra. */
+@media (max-width: 600px) {
+  .grafico li {
+    grid-template-columns: 1fr auto;
+  }
+
+  .etiqueta {
+    grid-column: 1 / -1;
+  }
+}

@@ -1,0 +1,26 @@
+<!-- Una lista: cada renglón tiene la etiqueta, la barra y el valor escrito.
+     El valor va siempre en texto, así el gráfico se entiende aunque no se
+     vean los colores. -->
+<ul class="grafico">
+  @for (dato of datos(); track dato.etiqueta) {
+    <li>
+      <span class="etiqueta">{{ dato.etiqueta }}</span>
+      <div class="riel">
+        <!-- [style.width.%] es el bindeo de estilo de la clase 8: el
+             número que devuelve ancho() pasa a ser el ancho en porcentaje. -->
+        <div
+          class="barra"
+          [class.destacada]="destacarPrimero() && $first"
+          [style.width.%]="ancho(dato.valor)"
+        ></div>
+      </div>
+      <span class="valor">
+        @if (formato() === 'moneda') {
+          {{ dato.valor | currency: 'ARS' : 'symbol-narrow' }}
+        } @else {
+          {{ dato.valor | number }}
+        }
+      </span>
+    </li>
+  }
+</ul>

@@ -133,6 +133,11 @@ export class Exportaciones {
 
       // La fila de totales: una raya arriba y el renglón en negrita.
       const totales = totalesDe(filas);
+      // Si no entra en esta hoja, va a la siguiente.
+      if (y + 10 > ALTO_UTIL) {
+        pdf.addPage();
+        y = MARGEN;
+      }
       y += 3;
       pdf.line(MARGEN, y, BORDE_DERECHO, y);
       y += 7;

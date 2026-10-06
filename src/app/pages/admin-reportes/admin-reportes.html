@@ -1,0 +1,172 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<h1>Reportes</h1>
+
+<!-- 1. El rango de fechas. Los mensajes de cada fecha van adentro de su
+     campo-fecha y salen por su <ng-content />. -->
+<form [formGroup]="formulario" (ngSubmit)="ver()">
+  <div class="fechas">
+    <app-campo-fecha etiqueta="Desde" [grupo]="desde" [anioDesde]="anioDesde" [anioHasta]="anioHasta">
+      @if (desde.errors?.['fechaImposible']) {
+        <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+      } @else if (desde.errors?.['fechaMaxima']) {
+        <small class="error">La fecha no puede ser posterior a hoy.</small>
+      } @else if (desde.invalid) {
+        <small class="error">Elegí el día, el mes y el año.</small>
+      }
+    </app-campo-fecha>
+
+    <app-campo-fecha etiqueta="Hasta" [grupo]="hasta" [anioDesde]="anioDesde" [anioHasta]="anioHasta">
+      @if (hasta.errors?.['fechaImposible']) {
+        <small class="error">Esa fecha no existe. Revisá el día y el mes.</small>
+      } @else if (hasta.errors?.['fechaMaxima']) {
+        <small class="error">La fecha no puede ser posterior a hoy.</small>
+      } @else if (hasta.invalid) {
+        <small class="error">Elegí el día, el mes y el año.</small>
+      }
+    </app-campo-fecha>
+  </div>
+
+  <!-- Los errores que miran las dos fechas quedan en el formulario (D-17). -->
+  @if (formulario.errors?.['rangoInvertido']) {
+    <small class="error">"Desde" no puede ser posterior a "hasta".</small>
+  } @else if (formulario.errors?.['rangoLargo']) {
+    <small class="error">El rango no puede ser de más de un año.</small>
+  }
+
+  <div class="botones">
+    <button type="submit" [disabled]="!formulario.valid || cargando()">
+      {{ cargando() ? 'Cargando…' : 'Ver' }}
+    </button>
+  </div>
+</form>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando los reportes…</p>
+} @else {
+  <!-- El rango que se está mostrando. El mediodía de Argentina ('T12:00')
+       convierte el día en un instante que el pipe date puede leer; con
+       '-0300' se muestra siempre en hora argentina (D-35). -->
+  <p class="rango">
+    Del {{ desdeMostrado() + 'T12:00:00-03:00' | date: 'dd/MM/yyyy' : '-0300' }} al
+    {{ hastaMostrado() + 'T12:00:00-03:00' | date: 'dd/MM/yyyy' : '-0300' }}
+  </p>
+
+  <!-- 2. Los totales del rango. -->
+  <ul class="tarjetas">
+    <li>
+      <span>Facturado</span>
+      <strong>{{ totales().facturado | currency: 'ARS' : 'symbol-narrow' }}</strong>
+    </li>
+    <li>
+      <span>Entradas vendidas</span>
+      <strong>{{ totales().entradas }}</strong>
+    </li>
+    <li>
+      <span>Compras</span>
+      <strong>{{ totales().compras }}</strong>
+    </li>
+  </ul>
+
+  <!-- 3. La facturación por día. -->
+  <section>
+    <h2>Facturación por día</h2>
+
+    @if (filas().length === 0) {
+      <p>No hay ventas en este período.</p>
+    } @else {
+      <div class="botones">
+        <button type="button" (click)="exportarPdf()">Exportar PDF</button>
+        <button type="button" (click)="exportarExcel()">Exportar Excel</button>
+      </div>
+      @if (errorExportar()) {
+        <p class="error" role="alert">{{ errorExportar() }}</p>
+      }
+
+      <!-- En celular la tabla se desliza de costado dentro de este div,
+           sin mover el resto de la página. -->
+      <div class="tabla">
+        <table>
+          <thead>
+            <tr>
+              <th scope="col">Día</th>
+              <th scope="col" class="numero">Compras</th>
+              <th scope="col" class="numero">Entradas</th>
+              <th scope="col" class="numero">Facturado</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (fila of filas(); track fila.dia) {
+              <tr>
+                <td>{{ fila.dia + 'T12:00:00-03:00' | date: 'dd/MM/yyyy' : '-0300' }}</td>
+                <td class="numero">{{ fila.compras }}</td>
+                <td class="numero">{{ fila.entradas }}</td>
+                <td class="numero">{{ fila.facturado | currency: 'ARS' : 'symbol-narrow' }}</td>
+              </tr>
+            }
+          </tbody>
+          <tfoot>
+            <tr>
+              <th scope="row">Total</th>
+              <td class="numero">{{ totales().compras }}</td>
+              <td class="numero">{{ totales().entradas }}</td>
+              <td class="numero">{{ totales().facturado | currency: 'ARS' : 'symbol-narrow' }}</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    }
+  </section>
+
+  <!-- 4. Las películas más vistas, por semana o por mes de la función. -->
+  <section>
+    <h2>Películas más vistas</h2>
+
+    <div class="selector">
+      <button
+        type="button"
+        [class.activo]="periodo() === 'semana'"
+        [attr.aria-pressed]="periodo() === 'semana'"
+        [disabled]="cargandoVistas()"
+        (click)="elegirPeriodo('semana')"
+      >
+        Semana
+      </button>
+      <button
+        type="button"
+        [class.activo]="periodo() === 'mes'"
+        [attr.aria-pressed]="periodo() === 'mes'"
+        [disabled]="cargandoVistas()"
+        (click)="elegirPeriodo('mes')"
+      >
+        Mes
+      </button>
+    </div>
+
+    @if (cargandoVistas()) {
+      <p>Cargando…</p>
+    } @else {
+      @for (grupo of masVistas(); track grupo.etiqueta) {
+        <h3>{{ grupo.etiqueta }}</h3>
+        <app-grafico-barras [datos]="grupo.barras" />
+      } @empty {
+        <p>No hay funciones con entradas vendidas en este período.</p>
+      }
+    }
+  </section>
+
+  <!-- 5. Los productos del candy más vendidos. El primero va destacado. -->
+  <section>
+    <h2>Productos más vendidos</h2>
+
+    @if (productos().length === 0) {
+      <p>No se vendieron productos del candy en este período.</p>
+    } @else {
+      <app-grafico-barras [datos]="productos()" [destacarPrimero]="true" />
+    }
+  </section>
+}

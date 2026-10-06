@@ -1,0 +1,118 @@
+/* Estilo mínimo para que la pantalla se lea, con las variables de :root
+   (D-33). Todo va en una columna; lo único que se pone de costado, si
+   hay lugar, son las dos fechas y las tres tarjetas. */
+
+h1,
+h2,
+h3 {
+  font-family: var(--fuente-titulos);
+}
+
+h3 {
+  margin: 1rem 0 0.25rem;
+  font-size: 1rem;
+  color: var(--color-texto-suave);
+}
+
+form,
+section {
+  margin-top: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+form {
+  max-width: 40rem;
+}
+
+section h2 {
+  margin-top: 0;
+}
+
+/* Las dos fechas, una al lado de la otra; con flex-wrap, en celular la
+   segunda baja sola. */
+.fechas {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.5rem;
+}
+
+.fechas app-campo-fecha {
+  flex: 1;
+  min-width: 15rem;
+}
+
+.botones,
+.selector {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.selector .activo {
+  border-color: var(--color-acento-dorado);
+  font-weight: bold;
+}
+
+.rango {
+  color: var(--color-texto-suave);
+}
+
+/* Tantas tarjetas por renglón como entren de 11rem: en celular, una. */
+.tarjetas {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjetas li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+.tarjetas strong {
+  font-size: 1.5rem;
+  color: var(--color-acento-dorado);
+}
+
+/* El scroll de costado es de este div, no de la página. */
+.tabla {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  min-width: 24rem;
+  border-collapse: collapse;
+}
+
+th,
+td {
+  padding: 0.4rem 0.75rem;
+  border-bottom: 1px solid var(--color-texto-suave);
+  text-align: left;
+  white-space: nowrap;
+}
+
+/* Los números, alineados a la derecha: así las cifras quedan encolumnadas. */
+.numero {
+  text-align: right;
+}
+
+tfoot th,
+tfoot td {
+  border-bottom: 0;
+  font-weight: bold;
+}
+
+.error {
+  color: var(--color-error);
+}
