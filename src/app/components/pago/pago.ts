@@ -230,6 +230,8 @@ export class Pago {
             anio: v.fecha_nacimiento.anio ?? '',
           })
         : null,
+      canjes: [],
+      credito: 0,
     });
   }
 

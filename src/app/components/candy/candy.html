@@ -1,0 +1,97 @@
+<section class="candy">
+  <h2>Candy bar</h2>
+  <p>Agregá pochoclos, bebidas o un combo. Es opcional: si no querés nada, seguí al pago.</p>
+
+  @if (aviso()) {
+    <p class="error" role="alert">{{ aviso() }}</p>
+  }
+
+  <!-- Los combos van primero y destacados (R-22, mail 03/03). -->
+  @if (combos().length > 0) {
+    <h3>Combos</h3>
+    <ul class="productos">
+      @for (combo of combos(); track combo.id) {
+        <li class="producto destacado">
+          <div class="datos">
+            <strong>{{ combo.nombre }}</strong>
+            @if (contenidoDe(combo.id)) {
+              <small>Trae: {{ contenidoDe(combo.id) }}</small>
+            }
+            @if (combo.incluye_entrada) {
+              <!-- El combo cubre una de las butacas elegidas (D-46). -->
+              <small class="marca">Incluye una entrada: cubre una de tus butacas</small>
+            }
+            <span>${{ combo.precio }}</span>
+          </div>
+          <div class="cantidad">
+            <button
+              type="button"
+              [disabled]="cantidadDe(combo) === 0"
+              [title]="'Quitar un ' + combo.nombre"
+              (click)="restar(combo)"
+            >
+              −
+            </button>
+            <span aria-live="polite">{{ cantidadDe(combo) }}</span>
+            <button
+              type="button"
+              [disabled]="cantidadDe(combo) >= maximo"
+              [title]="'Agregar un ' + combo.nombre"
+              (click)="sumar(combo)"
+            >
+              +
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  <!-- Los productos sueltos, agrupados por categoría (R-21). -->
+  @for (categoria of categoriasConProductos(); track categoria.id) {
+    <h3>{{ categoria.nombre }}</h3>
+    <ul class="productos">
+      @for (producto of productosDe(categoria.id); track producto.id) {
+        <li class="producto">
+          <div class="datos">
+            <strong>{{ producto.nombre }}</strong>
+            <span>${{ producto.precio }}</span>
+          </div>
+          <div class="cantidad">
+            <button
+              type="button"
+              [disabled]="cantidadDe(producto) === 0"
+              [title]="'Quitar un ' + producto.nombre"
+              (click)="restar(producto)"
+            >
+              −
+            </button>
+            <span aria-live="polite">{{ cantidadDe(producto) }}</span>
+            <button
+              type="button"
+              [disabled]="cantidadDe(producto) >= maximo"
+              [title]="'Agregar un ' + producto.nombre"
+              (click)="sumar(producto)"
+            >
+              +
+            </button>
+          </div>
+        </li>
+      }
+    </ul>
+  }
+
+  @if (productos().length === 0) {
+    <p>Por ahora no hay productos del candy bar a la venta.</p>
+  }
+
+  <p class="total">
+    <span>Candy</span>
+    <strong>${{ subtotal() }}</strong>
+  </p>
+
+  <div class="botones">
+    <button type="button" (click)="volver.emit()">Volver al mapa</button>
+    <button type="button" class="principal" (click)="continuar.emit()">Continuar al pago</button>
+  </div>
+</section>

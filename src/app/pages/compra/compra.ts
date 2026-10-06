@@ -2,8 +2,10 @@ import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { Compras, MAXIMO_BUTACAS } from '../../services/compras';
+import { Productos } from '../../services/productos';
 import { Pago } from '../../components/pago/pago';
 import { Entrada } from '../../components/entrada/entrada';
+import { Candy } from '../../components/candy/candy';
 import {
   Butaca,
   ButacaElegida,
@@ -11,28 +13,32 @@ import {
   CompraConfirmada,
   DatosDePago,
   FuncionParaComprar,
+  ProductoElegido,
 } from '../../interfaces/compra';
+import { Categoria, ComboItem, Producto } from '../../interfaces/producto';
 import { diaParaMostrar } from '../../validadores/validadores';
 
-// Los tres pasos de la compra, en orden.
-type PasoDeCompra = 'mapa' | 'pago' | 'entrada';
+// Los cuatro pasos de la compra, en orden.
+type PasoDeCompra = 'mapa' | 'candy' | 'pago' | 'entrada';
 
-// Compra de entradas para una función (R-13 a R-16, R-20). La pantalla
-// tiene un encabezado con los datos de la función y tres pasos:
+// Compra de entradas para una función (R-13 a R-16, R-20 a R-22). La
+// pantalla tiene un encabezado con los datos de la función y cuatro pasos:
 //   mapa     elegir butacas, con las ocupadas en tiempo real;
+//   candy    agregar productos y combos (componente Candy), opcional;
 //   pago     el formulario de pago (componente Pago);
 //   entrada  la compra confirmada, con QR y PDF (componente Entrada).
 // Esta pantalla guarda el estado de la compra y es la que llama a la base;
-// los dos componentes hijos solo muestran y avisan (clase 3).
+// los componentes hijos solo muestran y avisan (clase 3).
 // No lleva guard: se puede comprar sin cuenta (R-02).
 @Component({
-  imports: [RouterLink, DatePipe, TitleCasePipe, Pago, Entrada],
+  imports: [RouterLink, DatePipe, TitleCasePipe, Pago, Entrada, Candy],
   selector: 'app-compra',
   styleUrl: './compra.css',
   templateUrl: './compra.html',
 })
 export class Compra implements OnInit, OnDestroy {
   private comprasSrv = inject(Compras);
+  private productosSrv = inject(Productos);
   private ruta = inject(ActivatedRoute);
 
   // El :funcionId de /compra/:funcionId (D-20). No es un signal porque no
@@ -62,6 +68,16 @@ export class Compra implements OnInit, OnDestroy {
   // Las que tiene elegidas el comprador, con su precio, y la suma.
   elegidas = signal<ButacaElegida[]>([]);
   total = signal(0);
+
+  // El candy a la venta: solo los productos activos (D-40), sus categorías
+  // y lo que trae cada combo. Si no se pudo cargar, se puede seguir sin
+  // candy: el error se muestra en ese paso.
+  productosCandy = signal<Producto[]>([]);
+  categorias = signal<Categoria[]>([]);
+  itemsCombos = signal<ComboItem[]>([]);
+  errorCandy = signal<string | null>(null);
+  // Lo que el comprador agregó del candy, con su cantidad.
+  candy = signal<ProductoElegido[]>([]);
 
   // En qué paso está la compra. La pantalla muestra una cosa u otra con un
   // @switch: el mapa, el formulario de pago o la entrada ya comprada.
@@ -106,7 +122,32 @@ export class Compra implements OnInit, OnDestroy {
       (id) => this.marcarLibre(id),
     );
 
+    await this.cargarCandy();
     this.cargando.set(false);
+  }
+
+  // Lee el catálogo del candy. Son lecturas públicas: también sirven sin
+  // sesión (R-02).
+  private async cargarCandy() {
+    const categorias = await this.productosSrv.traerCategorias();
+    const productos = await this.productosSrv.traerTodos();
+    const items = await this.productosSrv.traerItemsDeCombos();
+    if (categorias.error || !categorias.datos) {
+      this.errorCandy.set(categorias.error);
+      return;
+    }
+    if (productos.error || !productos.datos) {
+      this.errorCandy.set(productos.error);
+      return;
+    }
+    if (items.error || !items.datos) {
+      this.errorCandy.set(items.error);
+      return;
+    }
+    this.categorias.set(categorias.datos);
+    // Los inactivos se pueden leer (D-40), pero no se ofrecen.
+    this.productosCandy.set(productos.datos.filter((p) => p.activo));
+    this.itemsCombos.set(items.datos);
   }
 
   // Al salir de la pantalla se cierra el canal de Realtime (clase 6).
@@ -140,9 +181,24 @@ export class Compra implements OnInit, OnDestroy {
 
   // ---------- Los pasos ----------
 
-  irAlPago() {
+  irAlCandy() {
     if (this.elegidas().length === 0) {
       this.aviso.set('Elegí al menos una butaca para continuar.');
+      return;
+    }
+    this.aviso.set(null);
+    this.errorPago.set(null);
+    this.paso.set('candy');
+  }
+
+  // Del candy al pago. Si después de elegir los combos se sacaron butacas
+  // del mapa, puede haber más combos con entrada que butacas: cada uno
+  // cubre una (D-46), así que hay que sacar alguno antes de seguir.
+  irAlPago() {
+    if (this.combosConEntrada() > this.elegidas().length) {
+      this.aviso.set(
+        `Tenés ${this.combosConEntrada()} combos con entrada y ${this.elegidas().length} butacas: cada combo cubre una butaca. Sacá algún combo o elegí más butacas.`,
+      );
       return;
     }
     this.aviso.set(null);
@@ -151,13 +207,34 @@ export class Compra implements OnInit, OnDestroy {
   }
 
   volverAlMapa() {
+    this.aviso.set(null);
     this.errorPago.set(null);
     this.paso.set('mapa');
   }
 
+  volverAlCandy() {
+    this.errorPago.set(null);
+    this.paso.set('candy');
+  }
+
+  // Lo que avisa el componente Candy cada vez que cambia una cantidad.
+  cambiarCandy(elegidos: ProductoElegido[]) {
+    this.aviso.set(null);
+    this.candy.set(elegidos);
+  }
+
+  // Cuántas butacas cubren los combos elegidos (D-46).
+  combosConEntrada(): number {
+    let total = 0;
+    for (const e of this.candy()) {
+      if (e.producto.incluye_entrada) total += e.cantidad;
+    }
+    return total;
+  }
+
   // Lo que llega del componente de pago por su output (clase 3): el mail,
-  // el medio y la fecha de nacimiento, ya validados. Acá se arma el pedido
-  // y se llama a la base.
+  // el medio, la fecha de nacimiento, los canjes y el crédito, ya
+  // validados. Acá se arma el pedido y se llama a la base.
   async pagar(pago: DatosDePago) {
     // pagando() evita el doble envío.
     if (this.pagando()) return;
@@ -165,14 +242,19 @@ export class Compra implements OnInit, OnDestroy {
     this.aviso.set(null);
     this.pagando.set(true);
 
-    // A la base van solo la fila y el número de cada butaca. Los precios
-    // no: los calcula ella (D-39).
+    // A la base van solo la fila y el número de cada butaca, y el id y la
+    // cantidad de cada producto. Los precios no: los calcula ella (D-39).
+    // Las butacas van en el orden en que se eligieron: las primeras son las
+    // que cubren los combos y los canjes (D-46).
     const resultado = await this.comprasSrv.realizarCompra({
       funcion_id: this.funcionId,
       butacas: this.elegidas().map((elegida) => ({ fila: elegida.fila, numero: elegida.numero })),
       email: pago.email,
       medio_pago: pago.medio_pago,
       fecha_nacimiento: pago.fecha_nacimiento,
+      candy: this.candy().map((e) => ({ producto_id: e.producto.id, cantidad: e.cantidad })),
+      canjes: pago.canjes,
+      credito: pago.credito,
     });
 
     this.pagando.set(false);
@@ -188,6 +270,7 @@ export class Compra implements OnInit, OnDestroy {
 
     this.compra.set(resultado.datos);
     this.elegidas.set([]);
+    this.candy.set([]);
     this.total.set(0);
     this.paso.set('entrada');
   }

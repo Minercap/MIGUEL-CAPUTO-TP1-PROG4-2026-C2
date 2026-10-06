@@ -1,0 +1,109 @@
+/* Solo estructura. Todos los colores y las fuentes salen de las variables
+   de :root (src/styles.css, D-33): acá no hay ningún color suelto. */
+
+h2,
+h3 {
+  font-family: var(--fuente-titulos);
+}
+
+.candy {
+  max-width: 40rem;
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.productos {
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada producto: datos a la izquierda y la cantidad a la derecha. Con
+   flex-wrap, en celular la cantidad baja sola a otro renglón. */
+.producto {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--color-superficie);
+}
+
+/* Los combos se destacan (R-22). */
+.destacado {
+  padding: 0.75rem;
+  border: 1px solid var(--color-acento-dorado);
+  border-radius: 0.5rem;
+  margin-bottom: 0.75rem;
+  background: var(--color-superficie);
+}
+
+.datos {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.marca {
+  color: var(--color-acento-dorado);
+}
+
+.cantidad {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cantidad span {
+  min-width: 1.5rem;
+  text-align: center;
+}
+
+.cantidad button {
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--color-texto);
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+
+.cantidad button:disabled {
+  color: var(--color-texto-suave);
+  cursor: not-allowed;
+}
+
+.total {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  font-size: 1.1rem;
+}
+
+.botones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.botones button {
+  padding: 0.6rem 1rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.4rem;
+  background: transparent;
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  cursor: pointer;
+}
+
+.botones .principal {
+  border-color: var(--color-acento-rojo);
+  background: var(--color-acento-rojo);
+  font-weight: bold;
+}

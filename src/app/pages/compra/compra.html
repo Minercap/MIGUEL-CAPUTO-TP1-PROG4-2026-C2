@@ -121,11 +121,31 @@
         type="button"
         class="continuar"
         [disabled]="elegidas().length === 0"
-        (click)="irAlPago()"
+        (click)="irAlCandy()"
       >
-        Continuar al pago
+        Continuar
       </button>
     </section>
+      }
+
+      @case ('candy') {
+        @if (errorCandy()) {
+          <p class="error" role="alert">
+            {{ errorCandy() }} Podés seguir con la compra de las entradas.
+          </p>
+        }
+        <!-- Componente hijo (clase 3): recibe el catálogo y lo elegido, y
+             avisa cada cambio con (cambiar). -->
+        <app-candy
+          [productos]="productosCandy()"
+          [categorias]="categorias()"
+          [items]="itemsCombos()"
+          [elegidos]="candy()"
+          [butacas]="elegidas().length"
+          (cambiar)="cambiarCandy($event)"
+          (continuar)="irAlPago()"
+          (volver)="volverAlMapa()"
+        />
       }
 
       @case ('pago') {
@@ -138,7 +158,7 @@
           [restriccion]="d.pelicula.restriccion_edad"
           [enviando]="pagando()"
           (pagar)="pagar($event)"
-          (volver)="volverAlMapa()"
+          (volver)="volverAlCandy()"
         />
         @if (errorPago()) {
           <p class="error" role="alert">{{ errorPago() }}</p>

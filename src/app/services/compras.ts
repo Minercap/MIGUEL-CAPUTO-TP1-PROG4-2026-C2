@@ -7,6 +7,7 @@ import {
   CompraConfirmada,
   FilaDeSala,
   FuncionParaComprar,
+  MedioGuardado,
   PedidoDeCompra,
 } from '../interfaces/compra';
 import { Funcion } from '../interfaces/funcion';
@@ -32,6 +33,25 @@ const FILAS_VIP = ['R', 'S', 'T'];
 
 // Hasta cuántas butacas se pueden llevar en una compra.
 export const MAXIMO_BUTACAS = 10;
+
+// Hasta cuántas unidades de cada producto del candy (validaciones.md 3.10).
+export const MAXIMO_POR_PRODUCTO = 10;
+
+// Cómo se muestra cada medio de pago, en la pantalla y en el PDF. 'credito'
+// es la tarjeta de crédito: se escribe con todas las letras para que no se
+// confunda con el crédito del cine (R-30).
+export function nombreDelMedio(medio: MedioGuardado): string {
+  switch (medio) {
+    case 'credito':
+      return 'Tarjeta de crédito';
+    case 'debito':
+      return 'Tarjeta de débito';
+    case 'mercado_pago':
+      return 'Mercado Pago';
+    case 'sin_cargo':
+      return 'Sin cargo';
+  }
+}
 
 // Con preventa habilitada, la venta abre esta cantidad de días antes del
 // estreno (R-11).
@@ -171,14 +191,15 @@ export class Compras {
   }
 
   // La compra (D-39). No son inserts: se llama con rpc() a la función
-  // realizar_compra de la base (supabase/schema.sql, sección 11.4), que
-  // valida todo, calcula los precios y guarda la compra, las entradas y las
-  // butacas ocupadas en una sola transacción.
+  // realizar_compra de la base (supabase/schema.sql, secciones 13.3 y
+  // 13.6), que valida todo, calcula los precios, el cupón, el crédito y los
+  // puntos, y guarda la compra con sus entradas, su candy y sus canjes en
+  // una sola transacción.
   //
   // rpc() recibe el nombre de la función y un objeto con sus parámetros,
   // con los mismos nombres que tienen en SQL, y devuelve { data, error }
-  // igual que un select. Hay que mandar los cinco: los que no aplican van
-  // en null.
+  // igual que un select. Se mandan los ocho: los que no aplican van en
+  // null, en lista vacía o en 0.
   async realizarCompra(pedido: PedidoDeCompra): Promise<Resultado<CompraConfirmada>> {
     const { data, error } = await this.sup.Sup.rpc('realizar_compra', {
       p_funcion_id: pedido.funcion_id,
@@ -186,6 +207,9 @@ export class Compras {
       p_email: pedido.email,
       p_medio_pago: pedido.medio_pago,
       p_fecha_nacimiento: pedido.fecha_nacimiento,
+      p_candy: pedido.candy,
+      p_canjes: pedido.canjes,
+      p_credito: pedido.credito,
     });
 
     if (error) {
