@@ -1,9 +1,11 @@
 # Catálogo de lo visto en clase — Programación IV 2026 C2
 
-Fuente: repositorio del profesor `github.com/afriadenrich/programacion-iv-2026-c2`, clases 1 a 9.
+Fuente: repositorio del profesor `github.com/afriadenrich/programacion-iv-2026-c2`, clases 1 a 11.
 Este documento es la **fuente de verdad** de lo que se puede usar en el TP. Si algo no aparece acá, no se vio en clase.
 
 **Versión:** Angular **22.1** (CLI 22.1.4), TypeScript 6, `@supabase/supabase-js` 2.11x, estilos en **CSS** plano, **sin SSR**.
+
+**Actualizado 06/10:** se suman la clase 10 (notificaciones push y Edge Functions) y la clase 11 (desarrollo con IA). Web Push y Edge Functions pasan a 🟢.
 
 ---
 
@@ -15,7 +17,7 @@ Este documento es la **fuente de verdad** de lo que se puede usar en el TP. Si a
 | 🟡 Amarillo | No se vio, pero es del propio Angular, Supabase, Postgres o HTML, de la misma familia que lo visto (`computed()`, una constraint o función SQL, `input type="time"`) | **Frena.** Lo explica en dos líneas, dice por qué hace falta y espera el OK. No se agrega ninguna librería |
 | 🔴 Rojo | Una librería externa o una herramienta nueva (QR, PDF, Excel, gráficos, kits de UI) | **Frena.** Plantea opciones, **siempre incluida una alternativa hecha con lo visto**, espera la decisión y la anota en `docs/decisiones.md` |
 
-Antecedente útil para el oral: en la clase 7 el profe instaló una librería externa (`canvas-confetti`) para algo puntual. Las librerías no están prohibidas, pero **cada una se justifica**.
+Antecedente útil para el oral: en la clase 7 el profe instaló una librería externa (`canvas-confetti`) para algo puntual, y en la clase 10 usó `web-push` dentro de la Edge Function. Las librerías no están prohibidas, pero **cada una se justifica**.
 
 ---
 
@@ -145,6 +147,60 @@ Antecedente útil para el oral: en la clase 7 el profe instaló una librería ex
   - `public/manifest.webmanifest` con `display: standalone` e íconos de 72 a 512 px, enlazado desde `index.html`.
   - `"serviceWorker": "ngsw-config.json"` en `angular.json`.
 
+## Clase 10 — Notificaciones push y Edge Functions (22/09 y 29/09)
+
+Carpeta `clase-10-notificaciones`. Se apoya en la PWA de la clase 9.
+
+- **Claves VAPID:** un par de claves (pública y privada) que identifica al servidor que manda
+  las notificaciones. La **pública** va en `environment.ts` como `PUBLIC_VAPID`; la
+  **privada** va solo en los secrets de la Edge Function.
+- **Service worker solo en build:** `provideServiceWorker('ngsw-worker.js', { enabled: !isDevMode(), registrationStrategy: 'registerWhenStable:30000' })`.
+  Con `ng serve` el service worker está apagado, así que las notificaciones se prueban en el
+  build o en Vercel.
+- **Suscripción desde Angular con `SwPush`** (de `@angular/service-worker`):
+  ```ts
+  swPushService = inject(SwPush);
+
+  async registrar() {
+    if (!this.swPushService.isEnabled) { return; }   // sin service worker no hay push
+    const subscription: PushSubscription = await this.swPushService.requestSubscription({
+      serverPublicKey: environment.PUBLIC_VAPID,
+    });
+    const json = subscription.toJSON();
+    await this.supabaseService.Sup.from('Suscripciones_Notificaciones').insert({
+      endpoint: json.endpoint,
+      auth: json.keys?.['auth'],
+      p256dh: json.keys?.['p256dh'],
+    });
+  }
+  ```
+  `requestSubscription` le pide permiso al usuario (el cartel del navegador) y devuelve la
+  suscripción. Se guardan sus tres datos (`endpoint`, `auth`, `p256dh`) en una tabla de
+  Supabase. Se dispara desde un botón ("¿Desea recibir notificaciones?").
+- **Envío desde una Edge Function de Supabase** (`EDGE_FUNCTION.TS`, en Deno):
+  - Importa `withSupabase` de `jsr:@supabase/server@^1` y `web-push` desde `https://esm.sh/web-push`.
+  - Lee `VAPID_PUBLIC`, `VAPID_SECRET` y `VAPID_MAIL` con `Deno.env.get(...)` y llama a
+    `webpush.setVapidDetails('mailto:' + mail, publica, privada)`.
+  - `fetch: withSupabase({ auth: ['publishable', 'secret'] }, async (req, ctx) => { ... })`:
+    lee la tabla de suscripciones con `ctx.supabase.from(...).select('*')` y por cada una
+    llama a `webpush.sendNotification({ endpoint, keys: { p256dh, auth } }, JSON.stringify(payload))`.
+  - El payload tiene la forma que entiende el service worker de Angular:
+    `{ notification: { title, body, icon, vibrate, data: { url } } }`.
+  - Devuelve `new Response('TODO OK', { status: 200 })`.
+  - En el código de clase la función se invoca a mano; no hay un disparador automático.
+- **Requisitos previos:** la app desplegada con HTTPS (Vercel), el service worker activo y el
+  permiso de notificaciones aceptado.
+
+## Clase 11 — Desarrollo con IA (29/09)
+
+Carpeta `clase-11-ia`: un proyecto de ejemplo (sala de juegos, del TP 2) construido con un
+agente de IA a partir de especificaciones (`.kiro/specs/...`: `requirements.md`,
+`design.md`, `tasks.md`) y un `AGENTS.md` con los estándares del proyecto. No suma temas
+técnicos para el TP 1. Usa Tailwind y `toastify-js`, que **no** se adoptan acá (🔴).
+
+Para el oral sirve como antecedente: el `CLAUDE.md` y los `docs/` de este TP cumplen el
+mismo papel que el `AGENTS.md` y las specs del profe.
+
 ---
 
 ## Convenciones del profe (imitarlas)
@@ -160,14 +216,17 @@ Antecedente útil para el oral: en la clase 7 el profe instaló una librería ex
 - Dejar `console.log` de depuración.
 - Usar `any` en callbacks. Tipar con interfaces.
 - Guardar la API key en el interceptor: en el TP, las claves van en `environment`.
+- **Clase 10:** subir la clave VAPID **privada** al repo (está en el README de la clase). En el TP, la privada vive solo en los secrets de Supabase.
+- **Clase 10:** la tabla de suscripciones sin usuario y sin RLS, y el envío a **todas** las suscripciones. En el TP, cada suscripción es de un usuario y se manda solo a quien corresponde.
+- **Clase 10:** `sendNotification` sin esperar el resultado. En el TP se espera y se informa qué envíos fallaron (una suscripción vencida devuelve error y conviene borrarla).
 
 ## No visto en clase (🟡 o 🔴: frenar antes de usar)
 
 - `computed()`, `effect()`, `linkedSignal`, `resource` / `httpResource`: 🟡
 - Signal forms: 🟡 (solo aparece el link)
 - Funciones de Postgres, triggers, RPC, vistas y constraints avanzadas en SQL: 🟡
-- Edge Functions de Supabase y login anónimo de Supabase: 🟡
-- Web Push y notificaciones del sistema: 🔴
-- Cualquier librería de UI (Material, Bootstrap, Tailwind, PrimeNG), de estado (NgRx) o de fechas: 🔴
+- Login anónimo de Supabase: 🟡
+- Disparar una Edge Function de forma automática (programada con Supabase Cron, o desde la base con `pg_net`): 🟡. En clase se invoca a mano.
+- Cualquier librería de UI (Material, Bootstrap, Tailwind, PrimeNG), de estado (NgRx), de fechas o de avisos (`toastify-js`): 🔴
 - Generación de QR, lectura de QR con cámara, generación de PDF, exportación a Excel y gráficos: 🔴
 - `NgModule`, `*ngIf` / `*ngFor`, `@Input()` / `@Output()` con decorador: **no usar**. Son la forma vieja; en clase se usan `@if`, `@for`, `input()` y `output()`.
