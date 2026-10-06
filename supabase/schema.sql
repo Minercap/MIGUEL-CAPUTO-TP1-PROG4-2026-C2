@@ -25,6 +25,7 @@
 --      y cupón de bienvenida (D-40 a D-43)
 --  13. Compra completa: candy, combos, canjes, cupón, crédito y
 --      cancelación (D-45 a D-48)
+--  14. Validación del empleado: la función validar_compra (D-51)
 -- ============================================================
 
 -- ============================================================
@@ -2203,6 +2204,8 @@ drop policy if exists "canjes: insert propio"           on public."Canjes";
 -- 01/10): con él podía marcarla cancelada sin que se le acredite nada, o
 -- cambiarle el total. Ahora cancela con cancelar_compra (13.4). El update
 -- queda solo para el empleado, que marca las validaciones (R-31, R-33).
+-- OJO: "empleado valida compras" se borra en la sección 14 (D-51): el
+-- empleado valida con la función validar_compra.
 drop policy if exists "cliente cancela su compra" on public."Compras";
 
 create policy "empleado valida compras"
@@ -3691,6 +3694,174 @@ begin
   );
 end;
 $$;
+
+
+-- ============================================================
+-- 14. VALIDACIÓN DEL EMPLEADO  (R-31 a R-33, decisión D-51)
+-- ============================================================
+-- El empleado valida la entrada en el ingreso a la sala y entrega el
+-- candy en el mostrador. Son dos validaciones separadas de la misma
+-- compra, cada una de un solo uso (mail del 06/02).
+--
+-- Hasta acá el empleado tenía un update directo sobre Compras (13.2).
+-- Tenía dos problemas:
+--   1. Entre leer la compra ("¿ya se validó?") y escribirla pasa un
+--      momento. Si dos empleados escanean el mismo QR a la vez, los dos
+--      leen "no validada" y los dos la marcan: entran dos personas con
+--      una entrada.
+--   2. La política dejaba editar cualquier columna de la compra, no solo
+--      las de validación: el total, el estado, el dueño.
+-- La función resuelve los dos: comprueba y marca en una sola transacción,
+-- con la fila bloqueada, y solo toca las columnas de validación.
+--
+-- Se puede correr sola: no depende de nada que no esté ya en la base.
+--
+--   14.1 Función validar_compra
+--   14.2 Política: se cierra el update directo del empleado
+--   14.3 Verificación
+
+-- ---------- 14.1 Función validar_compra ----------
+-- La app la llama con rpc('validar_compra', { p_codigo, p_tipo }).
+--   p_codigo  el código de la compra, leído del QR o escrito a mano.
+--   p_tipo    'entrada' o 'candy': qué parte de la compra se valida.
+-- Devuelve el id de la compra, que la app usa para traer el detalle y
+-- para escribir el log (D-14).
+--
+-- Es security definer, como realizar_compra y cancelar_compra: corre con
+-- los permisos de su dueño y no con los del empleado, que ya no puede
+-- escribir en Compras. Por eso lo primero que hace es comprobar quién la
+-- llama.
+
+create or replace function public.validar_compra(p_codigo text, p_tipo text)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_codigo     text;
+  v_id         bigint;
+  v_estado     text;
+  v_validada   timestamptz;
+  v_entregado  timestamptz;
+begin
+  -- ----- 1. Quién llama -----
+  -- "is not true" y no "not es_empleado()": sin sesión, es_empleado()
+  -- devuelve null, y "not null" también es null, así que el if no
+  -- entraría y la función seguiría de largo.
+  if public.es_empleado() is not true then
+    raise exception 'Solo un empleado puede validar';
+  end if;
+
+  -- ----- 2. Los parámetros -----
+  if p_tipo is null or p_tipo not in ('entrada', 'candy') then
+    raise exception 'Solo se puede validar una entrada o un candy';
+  end if;
+
+  -- El código se guarda en mayúsculas y sin espacios. Se normaliza acá
+  -- también, aunque el formulario ya lo haga: la función se puede llamar
+  -- sin pasar por el formulario. El coalesce cubre un código null.
+  v_codigo := upper(replace(trim(coalesce(p_codigo, '')), ' ', ''));
+
+  -- ----- 3. La compra, con la fila bloqueada -----
+  -- "for update" bloquea la fila hasta que termina la función. Si otro
+  -- empleado valida el mismo código en ese momento, su select se queda
+  -- esperando; cuando le toca, ya lee la fila marcada y recibe "ya se
+  -- validó". Así el "un solo uso" lo garantiza la base (D-51).
+  select c.id, c.estado, c.entrada_validada_en, c.candy_entregado_en
+    into v_id, v_estado, v_validada, v_entregado
+  from public."Compras" c
+  where c.codigo = v_codigo
+  for update;
+
+  if not found then
+    raise exception 'No hay ninguna compra con el código %', v_codigo;
+  end if;
+
+  if v_estado = 'cancelada' then
+    raise exception 'La compra % está cancelada', v_codigo;
+  end if;
+
+  -- ----- 4. La entrada -----
+  if p_tipo = 'entrada' then
+    -- La fecha se escribe en hora argentina, igual que en la 9.5 y en
+    -- cancelar_compra: sin "at time zone" saldría en UTC, tres horas
+    -- adelantada.
+    if v_validada is not null then
+      raise exception 'Esta entrada ya se validó el %',
+        to_char(v_validada at time zone 'America/Argentina/Buenos_Aires', 'DD/MM "a las" HH24:MI');
+    end if;
+
+    -- El "quién" es auth.uid(), el empleado con la sesión iniciada: no
+    -- llega como parámetro, así nadie valida a nombre de otro.
+    update public."Compras"
+    set entrada_validada_en  = now(),
+        entrada_validada_por = auth.uid()
+    where id = v_id;
+
+  -- ----- 5. El candy -----
+  else
+    -- Una compra puede ser solo de entradas: no hay nada que entregar.
+    if not exists (select 1 from public."ItemsCandy" i where i.compra_id = v_id) then
+      raise exception 'Esta compra no incluye candy';
+    end if;
+
+    if v_entregado is not null then
+      raise exception 'El candy ya se entregó el %',
+        to_char(v_entregado at time zone 'America/Argentina/Buenos_Aires', 'DD/MM "a las" HH24:MI');
+    end if;
+
+    update public."Compras"
+    set candy_entregado_en  = now(),
+        candy_entregado_por = auth.uid()
+    where id = v_id;
+  end if;
+
+  -- El id de Compras es bigint; se devuelve como int, que alcanza de sobra.
+  return v_id::int;
+end;
+$$;
+
+-- Solo con sesión. Una función nueva nace con permiso de ejecución para
+-- todos, así que primero se quita y después se da solo a authenticated.
+-- Igual, quien no es empleado se encuentra con el paso 1.
+revoke execute on function public.validar_compra(text, text) from public, anon;
+grant execute on function public.validar_compra(text, text) to authenticated;
+
+
+-- ---------- 14.2 Política: se cierra el update directo ----------
+-- Mismo criterio que la 11.3 y la 13.2: si existe la función, se cierra
+-- la escritura directa. Sin esta política, nadie tiene update sobre
+-- Compras desde la app: se compra con realizar_compra, se cancela con
+-- cancelar_compra y se valida con validar_compra.
+
+drop policy if exists "empleado valida compras" on public."Compras";
+
+
+-- ---------- 14.3 Verificación (solo consultas, no cambian nada) ----------
+
+-- ¿Está la función y es security definer? Tiene que devolver una fila,
+-- con prosecdef en true y search_path=public en proconfig.
+select proname, prosecdef, proconfig
+from pg_proc
+where proname = 'validar_compra';
+
+-- ¿Quedó alguna política de update sobre Compras? No tiene que devolver
+-- ninguna fila.
+select tablename, policyname, roles, cmd
+from pg_policies
+where schemaname = 'public'
+  and tablename = 'Compras'
+  and cmd in ('UPDATE', 'ALL');
+
+-- ¿El empleado puede leer lo que la pantalla muestra después de validar?
+-- Tiene que haber una política de SELECT por cada una de las siete tablas.
+select tablename, policyname, roles, qual
+from pg_policies
+where schemaname = 'public'
+  and cmd = 'SELECT'
+  and tablename in ('Compras', 'Entradas', 'ItemsCandy', 'Funciones',
+                    'ProductosCandy', 'Peliculas', 'Salas');
 
 
 -- ============================================================
