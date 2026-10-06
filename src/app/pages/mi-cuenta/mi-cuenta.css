@@ -1,0 +1,87 @@
+/* Solo estructura. Todos los colores y las fuentes salen de las variables
+   de :root (src/styles.css, D-33): acá no hay ningún color suelto. */
+
+h1,
+h2 {
+  font-family: var(--fuente-titulos);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+.aviso {
+  padding: 0.6rem 0.75rem;
+  border-left: 0.25rem solid var(--color-acento-dorado);
+  background: var(--color-superficie);
+}
+
+.saldos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0;
+  list-style: none;
+}
+
+.saldos li {
+  display: flex;
+  flex-direction: column;
+  min-width: 9rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+.compras {
+  max-width: 40rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* Cada compra es una tarjeta. */
+.compra {
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.5rem;
+}
+
+.compra header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.compra header div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+/* Una compra cancelada queda como historial, apagada. */
+.cancelada {
+  border-style: dashed;
+  color: var(--color-texto-suave);
+}
+
+.etiqueta {
+  padding: 0.1rem 0.5rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 1rem;
+  font-size: 0.8rem;
+}
+
+.codigo {
+  color: var(--color-texto-suave);
+}
+
+.acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}

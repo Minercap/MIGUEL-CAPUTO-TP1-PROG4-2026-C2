@@ -6,9 +6,15 @@ import {
   ButacaOcupada,
   CompraConfirmada,
   FilaDeSala,
+  CancelacionConfirmada,
   CandyComprado,
   CanjeComprado,
+  CanjeGuardado,
+  CompraGuardada,
   EntradaComprada,
+  EntradaGuardada,
+  ItemCandyGuardado,
+  MiCompra,
   FuncionParaComprar,
   MedioGuardado,
   PedidoDeCompra,
@@ -20,6 +26,8 @@ import { Funcion } from '../interfaces/funcion';
 import { Pelicula } from '../interfaces/pelicula';
 import { Sala } from '../interfaces/sala';
 import { Cupon } from '../interfaces/cupon';
+import { Producto } from '../interfaces/producto';
+import { Recompensa } from '../interfaces/recompensa';
 import { Usuario } from '../interfaces/usuario';
 import { Resultado } from '../interfaces/resultado';
 import {
@@ -88,6 +96,10 @@ export function nombreDelMedio(medio: MedioGuardado): string {
 // Con preventa habilitada, la venta abre esta cantidad de días antes del
 // estreno (R-11).
 const DIAS_DE_PREVENTA = 7;
+
+// Hasta cuántas horas antes de la función se puede cancelar (R-29).
+const HORAS_PARA_CANCELAR = 2;
+const MS_POR_HORA = 60 * 60 * 1000;
 
 // La compra de entradas (R-13 a R-16, R-20): los datos de la función, el
 // mapa de la sala, las butacas ocupadas en tiempo real, las reglas de
@@ -451,5 +463,163 @@ export class Compras {
     // El de mayor porcentaje; si empatan, el de menor id, como en la base.
     queAplican.sort((a, b) => b.porcentaje - a.porcentaje || a.id - b.id);
     return { datos: queAplican[0] ?? null, error: null };
+  }
+
+  // ---------- Mis compras y cancelación (R-12, R-29, R-30, D-48) ----------
+
+  // Las compras del usuario, con todo su detalle, de la más nueva a la más
+  // vieja. Son varias consultas, una por tabla, como en traerUna de
+  // películas (D-16), y después se arma cada compra acá.
+  //
+  // Entradas, ItemsCandy y Canjes se leen enteras: RLS ya deja ver solo
+  // las de las compras propias. Se filtran igual por compra, porque el
+  // admin y el empleado pueden leer todas. Funciones, películas, productos,
+  // recompensas y cupones son tablas públicas y chicas: se leen enteras
+  // para buscar los nombres.
+  async traerMisCompras(usuarioId: string): Promise<Resultado<MiCompra[]>> {
+    const error = 'No se pudieron cargar tus compras.';
+
+    const { data, error: e1 } = await this.sup.Sup.from('Compras')
+      .select('*')
+      .eq('usuario_id', usuarioId);
+    if (e1) return { datos: null, error };
+    const compras: CompraGuardada[] = data;
+    if (compras.length === 0) return { datos: [], error: null };
+
+    const { data: dEntradas, error: e2 } = await this.sup.Sup.from('Entradas').select('*');
+    const { data: dItems, error: e3 } = await this.sup.Sup.from('ItemsCandy').select('*');
+    const { data: dCanjes, error: e4 } = await this.sup.Sup.from('Canjes')
+      .select('*')
+      .eq('usuario_id', usuarioId);
+    const { data: dFunciones, error: e5 } = await this.sup.Sup.from('Funciones').select('*');
+    const { data: dPeliculas, error: e6 } = await this.sup.Sup.from('Peliculas').select('*');
+    const { data: dProductos, error: e7 } = await this.sup.Sup.from('ProductosCandy').select('*');
+    const { data: dRecompensas, error: e8 } = await this.sup.Sup.from('Recompensas').select('*');
+    const { data: dCupones, error: e9 } = await this.sup.Sup.from('Cupones').select('*');
+    if (e2 || e3 || e4 || e5 || e6 || e7 || e8 || e9) return { datos: null, error };
+
+    const entradas: EntradaGuardada[] = dEntradas;
+    const items: ItemCandyGuardado[] = dItems;
+    const canjes: CanjeGuardado[] = dCanjes;
+    const funciones: Funcion[] = dFunciones;
+    const peliculas: Pelicula[] = dPeliculas;
+    const productos: Producto[] = dProductos;
+    const recompensas: Recompensa[] = dRecompensas;
+    const cupones: Cupon[] = dCupones;
+
+    const nombreDeProducto = (id: number | null) =>
+      productos.find((p) => p.id === id)?.nombre ?? 'Producto';
+
+    const resultado: MiCompra[] = compras.map((compra) => {
+      const suyas = entradas.filter((e) => e.compra_id === compra.id);
+      // Todas las entradas de una compra son de la misma función.
+      const funcion = funciones.find((f) => f.id === suyas[0]?.funcion_id);
+      const pelicula = peliculas.find((p) => p.id === funcion?.pelicula_id);
+
+      const candy: CandyComprado[] = items
+        .filter((item) => item.compra_id === compra.id)
+        .map((item) => {
+          const producto = productos.find((p) => p.id === item.producto_id);
+          return {
+            producto_id: item.producto_id,
+            nombre: producto?.nombre ?? 'Producto',
+            cantidad: item.cantidad,
+            precio_unitario: item.precio_unitario,
+            es_combo: producto?.es_combo ?? false,
+            incluye_entrada: producto?.incluye_entrada ?? false,
+            es_canje: item.es_canje,
+          };
+        });
+
+      const canjesDeLaCompra: CanjeComprado[] = canjes
+        .filter((c) => c.compra_id === compra.id)
+        .map((c) => {
+          const recompensa = recompensas.find((r) => r.id === c.recompensa_id);
+          const esEntrada = recompensa?.tipo !== 'producto';
+          return {
+            recompensa_id: c.recompensa_id,
+            nombre: esEntrada ? 'Entrada' : nombreDeProducto(recompensa?.producto_id ?? null),
+            tipo: esEntrada ? 'entrada' : 'producto',
+            puntos: c.puntos_gastados,
+          };
+        });
+
+      // El total guardado es después del cupón: el subtotal es el total más
+      // el descuento. El porcentaje se deduce del descuento, porque el del
+      // cupón pudo cambiar después de la compra.
+      const subtotal = centavos(compra.total + compra.descuento_aplicado);
+      const cupon = cupones.find((c) => c.id === compra.cupon_id);
+      const porcentaje =
+        subtotal > 0 ? Math.round((compra.descuento_aplicado / subtotal) * 100) : 0;
+      let puntosUsados = 0;
+      for (const c of canjesDeLaCompra) puntosUsados += c.puntos;
+
+      return {
+        id: compra.id,
+        codigo: compra.codigo,
+        creado_en: compra.creado_en,
+        estado: compra.estado,
+        medio_pago: compra.medio_pago,
+        entrada_validada_en: compra.entrada_validada_en,
+        candy_entregado_en: compra.candy_entregado_en,
+        pelicula_nombre: pelicula?.nombre ?? 'Película',
+        funcion_fecha_hora: funcion?.fecha_hora ?? compra.creado_en,
+        // Si fue en preventa no queda guardado: el historial muestra el
+        // precio que se cobró, sin la marca.
+        en_preventa: false,
+        entradas: suyas.map((e) => ({
+          fila: e.fila,
+          numero: e.numero,
+          es_vip: e.es_vip,
+          precio: e.precio,
+          cubierta_por: e.cubierta_por,
+        })),
+        candy,
+        canjes: canjesDeLaCompra,
+        subtotal,
+        cupon: compra.cupon_id !== null ? { nombre: cupon?.nombre ?? 'Cupón', porcentaje } : null,
+        descuento: compra.descuento_aplicado,
+        total: compra.total,
+        credito_usado: compra.credito_usado,
+        a_pagar: centavos(compra.total - compra.credito_usado),
+        puntos_usados: puntosUsados,
+        puntos_generados: compra.puntos_generados,
+      };
+    });
+
+    // De la más nueva a la más vieja. Las fechas de Postgres se comparan
+    // bien como texto: van de año a segundo.
+    resultado.sort((a, b) => b.creado_en.localeCompare(a.creado_en));
+    return { datos: resultado, error: null };
+  }
+
+  // Por qué una compra no se puede cancelar, o null si se puede. Son los
+  // mismos controles que hace cancelar_compra en la base (D-48): acá se
+  // adelantan para no mostrar un botón que después falla.
+  motivoSinCancelar(compra: MiCompra): string | null {
+    if (compra.estado === 'cancelada') return 'Esta compra está cancelada.';
+    if (compra.entrada_validada_en) return 'La entrada ya se usó.';
+    if (compra.candy_entregado_en) return 'El candy de esta compra ya se retiró.';
+    const inicio = new Date(compra.funcion_fecha_hora).getTime();
+    if (Date.now() > inicio - HORAS_PARA_CANCELAR * MS_POR_HORA) {
+      return 'Solo se puede cancelar hasta 2 horas antes de la función.';
+    }
+    return null;
+  }
+
+  // La cancelación (D-48), con rpc() como la compra. La base acredita el
+  // total como crédito, devuelve los puntos canjeados, descuenta los
+  // generados y libera las butacas.
+  async cancelarCompra(compraId: number): Promise<Resultado<CancelacionConfirmada>> {
+    const { data, error } = await this.sup.Sup.rpc('cancelar_compra', { p_compra_id: compraId });
+    if (error) {
+      // Igual que en la compra: los raise exception llegan con P0001 y
+      // están escritos para el cliente.
+      const mensaje =
+        error.code === 'P0001' ? error.message : 'No se pudo cancelar la compra. Probá de nuevo.';
+      return { datos: null, error: mensaje };
+    }
+    const cancelacion: CancelacionConfirmada = data;
+    return { datos: cancelacion, error: null };
   }
 }

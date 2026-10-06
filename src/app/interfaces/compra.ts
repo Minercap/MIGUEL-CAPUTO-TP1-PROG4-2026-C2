@@ -201,3 +201,52 @@ export interface MiCompra extends ResumenDeCompra {
   pelicula_nombre: string;
   funcion_fecha_hora: string;
 }
+
+// Una fila de la tabla Compras, con las columnas que lee Mis compras.
+export interface CompraGuardada {
+  id: number;
+  usuario_id: string | null;
+  codigo: string;
+  total: number; // después del cupón (D-47)
+  cupon_id: number | null;
+  descuento_aplicado: number;
+  credito_usado: number;
+  puntos_generados: number;
+  medio_pago: MedioGuardado;
+  estado: 'pagada' | 'cancelada';
+  entrada_validada_en: string | null;
+  candy_entregado_en: string | null;
+  creado_en: string;
+}
+
+// Una fila de la tabla Entradas.
+export interface EntradaGuardada {
+  id: number;
+  compra_id: number;
+  funcion_id: number;
+  fila: string;
+  numero: number;
+  es_vip: boolean;
+  precio: number;
+  cubierta_por: 'combo' | 'canje' | null;
+}
+
+// Una fila de la tabla ItemsCandy.
+export interface ItemCandyGuardado {
+  id: number;
+  compra_id: number;
+  producto_id: number;
+  cantidad: number;
+  precio_unitario: number;
+  es_canje: boolean;
+}
+
+// Una fila de la tabla Canjes.
+export interface CanjeGuardado {
+  id: number;
+  usuario_id: string;
+  recompensa_id: number;
+  puntos_gastados: number;
+  compra_id: number | null;
+  creado_en: string;
+}

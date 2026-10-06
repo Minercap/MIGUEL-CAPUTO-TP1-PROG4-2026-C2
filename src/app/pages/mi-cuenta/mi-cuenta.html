@@ -1,8 +1,81 @@
 <h1>Mi cuenta</h1>
 
 @if (auth.perfil(); as perfil) {
-  <p>Hola, {{ perfil.nombre }} {{ perfil.apellido }}.</p>
-  <p>Rol: {{ perfil.rol }}</p>
+  <section class="perfil">
+    <p>Hola, {{ perfil.nombre }} {{ perfil.apellido }}.</p>
+    <!-- Los saldos (R-03, R-27, R-30). Se usan en el paso de pago. -->
+    <ul class="saldos">
+      <li>
+        <span>Puntos</span>
+        <strong>{{ perfil.puntos }}</strong>
+      </li>
+      <li>
+        <span>Crédito del cine</span>
+        <strong>${{ perfil.credito }}</strong>
+      </li>
+    </ul>
+  </section>
 } @else {
   <p>No encontramos los datos de tu perfil.</p>
+}
+@if (auth.errorPerfil()) {
+  <p class="error" role="alert">{{ auth.errorPerfil() }}</p>
+}
+
+<h2>Mis compras</h2>
+
+@if (aviso()) {
+  <p class="aviso" role="status">{{ aviso() }}</p>
+}
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+
+@if (cargando()) {
+  <p>Cargando tus compras…</p>
+} @else {
+  <ul class="compras">
+    @for (compra of compras(); track compra.id) {
+      <li class="compra" [class.cancelada]="compra.estado === 'cancelada'">
+        <header>
+          <div>
+            <strong>{{ compra.pelicula_nombre }}</strong>
+            <!-- '-0300': siempre en hora argentina (D-35). -->
+            <span>
+              {{ compra.funcion_fecha_hora | date: 'dd/MM/yyyy' : '-0300' }} ·
+              {{ compra.funcion_fecha_hora | date: 'HH:mm' : '-0300' }} hs
+            </span>
+          </div>
+          <span class="etiqueta">{{ compra.estado === 'pagada' ? 'Pagada' : 'Cancelada' }}</span>
+        </header>
+        <p class="codigo">Código {{ compra.codigo }}</p>
+
+        <!-- El mismo detalle que se vio al pagar (A-01). -->
+        <app-resumen-compra [resumen]="compra" />
+        <p>Medio de pago: {{ nombreDelMedio(compra.medio_pago) }}</p>
+
+        <div class="acciones">
+          @if (comprasSrv.motivoSinCancelar(compra); as motivo) {
+            <!-- No se puede cancelar: se dice por qué (D-48). -->
+            @if (compra.estado === 'pagada') {
+              <small>{{ motivo }}</small>
+            }
+          } @else if (idPorCancelar() === compra.id) {
+            <span>
+              ¿Cancelar esta compra? Se te acredita ${{ compra.total }} como crédito, no se
+              devuelve dinero.
+            </span>
+            <button type="button" [disabled]="cancelando()" (click)="cancelar(compra)">
+              {{ cancelando() ? 'Cancelando…' : 'Sí, cancelar' }}
+            </button>
+            <button type="button" [disabled]="cancelando()" (click)="noCancelar()">No</button>
+          } @else {
+            <button type="button" (click)="pedirConfirmacion(compra.id)">Cancelar compra</button>
+          }
+        </div>
+      </li>
+    } @empty {
+      <li>Todavía no hiciste ninguna compra.</li>
+    }
+  </ul>
 }
