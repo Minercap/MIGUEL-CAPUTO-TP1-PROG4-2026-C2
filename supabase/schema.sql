@@ -26,6 +26,8 @@
 --  13. Compra completa: candy, combos, canjes, cupón, crédito y
 --      cancelación (D-45 a D-48)
 --  14. Validación del empleado: la función validar_compra (D-51)
+--  15. Notificaciones de Próximamente: SuscripcionesPush, permiso para
+--      marcar la alerta propia y programación diaria (D-52)
 -- ============================================================
 
 -- ============================================================
@@ -3862,6 +3864,176 @@ where schemaname = 'public'
   and cmd = 'SELECT'
   and tablename in ('Compras', 'Entradas', 'ItemsCandy', 'Funciones',
                     'ProductosCandy', 'Peliculas', 'Salas');
+
+
+-- ============================================================
+-- 15. NOTIFICACIONES DE PRÓXIMAMENTE  (R-10, decisión D-52)
+-- ============================================================
+-- El usuario activa una alerta sobre una película de Próximamente (la
+-- tabla Alertas existe desde la sección 1). Cuando abre la venta, se le
+-- avisa de dos formas:
+--   - con una notificación push (clase 10), si dio permiso en algún
+--     dispositivo. La manda la Edge Function enviar-alertas
+--     (supabase/functions/enviar-alertas), una vez por día;
+--   - con un aviso dentro de la app, si no tiene ninguna suscripción.
+-- En los dos casos la alerta queda marcada como notificada, para no
+-- avisar dos veces.
+--
+--   15.1 Tabla SuscripcionesPush, con RLS
+--   15.2 Alertas: el usuario marca la suya como notificada
+--   15.3 Programación diaria de la Edge Function (Supabase Cron)
+--   15.4 Verificación
+--
+-- La 15.1 y la 15.2 se pueden correr solas. La 15.3 necesita pasos
+-- previos que no van en este archivo: están en
+-- supabase/functions/enviar-alertas/README.md.
+
+-- ---------- 15.1 SuscripcionesPush ----------
+-- Una fila por cada dispositivo en el que un usuario aceptó las
+-- notificaciones. Son los tres datos que devuelve el navegador al
+-- suscribirse (clase 10): a dónde mandar el push (endpoint) y las dos
+-- claves para cifrarlo (auth y p256dh).
+--
+-- A diferencia de la tabla de la clase, cada suscripción tiene dueño
+-- (usuario_id) y RLS: así el push se le manda solo a quien corresponde.
+-- endpoint es unique: un dispositivo es una sola suscripción.
+
+create table public."SuscripcionesPush" (
+  id          bigint generated always as identity primary key,
+  usuario_id  uuid not null references public."Usuarios"(id) on delete cascade,
+  endpoint    text not null unique,
+  auth        text not null,
+  p256dh      text not null,
+  creado_en   timestamptz not null default now()
+);
+
+alter table public."SuscripcionesPush" enable row level security;
+
+-- Cada usuario lee, crea y borra solo las suyas. No hay política de
+-- update: una suscripción no se edita, se borra y se crea otra.
+-- La Edge Function las lee todas porque usa la clave secret, que no pasa
+-- por RLS; esa clave vive solo en el servidor.
+
+create policy "suscripciones_push: lectura propia"
+  on public."SuscripcionesPush" for select to authenticated
+  using (usuario_id = auth.uid());
+
+create policy "suscripciones_push: insert propio"
+  on public."SuscripcionesPush" for insert to authenticated
+  with check (usuario_id = auth.uid());
+
+create policy "suscripciones_push: borra la propia"
+  on public."SuscripcionesPush" for delete to authenticated
+  using (usuario_id = auth.uid());
+
+
+-- ---------- 15.2 Alertas: marcar la propia como notificada ----------
+-- Hasta acá solo el admin podía hacer update sobre Alertas ("alertas:
+-- admin marca notificada", sección 3). Ahora el usuario marca la suya
+-- cuando cierra el aviso dentro de la app.
+--
+-- Son dos controles, igual que en Usuarios (sección 4, D-12):
+--   - la política dice QUÉ FILAS: solo las del propio usuario;
+--   - el permiso de columna dice QUÉ CAMPOS: solo "notificada". Sin él,
+--     alguien podría cambiarle pelicula_id o usuario_id a su alerta.
+-- El permiso de columna vale también para el admin.
+
+create policy "alertas: el usuario marca la suya"
+  on public."Alertas" for update to authenticated
+  using (usuario_id = auth.uid())
+  with check (usuario_id = auth.uid());
+
+revoke update on public."Alertas" from authenticated;
+
+grant update (notificada) on public."Alertas" to authenticated;
+
+
+-- ---------- 15.3 Programación diaria (Supabase Cron, 🟡 D-52) ----------
+-- La venta abre por una fecha, no por una acción de alguien: el aviso lo
+-- dispara un reloj. Supabase Cron ejecuta una orden SQL a la hora que se
+-- le indique, y pg_net permite que esa orden haga un pedido HTTP. Con las
+-- dos, la base llama a la Edge Function una vez por día.
+--
+-- Sigue la guía oficial "Scheduling Edge Functions" de Supabase
+-- (supabase.com/docs/guides/functions/schedule-functions).
+--
+-- ANTES de correr esta parte (el detalle está en el README de la función):
+--   1. Tener habilitadas las extensiones pg_cron y pg_net.
+--   2. Guardar en Vault la URL del proyecto y la clave secret. Vault es el
+--      lugar de Supabase para guardar secretos cifrados. Estas dos líneas
+--      se corren A MANO en el SQL Editor, con los valores reales, y NO se
+--      guardan en este archivo ni en el repo:
+--
+--        select vault.create_secret('https://<ref-del-proyecto>.supabase.co', 'project_url');
+--        select vault.create_secret('<la clave secret>', 'secret_key');
+--
+-- cron.schedule recibe tres cosas:
+--   - el nombre del trabajo;
+--   - cuándo corre, en formato cron: minuto, hora, día del mes, mes y día
+--     de la semana. '0 12 * * *' es "a las 12:00, todos los días". La
+--     hora es UTC: las 12:00 UTC son las 09:00 de Argentina;
+--   - la orden SQL que ejecuta, entre $$.
+--
+-- La orden hace un POST a la función. La URL y la clave se leen de Vault
+-- en el momento, así que no quedan escritas acá. La clave va en el
+-- encabezado "apikey", que es donde la función la busca.
+
+select
+  cron.schedule(
+    'enviar-alertas-diario',
+    '0 12 * * *',
+    $$
+    select
+      net.http_post(
+          url := (select decrypted_secret from vault.decrypted_secrets where name = 'project_url') || '/functions/v1/enviar-alertas',
+          headers := jsonb_build_object(
+            'Content-type', 'application/json',
+            'apikey', (select decrypted_secret from vault.decrypted_secrets where name = 'secret_key')
+          ),
+          body := concat('{"time": "', now(), '"}')::jsonb
+      ) as request_id;
+    $$
+  );
+
+
+-- ---------- 15.4 Verificación (solo consultas, no cambian nada) ----------
+
+-- ¿Está la tabla, con RLS prendido? Tiene que devolver una fila con
+-- rowsecurity en true.
+select tablename, rowsecurity
+from pg_tables
+where schemaname = 'public' and tablename = 'SuscripcionesPush';
+
+-- ¿Están las políticas? Tres de SuscripcionesPush (SELECT, INSERT y
+-- DELETE) y, en Alertas, dos de UPDATE: la del admin y la del usuario.
+select tablename, policyname, cmd, qual, with_check
+from pg_policies
+where schemaname = 'public'
+  and tablename in ('SuscripcionesPush', 'Alertas')
+order by tablename, cmd;
+
+-- ¿Qué columnas de Alertas puede modificar un usuario con sesión? Tiene
+-- que devolver una sola fila: notificada.
+select column_name, privilege_type
+from information_schema.column_privileges
+where table_schema = 'public'
+  and table_name = 'Alertas'
+  and grantee = 'authenticated'
+  and privilege_type = 'UPDATE';
+
+-- ¿Quedó programado el trabajo? Tiene que devolver una fila con
+-- schedule '0 12 * * *' y active en true.
+select jobid, jobname, schedule, active
+from cron.job
+where jobname = 'enviar-alertas-diario';
+
+-- Después de la primera ejecución (o de probarla a mano): ¿cómo salió?
+-- status 'succeeded' quiere decir que el pedido se mandó, no que la
+-- función respondió bien; la respuesta está en los logs de la función.
+select jobid, status, return_message, start_time
+from cron.job_run_details
+order by start_time desc
+limit 5;
 
 
 -- ============================================================
