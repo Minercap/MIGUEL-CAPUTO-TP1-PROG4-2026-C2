@@ -128,12 +128,16 @@ function armarMensaje(pelicula: Pelicula): string {
 // withSupabase arma el contexto (ctx) con los clientes de Supabase ya
 // listos, y antes de eso revisa quién llama.
 //
-// auth: 'secret' acepta SOLO la clave secret del proyecto, que llega en el
-// encabezado "apikey". En la clase se aceptaba también la publishable, que
-// es pública: cualquiera que la copiara del sitio podía disparar los
-// envíos. La secret la conoce solo la base (está guardada en Vault).
+// auth: 'secret:cron_alertas' acepta SOLO una clave secret del proyecto: la
+// que se llama "cron_alertas", creada para este uso. Llega en el
+// encabezado "apikey". Con 'secret' a secas se aceptaría la secret por
+// defecto; con el nombre, ninguna otra clave del proyecto sirve para
+// disparar los envíos, y si esta se filtra se revoca sin tocar las demás.
+// En la clase se aceptaba también la publishable, que es pública:
+// cualquiera que la copiara del sitio podía llamar a la función.
+// "cron_alertas" la conoce solo la base (está guardada en Vault).
 export default {
-  fetch: withSupabase({ auth: 'secret' }, async (_req, ctx) => {
+  fetch: withSupabase({ auth: 'secret:cron_alertas' }, async (_req, ctx) => {
     // Las claves VAPID identifican a este servidor ante el servicio de
     // notificaciones del navegador. Están en los secrets de la función:
     // la privada no está en el repo ni en el front.

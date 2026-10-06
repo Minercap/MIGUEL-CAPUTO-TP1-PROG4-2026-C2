@@ -8,13 +8,15 @@ pero nunca se desplegó ni se ejecutó. Los pasos de abajo incluyen cómo probar
 
 ## Antes de empezar: la clave secret
 
-La función usa `withSupabase({ auth: 'secret' })`. Según la documentación de
-`@supabase/server`, ese modo **solo funciona con las claves nuevas de Supabase**
-(`sb_secret_...`), no con la `service_role` vieja. El proyecto usa la clave anon vieja en el
-front (D-10), y eso no cambia. Lo que hace falta es que el proyecto tenga, además, una clave
-secret nueva:
+La función usa `withSupabase({ auth: 'secret:cron_alertas' })`: acepta **solo** la clave
+secret que se llama `cron_alertas`, no la secret por defecto ni ninguna otra. Según la
+documentación de `@supabase/server`, ese modo **solo funciona con las claves nuevas de
+Supabase** (`sb_secret_...`), no con la `service_role` vieja. El proyecto usa la clave anon
+vieja en el front (D-10), y eso no cambia. Lo que hace falta es que el proyecto tenga,
+además, una clave secret nueva con ese nombre:
 
-- Panel de Supabase → Project Settings → API Keys → crear una **Secret key**.
+- Panel de Supabase → Project Settings → API Keys → crear una **Secret key** llamada
+  `cron_alertas`. El nombre tiene que ser exactamente ese: es el que busca la función.
 - Esa clave va **solo** a Vault (paso 5). No va al repo, ni a `environment.ts`, ni a Vercel.
 
 Si el proyecto no ofrece las claves nuevas, frená acá: hay que decidir otra forma de
@@ -116,7 +118,7 @@ Si algo falla, el detalle está en Edge Functions → `enviar-alertas` → Logs,
 
 | En la clase | Acá | Por qué |
 |---|---|---|
-| Acepta la clave publishable y la secret | Solo la secret | La publishable es pública: cualquiera podía disparar los envíos |
+| Acepta la clave publishable y la secret | Solo la secret `cron_alertas` | La publishable es pública: cualquiera podía disparar los envíos. Con una clave propia, se revoca sin tocar las demás |
 | Manda a todas las suscripciones | Solo a las del usuario de la alerta | Cada aviso es de una persona |
 | `sendNotification` sin esperar | Con `await` y `try/catch` | Para saber si salió y borrar las vencidas |
 | `data: { url }` | `data.onActionClick.default` | Es lo que lee el service worker de Angular al tocar la notificación |
