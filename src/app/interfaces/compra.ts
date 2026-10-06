@@ -142,6 +142,16 @@ export interface CandyComprado {
   es_canje: boolean;
 }
 
+// Un renglón del candy tal como se muestra en el resumen y en el PDF: el
+// mismo producto pagado y canjeado van en renglones seguidos (D-45).
+export interface LineaDeCandy {
+  nombre: string;
+  cantidad: number;
+  importe: number; // precio × cantidad; 0 si es canje
+  es_combo: boolean;
+  es_canje: boolean;
+}
+
 // Un canje de puntos en el resumen.
 export interface CanjeComprado {
   recompensa_id: number;

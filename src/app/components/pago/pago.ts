@@ -389,6 +389,14 @@ export class Pago {
     return this.formulario.get('codigo_seguridad');
   }
 
+  // Cuántas unidades del producto de un canje ya están en el pedido. 0 si
+  // es una entrada o si el producto no está en el pedido.
+  enElPedido(recompensaId: number | null): number {
+    const recompensa = this.recompensas().find((r) => r.id === recompensaId);
+    if (!recompensa || recompensa.producto_id === null) return 0;
+    return this.candy().find((e) => e.producto.id === recompensa.producto_id)?.cantidad ?? 0;
+  }
+
   // El nombre de la recompensa de cada canje elegido, para la lista.
   nombreDelCanje(id: number | null): string {
     return this.recompensas().find((r) => r.id === id)?.nombre ?? 'Recompensa';

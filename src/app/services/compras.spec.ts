@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { Compras } from './compras';
+import { Compras, lineasDeCandy } from './compras';
 import { FuncionParaComprar } from '../interfaces/compra';
 import { Producto } from '../interfaces/producto';
 
@@ -119,5 +119,21 @@ describe('Compras', () => {
       expect(r.candy[0].es_canje).toBe(true);
       expect(r.candy[0].precio_unitario).toBe(0);
     });
+  });
+
+  // El canje de un producto que ya está en el pedido va justo debajo del
+  // pagado, para que se vea que suma uno más gratis (D-45).
+  it('lineasDeCandy junta el producto pagado y su canje', () => {
+    const pochoclo = { producto_id: 9, nombre: 'Pochoclo', es_combo: false, incluye_entrada: false };
+    const lineas = lineasDeCandy([
+      { ...pochoclo, cantidad: 2, precio_unitario: 1500, es_canje: false },
+      { producto_id: 4, nombre: 'Agua', cantidad: 1, precio_unitario: 800, es_combo: false, incluye_entrada: false, es_canje: false },
+      { ...pochoclo, cantidad: 1, precio_unitario: 0, es_canje: true },
+    ]);
+    expect(lineas.map((l) => `${l.nombre} x ${l.cantidad}${l.es_canje ? ' canje' : ''} $${l.importe}`)).toEqual([
+      'Pochoclo x 2 $3000',
+      'Pochoclo x 1 canje $0',
+      'Agua x 1 $800',
+    ]);
   });
 });

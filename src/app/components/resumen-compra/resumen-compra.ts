@@ -1,5 +1,6 @@
 import { Component, input } from '@angular/core';
-import { CandyComprado, EntradaComprada, ResumenDeCompra } from '../../interfaces/compra';
+import { EntradaComprada, LineaDeCandy, ResumenDeCompra } from '../../interfaces/compra';
+import { lineasDeCandy } from '../../services/compras';
 
 // El detalle de una compra, renglón por renglón (A-01): cada entrada con su
 // fila, su butaca y si es VIP; el candy y los combos; la diferencia VIP; los
@@ -18,10 +19,10 @@ import { CandyComprado, EntradaComprada, ResumenDeCompra } from '../../interface
 export class ResumenCompra {
   resumen = input<ResumenDeCompra | null>(null);
 
-  // El candy que se paga. Los productos canjeados con puntos van en la
-  // parte de canjes, para no mostrarlos dos veces.
-  candyPagado(): CandyComprado[] {
-    return this.resumen()?.candy.filter((item) => !item.es_canje) ?? [];
+  // El candy, con el canje de un producto justo debajo del mismo producto
+  // pagado (D-45). Lo arma el servicio, porque el PDF usa lo mismo.
+  lineas(): LineaDeCandy[] {
+    return lineasDeCandy(this.resumen()?.candy ?? []);
   }
 
   // Las entradas cubiertas en una butaca VIP: la diferencia VIP va en su
@@ -34,11 +35,5 @@ export class ResumenCompra {
   // acá (lo que se cobra es el combo, o la diferencia VIP aparte).
   precioDeEntrada(entrada: EntradaComprada): number {
     return entrada.cubierta_por === null ? entrada.precio : 0;
-  }
-
-  // Precio por cantidad, redondeado a centavos: 1.1 × 3 en JavaScript da
-  // 3.3000000000000003.
-  importeDe(item: CandyComprado): number {
-    return Math.round(item.precio_unitario * item.cantidad * 100) / 100;
   }
 }

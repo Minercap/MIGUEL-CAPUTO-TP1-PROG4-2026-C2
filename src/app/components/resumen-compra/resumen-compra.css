@@ -47,3 +47,8 @@
   gap: 0.25rem;
   color: var(--color-texto-suave);
 }
+
+/* Los renglones de canje van un poco apagados: no suman al total. */
+.canje {
+  color: var(--color-texto-suave);
+}

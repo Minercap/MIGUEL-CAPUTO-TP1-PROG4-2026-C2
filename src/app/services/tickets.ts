@@ -3,7 +3,7 @@ import { toDataURL } from 'qrcode';
 import { jsPDF } from 'jspdf';
 import { CompraConfirmada, EntradaComprada, FuncionParaComprar } from '../interfaces/compra';
 import { Resultado } from '../interfaces/resultado';
-import { nombreDelMedio } from './compras';
+import { lineasDeCandy, nombreDelMedio } from './compras';
 
 // Argentina está tres horas atrás de UTC todo el año (D-35).
 const HORAS_DE_ARGENTINA_A_UTC = 3;
@@ -113,13 +113,13 @@ export class Tickets {
           renglon(`Diferencia VIP (${butaca})`, `$${entrada.precio}`);
         }
       }
-      // El candy que se paga; lo canjeado va con los canjes.
-      for (const item of compra.candy) {
-        if (item.es_canje) continue;
-        const combo = item.es_combo ? ' (combo)' : '';
-        const importe = Math.round(item.precio_unitario * item.cantidad * 100) / 100;
-        renglon(`${item.cantidad} x ${item.nombre}${combo}`, `$${importe}`);
+      // El candy, con el canje de un producto justo debajo del mismo
+      // producto pagado (D-45), igual que en la pantalla.
+      for (const linea of lineasDeCandy(compra.candy)) {
+        const marca = linea.es_canje ? ' (canje)' : linea.es_combo ? ' (combo)' : '';
+        renglon(`${linea.nombre} x ${linea.cantidad}${marca}`, `$${linea.importe}`);
       }
+      // El detalle de los puntos.
       for (const canje of compra.canjes) {
         renglon(`Canje: ${canje.nombre} (${canje.puntos} puntos)`, '$0');
       }

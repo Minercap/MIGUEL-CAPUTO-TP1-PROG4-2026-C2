@@ -34,20 +34,24 @@
       </li>
     }
 
-    @for (item of candyPagado(); track item.producto_id) {
-      <li>
+    @for (linea of lineas(); track $index) {
+      <li [class.canje]="linea.es_canje">
         <span>
-          {{ item.cantidad }} × {{ item.nombre }}
-          @if (item.es_combo) {
+          {{ linea.nombre }} × {{ linea.cantidad }}
+          @if (linea.es_canje) {
+            (canje)
+          }
+          @if (linea.es_combo) {
             <span class="marca">Combo</span>
           }
         </span>
-        <span>${{ importeDe(item) }}</span>
+        <span>${{ linea.importe }}</span>
       </li>
     }
 
+    <!-- El detalle de los puntos: qué se canjeó y cuánto costó cada uno. -->
     @for (canje of r.canjes; track $index) {
-      <li>
+      <li class="canje">
         <span>Canje: {{ canje.nombre }} ({{ canje.puntos }} puntos)</span>
         <span>$0</span>
       </li>

@@ -84,7 +84,17 @@
             <ul class="recompensas">
               @for (canje of formulario.controls.canjes.controls; track $index; let i = $index) {
                 <li>
-                  <span>Canje: {{ nombreDelCanje(canje.value) }}</span>
+                  <span>
+                    Canje: {{ nombreDelCanje(canje.value) }}
+                    <!-- Si el producto ya estaba en el pedido, se aclara que
+                         el canje no lo reemplaza (D-45). -->
+                    @if (enElPedido(canje.value) > 0) {
+                      <small class="aclaracion">
+                        Ya tenés {{ enElPedido(canje.value) }} {{ nombreDelCanje(canje.value) }} en tu
+                        pedido; el canje suma uno más gratis.
+                      </small>
+                    }
+                  </span>
                   <button type="button" (click)="quitarCanje(i)">Quitar</button>
                 </li>
               }

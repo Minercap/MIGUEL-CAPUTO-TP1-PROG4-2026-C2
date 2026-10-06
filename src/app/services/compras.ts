@@ -14,6 +14,7 @@ import {
   EntradaComprada,
   EntradaGuardada,
   ItemCandyGuardado,
+  LineaDeCandy,
   MiCompra,
   FuncionParaComprar,
   MedioGuardado,
@@ -76,6 +77,46 @@ export const MAXIMO_BUTACAS = 10;
 
 // Hasta cuántas unidades de cada producto del candy (validaciones.md 3.10).
 export const MAXIMO_POR_PRODUCTO = 10;
+
+// Los renglones del candy para el resumen y el PDF. Cada producto pagado
+// va con su cantidad, y justo debajo, si también se canjeó, el renglón del
+// canje a $0: así se ve que el canje suma uno más gratis y no reemplaza lo
+// que ya estaba en el pedido. Los canjes de productos que no se pagaron van
+// al final. Varios canjes del mismo producto se juntan en un renglón.
+export function lineasDeCandy(candy: CandyComprado[]): LineaDeCandy[] {
+  const lineas: LineaDeCandy[] = [];
+  const canjeados = (productoId: number) =>
+    candy.filter((item) => item.es_canje && item.producto_id === productoId).length;
+  const lineaDeCanje = (item: CandyComprado, cantidad: number): LineaDeCandy => ({
+    nombre: item.nombre,
+    cantidad,
+    importe: 0,
+    es_combo: false,
+    es_canje: true,
+  });
+
+  const pagados = candy.filter((item) => !item.es_canje);
+  for (const item of pagados) {
+    lineas.push({
+      nombre: item.nombre,
+      cantidad: item.cantidad,
+      importe: centavos(item.precio_unitario * item.cantidad),
+      es_combo: item.es_combo,
+      es_canje: false,
+    });
+    const gratis = canjeados(item.producto_id);
+    if (gratis > 0) lineas.push(lineaDeCanje(item, gratis));
+  }
+
+  // Los canjeados que no estaban en el pedido, una vez por producto.
+  const yaListados: number[] = pagados.map((item) => item.producto_id);
+  for (const item of candy) {
+    if (!item.es_canje || yaListados.includes(item.producto_id)) continue;
+    yaListados.push(item.producto_id);
+    lineas.push(lineaDeCanje(item, canjeados(item.producto_id)));
+  }
+  return lineas;
+}
 
 // Cómo se muestra cada medio de pago, en la pantalla y en el PDF. 'credito'
 // es la tarjeta de crédito: se escribe con todas las letras para que no se
