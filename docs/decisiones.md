@@ -1334,3 +1334,95 @@ TypeScript. Si cambia una, hay que cambiar la otra. `compras.spec.ts` prueba la 
 previa con los casos de D-46 y D-47.
 
 **Clase de origen:** 3 (servicios) + 4 (formularios reactivos). **Requisito:** A-01.
+
+---
+
+## D-50 · Lectura de QR con html5-qrcode · 06/10
+
+**Elegido:** `html5-qrcode`, con la clase `Html5Qrcode` sobre un `<div>` propio, sin la
+interfaz que trae la librería. Se importa en un solo archivo, `services/escaner.ts`.
+
+**Descartado:** `@zxing/browser`, porque necesita más armado (manejar el `<video>` y los
+dispositivos) para el mismo resultado.
+
+**Cómo lo explico en el oral:** leer un QR desde la cámara es procesar imágenes; eso lo
+resuelve la librería. La carga manual sigue estando, porque el mail del 06/02 la pide.
+La cámara solo funciona con HTTPS, y Vercel ya lo tiene.
+
+**Clase de origen:** 🔴 librería justificada (cátedra 01/10, punto 3). **Requisito:** R-31, R-32.
+
+---
+
+## D-51 · La validación es una función de Postgres · 06/10
+
+**Elegido:** `validar_compra(p_codigo, p_tipo)` con `rpc()`. Comprueba que la compra
+exista, que no esté cancelada y que esa parte (entrada o candy) no se haya usado, y recién
+ahí la marca. Se borra la política de `update` directo del empleado sobre `Compras`. El log
+lo sigue escribiendo el servicio (D-14).
+
+**Descartado:** un `update` desde Angular filtrando por las no validadas. Deja una ventana
+entre leer y escribir, y el empleado podría editar cualquier columna de la compra.
+
+**Cómo lo explico en el oral:** "un solo uso" lo garantiza la base. Si dos empleados escanean
+el mismo QR a la vez, la fila queda bloqueada y el segundo recibe "ya se validó".
+
+**Clase de origen:** función de Postgres con `rpc()` (D-39, D-48). **Requisito:** R-31 a R-33.
+
+---
+
+## D-52 · Alerta de Próximamente con notificaciones push · 06/10
+
+**Elegido:** Web Push (clase 10). Al activar una alerta, si el usuario no tiene suscripción,
+se le pide el permiso con `SwPush.requestSubscription` y la suscripción se guarda en
+`SuscripcionesPush` con su `usuario_id` (RLS: cada uno lee, crea y borra la suya). La Edge
+Function `enviar-alertas` busca las alertas no notificadas cuya venta ya abrió (7 días antes
+del estreno con preventa, o el día del estreno sin ella, en hora argentina, según D-39),
+manda el push solo a las suscripciones de esos usuarios y marca las alertas como
+`notificada`. Supabase Cron la ejecuta una vez por día. Si el usuario no dio permiso, ve un
+aviso al entrar a la app.
+
+**Descartado:**
+- Push disparado por un botón del admin: si se olvida de apretarlo, nadie se entera. Es el
+  mismo problema por el que se descartó el estado manual en D-27.
+- Solo el aviso dentro de la app: no usa la clase 10 y el cliente se entera recién cuando
+  vuelve a entrar.
+
+**Cómo lo explico en el oral:** la venta abre por una fecha, no por una acción, así que el
+aviso lo dispara un reloj. Circuito: permiso → suscripción guardada → función programada →
+notificación al celular. La clave VAPID privada vive solo en los secrets de Supabase.
+
+**Lo que no se vio en clase (🟡):** Supabase Cron, que ejecuta la función todos los días a
+la misma hora. En clase la función se invocaba a mano.
+
+**Clase de origen:** 9 (PWA) + 10 (SwPush, Edge Functions) + Cron 🟡.
+**Requisito:** R-10 (mail 08/03, cátedra 01/10 punto 4).
+
+---
+
+## D-53 · Excel con SheetJS · 06/10
+
+**Elegido:** SheetJS (`json_to_sheet`, `book_new`, `book_append_sheet`, `writeFile`), instalado
+desde el tarball oficial de cdn.sheetjs.com, porque la versión de npm está desactualizada. Se
+importa solo en `services/exportaciones.ts`, junto con el PDF del reporte (jsPDF, D-37).
+
+**Descartado:** un CSV armado a mano. Excel lo abre, pero el mail pide Excel, no un archivo
+de texto.
+
+**Cómo lo explico en el oral:** el formato `.xlsx` es un zip de XML; armarlo a mano no tiene
+sentido. La librería convierte las filas del reporte en una hoja.
+
+**Clase de origen:** 🔴 librería justificada. **Requisito:** R-36.
+
+---
+
+## D-54 · Gráficos con barras de CSS · 06/10
+
+**Elegido:** barras hechas con `@for` y `[style.width.%]`, proporcionales al valor máximo.
+
+**Descartado:** Chart.js. Es una dependencia y una configuración más para gráficos de barras
+simples, y se aparta del estilo propio de la app (R-39).
+
+**Cómo lo explico en el oral:** cada barra es un `div` cuyo ancho es su valor sobre el
+máximo. Usa el bindeo de estilo de la clase 8.
+
+**Clase de origen:** 2 (`@for`) + 8 (`[style]`). **Requisito:** R-37.

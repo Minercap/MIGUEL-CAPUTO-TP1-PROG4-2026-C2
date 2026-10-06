@@ -381,6 +381,7 @@ adelante sin cambios estructurales.
 | D-46 | Combos con entrada | Cada combo con entrada cubre una de las butacas elegidas, que va a $0. Si es VIP, se cobra la diferencia VIP. Igual con la entrada gratis por puntos |
 | D-47 | Orden del total | Precios, canjes, un solo cupón (el de mayor porcentaje), crédito y el resto con el medio de pago. Los puntos se generan por lo pagado con el medio. Si no queda nada para pagar, no se pide medio de pago |
 | D-48 | Cancelación | Hasta 2 horas antes, sin la entrada validada y sin el candy retirado. Acredita el total como crédito, devuelve los puntos canjeados y descuenta los generados |
+| D-52 | Alerta de Próximamente | Notificación push el día que abre la venta, enviada por una Edge Function programada; aviso en la app para quien no dio permiso |
 | R-02 | Comprador anónimo | Sin cupón, sin crédito y sin puntos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
