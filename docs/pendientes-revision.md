@@ -1,17 +1,48 @@
 # Pendientes de revisión — 06/10
 
-Resumen del trabajo hecho sin supervisión en los bloques A (empleado) y B (reportes). Este
-archivo está solo en la rama `feat/reportes`, que sale de `feat/empleado` y contiene los dos
-bloques. Nada se integró a `main`.
+Resumen del trabajo hecho sin supervisión en los bloques A (empleado), B y C (reportes) y D
+(notificaciones). Las ramas salen una de la otra: `feat/empleado` → `feat/reportes` →
+`feat/notificaciones`. Este archivo está al día solo en `feat/notificaciones`, que contiene
+los cuatro bloques. Nada se integró a `main`.
 
-**Lo que no se probó:** todo lo de abajo compila (`ng build` sin errores) y pasa los tests
-(`ng test`: 38 archivos, 54 tests), pero **no se probó en el navegador ni contra Supabase**.
-La cámara, las descargas de PDF y Excel y los números de los reportes con datos reales
-quedan para la prueba a mano.
+**Lo que no se probó:** todo compila (`ng build` sin errores ni avisos) y pasa los tests
+(`ng test`: 38 archivos, 54 tests), pero **nada se probó en el navegador ni contra
+Supabase**. La cámara, las descargas, los números de los reportes con datos reales y todo
+el circuito de notificaciones quedan para la prueba a mano. **La Edge Function nunca se
+desplegó ni se ejecutó.**
 
 ---
 
-## 1. Qué quedó hecho
+## 1. Lo que tenés que hacer a mano, en orden
+
+### Para el empleado y los reportes
+
+1. Desplegar `feat/notificaciones` (o `feat/reportes`) en Vercel y comprobar que el build
+   instala SheetJS desde `vendor/` sin errores.
+2. Hacer las pruebas de la sección 3 (empleado y reportes).
+
+### Para las notificaciones
+
+El detalle de cada paso está en `supabase/functions/enviar-alertas/README.md`.
+
+1. **Correr la 15.1 y la 15.2** de `supabase/schema.sql` (tabla `SuscripcionesPush`,
+   políticas y permiso de columna en `Alertas`). Sin esto, activar una alerta funciona, pero
+   falla guardar la suscripción y falla cerrar el aviso de la app.
+2. **Crear una clave secret nueva** en Supabase (`sb_secret_...`). Ver el punto 4.1: es lo
+   que puede trabar todo el bloque.
+3. **Generar las claves VAPID** con `npx web-push generate-vapid-keys`.
+4. **Pegar la pública** en `PUBLIC_VAPID` de `src/environments/environment.ts`, commit y
+   deploy.
+5. **Cargar los secrets** `VAPID_PUBLIC`, `VAPID_SECRET` y `VAPID_MAIL` en la función.
+6. **Desplegar la función** `enviar-alertas` con la verificación de JWT apagada.
+7. **Habilitar `pg_cron` y `pg_net`**, guardar en Vault `project_url` y `secret_key` (a
+   mano, no van al repo) y **correr la 15.3 y la 15.4**.
+8. **Probar la función a mano** con `curl` (paso 6 del README) y hacer las pruebas de la
+   sección 3 (notificaciones).
+
+---
+
+## 2. Qué quedó hecho
 
 ### Bloque A · Empleado (`feat/empleado`)
 
@@ -21,20 +52,30 @@ quedan para la prueba a mano.
 | `204fbc1` | `services/escaner.ts` (único archivo que importa `html5-qrcode` 2.3.8), `services/validacion.ts`, `interfaces/validacion.ts` |
 | `0db4a01` | `pages/empleado-validacion`, la ruta `/empleado` apuntando ahí y el placeholder `pages/empleado` borrado |
 
-### Bloque B · Reportes (`feat/reportes`)
+### Bloques B y C · Reportes (`feat/reportes`)
 
 | Commit | Qué |
 |---|---|
 | `900f552` | `services/reportes.ts`, `interfaces/reporte.ts` y `reportes.spec.ts` (9 tests de D-56) |
-| `3dabaa7` | `services/exportaciones.ts` (único archivo de los reportes que importa `xlsx` y `jspdf`) y SheetJS 0.20.3 instalado |
-| `9698d86` | `components/grafico-barras`, `pages/admin-reportes`, la ruta `/admin/reportes` y el acceso "Reportes" habilitado en el panel |
-| `6362ba7` | D-55 y D-56 en `docs/decisiones.md`; cuatro filas de D-56 en la sección 11 de `docs/requerimientos.md` |
+| `3dabaa7` | `services/exportaciones.ts` (único archivo de los reportes que importa `xlsx` y `jspdf`) |
+| `9698d86` | `components/grafico-barras`, `pages/admin-reportes`, la ruta `/admin/reportes` y el acceso "Reportes" del panel |
+| `6362ba7` | D-55 y D-56 en `docs/decisiones.md` y en la sección 11 de `docs/requerimientos.md` |
+| `55631ea` | SheetJS 0.20.3 en `vendor/xlsx-0.20.3.tgz`, instalado con `file:vendor/...` |
+| `483976a` | Aviso del presupuesto inicial en 550 kB |
+| `663077e` | Reportes con `.in()` y aviso por el límite de 1000 filas; D-57 |
+| `a1c7186` | Reglas del rango en `validaciones.md` 3.13 y la tarjeta "Compras" en D-56 |
 
-No hubo SQL nuevo en el bloque B y no quedó ningún 🟡 o 🔴 sin aprobar.
+### Bloque D · Notificaciones (`feat/notificaciones`)
+
+| Commit | Qué |
+|---|---|
+| `217636b` | Sección 15 de `supabase/schema.sql` (**sin correr**) |
+| `90161a2` | `supabase/functions/enviar-alertas/index.ts` y su `README.md` (**sin desplegar**) |
+| `575fc6c` | `services/notificaciones.ts`, `services/alertas.ts`, `interfaces/alerta.ts`, la sección Próximamente en la cartelera, la alerta en el detalle de la película, el aviso en el `App` y `PUBLIC_VAPID` vacío en `environment.ts` |
 
 ---
 
-## 2. Qué hay que probar a mano
+## 3. Qué hay que probar a mano
 
 ### Empleado (en Vercel, desde un celular, logueado como empleado)
 
@@ -66,26 +107,132 @@ No hubo SQL nuevo en el bloque B y no quedó ningún 🟡 o 🔴 sin aprobar.
 - [ ] El selector Semana / Mes cambia el agrupamiento de las películas más vistas.
 - [ ] El primer producto del gráfico de candy va destacado en dorado.
 - [ ] En el celular: todo en una columna y la tabla con su propio scroll horizontal.
+- [ ] Los reportes siguen dando lo mismo después del cambio a `.in()` (commit `663077e`).
+
+### Notificaciones (en Vercel, después de los pasos de la sección 1)
+
+- [ ] La cartelera muestra la sección "Próximamente" con las películas visibles de estreno
+      futuro, y cada una lleva a su detalle.
+- [ ] En el detalle de una película cuya venta no abrió, sin sesión: aparece el link "Ingresá".
+- [ ] Con sesión: "Avisarme cuando salgan a la venta" guarda la alerta y pregunta "¿Querés
+      que te avisemos con una notificación?".
+- [ ] "Sí, avisame" muestra el cartel del navegador; al aceptar, hay una fila en
+      `SuscripcionesPush` con ese `usuario_id`.
+- [ ] "Solo en la app" no pide ningún permiso y la alerta queda guardada igual.
+- [ ] Bloquear el permiso → mensaje "No diste permiso…" y la alerta sigue activa.
+- [ ] Recargar el detalle → sigue diciendo "Alerta activada".
+- [ ] Activar una segunda alerta en el mismo dispositivo → no vuelve a preguntar ni duplica
+      la suscripción.
+- [ ] Con `ng serve`: "Sí, avisame" muestra un error claro y no queda trabado.
+- [ ] Llamar a la función a mano → llega la notificación; tocarla abre el detalle.
+- [ ] Usuario con alerta y sin suscripción, con la venta abierta: al iniciar sesión (o
+      recargar con sesión) ve el aviso "Ya están a la venta" con el link. "Cerrar" lo saca y
+      no vuelve a aparecer.
+- [ ] La función con la clave anon → pedido rechazado.
 
 ---
 
-## 3. Para decidir
+## 4. Para decidir o confirmar
 
-### 3.1 `npm` bloquea el tarball de SheetJS
+### 4.1 La Edge Function necesita una clave secret nueva
 
-**Qué:** la máquina tiene npm 12, que por defecto no instala paquetes desde una URL
-(`allow-remote = none`). `npm i https://cdn.sheetjs.com/...` falló con `EALLOWREMOTE`. Lo
-instalé con `--allow-remote=root` solo en ese comando, porque D-53 pide ese origen. No
-toqué ninguna configuración de npm.
+**Qué:** pediste que la función acepte solo la clave secret. La documentación de
+`@supabase/server` dice que `withSupabase({ auth: 'secret' })` valida el encabezado `apikey`
+contra las claves nuevas (`sb_secret_...`) y que **no admite las claves viejas** (la
+`service_role` JWT). El proyecto usa la clave anon vieja (D-10).
 
-**Por qué importa:** quien clone el repo con npm 12 puede encontrarse con el mismo error al
-hacer `npm install`. `package.json` declara `npm@11.19.0`, y falta confirmar que el build
-de Vercel instala bien.
+**Qué hice:** escribí la función así y lo documenté en su README. No lo pude probar.
 
-**Propuesta:** probar el deploy de la rama en Vercel. Si falla, agregar un `.npmrc` al repo
-con `allow-remote=root`, o usar el `xlsx` del registro de npm (versión 0.18.5, más vieja).
+**Qué hay que confirmar:** que el proyecto permite crear una secret key nueva sin cambiar la
+anon del front. Si no se puede, la función no va a aceptar ningún pedido y hay que decidir
+otra forma de protegerla.
 
-### 3.2 El bundle inicial · RESUELTO (06/10)
+**Además:** `CLAUDE.md` dice "la `service_role` / secret no se usa en ningún lado". Acá se
+usa, del lado del servidor: en Vault (para que Cron llame a la función) y dentro de la
+función (`ctx.supabaseAdmin`, que no pasa por RLS). No está en el repo ni en el front.
+Conviene actualizar esa frase y registrar el cambio en D-52 o en una decisión nueva; no lo
+toqué porque es una regla tuya.
+
+### 4.2 Pasos de Cron que la documentación no dejó claros
+
+Seguí la guía "Scheduling Edge Functions". Estas partes no salen de ahí:
+
+- **La hora es UTC.** La guía no lo dice. Usé `'0 12 * * *'` (12:00 UTC = 09:00 de
+  Argentina) porque `pg_cron` trabaja en UTC por defecto, pero no lo vi confirmado en la
+  documentación de Supabase. Se comprueba mirando `start_time` en `cron.job_run_details`
+  después de la primera ejecución.
+- **Cómo se habilitan `pg_cron` y `pg_net`.** La guía dice que hay que habilitarlas, sin el
+  paso exacto. En el README puse el panel (Database → Extensions); no escribí ningún
+  `create extension` en `schema.sql`.
+- **La clave que manda Cron.** El ejemplo oficial guarda en Vault la clave *publishable* y la
+  manda en `apikey`. Usé el mismo encabezado con la *secret*, guardada como `secret_key`.
+- **Correr `cron.schedule` dos veces.** No verifiqué si actualiza el trabajo o crea otro con
+  el mismo nombre. Corrélo una sola vez; si hay que cambiarlo, antes
+  `select cron.unschedule('enviar-alertas-diario');`.
+
+Las rutas del panel de Supabase que nombra el README (API Keys, Secrets, Extensions) las
+escribí de memoria: pueden llamarse distinto.
+
+### 4.3 Construí la sección Próximamente y la activación de la alerta
+
+**Qué encontré:** de Próximamente y de Alertas existía solo la base: la tabla `Alertas` con
+sus políticas. No había sección Próximamente (la cartelera mostraba solo las estrenadas),
+ni servicio de alertas, ni botón para activarlas.
+
+**Qué hice**, con lo mínimo para que el circuito se pueda usar:
+
+- **Cartelera:** una sección "Próximamente" al final, con póster, nombre y fecha de estreno,
+  que lleva al detalle. Reusa las clases de la grilla.
+- **Detalle de la película:** mientras la venta no abrió, una caja con "Avisarme cuando
+  salgan a la venta". Sin sesión, un link a ingresar.
+- **No hay "quitar alerta":** ningún mail lo pide. La política de borrado ya existe si lo
+  querés.
+
+Es diseño de pantallas, que decidís vos: revisalo y decime si lo querés en otro lugar.
+
+### 4.4 Cosas de JavaScript que no son del catálogo
+
+Las usé en `services/notificaciones.ts` porque sin ellas la pantalla se podía quedar
+esperando para siempre. No son de Angular ni de Supabase, pero conviene que las tengas
+vistas para el oral:
+
+- **`setTimeout` y `Promise.race`:** `requestSubscription` espera al service worker. Si
+  todavía no tomó el control de la página (primera visita, o `ng serve`), no responde nunca.
+  Con un límite de 30 segundos, el botón muestra un error en vez de quedar en "Activando…".
+  Si el usuario tarda más de 30 segundos en contestar el cartel del navegador, ve ese error
+  aunque después acepte; el segundo intento funciona.
+- **`SwPush.subscription` con `subscribe()`:** para saber si el dispositivo ya está
+  suscripto. Es un observable, como el de `HttpClient` de la clase 3, pasado a promesa.
+- **`DOMException` con `name === 'NotAllowedError'`:** para distinguir "no dio permiso" de
+  cualquier otro error.
+
+Si alguna te parece 🟡, decime y busco otra forma.
+
+### 4.5 Comportamientos a tener en cuenta
+
+- **Un dispositivo, dos cuentas.** `endpoint` es único. Si en el mismo navegador se suscribe
+  un segundo usuario, el insert falla y ve "Este dispositivo ya recibe notificaciones de
+  otra cuenta"; su aviso le llega dentro de la app.
+- **Aviso en la app antes de las 09:00.** Si el usuario entra el día que abre la venta
+  antes de que corra Cron, ve el aviso en la app. Si lo cierra, la alerta queda notificada y
+  el push ya no sale.
+- **El admin y `Alertas`.** El `revoke update` + `grant update (notificada)` de la 15.2
+  también limita al admin a esa columna. Hoy ninguna pantalla del admin edita alertas.
+- **`.update({ notificada: true })`** va con un objeto escrito en el lugar, sin una interfaz
+  `AlertaPorModificar`. Es un solo campo; si querés la interfaz, la agrego.
+
+### 4.6 SheetJS desde `vendor/` · RESUELTO, con una salvedad
+
+`package.json` apunta a `file:vendor/xlsx-0.20.3.tgz` (2,4 MB, commiteado). `npm install`
+terminó sin flags y sin errores después de borrar `node_modules`.
+
+**La salvedad:** el borrado no fue completo. Había un `ng serve` corriendo desde las 12:16
+que tenía tomados cuatro archivos binarios (`esbuild`, `lmdb`, `msgpackr-extract`,
+`rolldown`), y Windows no los dejó borrar. Todo lo demás, `xlsx` incluido, se reinstaló de
+cero. No cerré ese proceso porque no lo abrí yo. Para una prueba completa: cerrar `ng
+serve`, borrar `node_modules` y correr `npm install`.
+
+### 4.7 El bundle inicial · RESUELTO
 
 El aviso del presupuesto inicial pasó de 500 kB a 550 kB en `angular.json`. El bundle
 inicial pesa 500,64 kB (128 kB comprimido).
@@ -105,54 +252,23 @@ Los tamaños por paquete salen del `stats.json` y suman más que el total (626 c
 no sé por qué: sirven como proporción, no como medida exacta. El inicial es casi todo
 framework y cliente de Supabase: no hay nada propio para sacar.
 
-### 3.3 Entradas e ItemsCandy se leen enteras
+Esa medición es anterior al bloque D. El bloque D suma al inicial el servicio de alertas y
+el aviso del `App`; el build sigue sin avisos.
 
-**Qué:** D-55 dice traer las cuatro tablas "del rango". `Entradas` e `ItemsCandy` no tienen
-fecha, así que solo `Compras` y `Funciones` se filtran con `.gte()` / `.lt()`; las otras dos
-se leen completas y se cruzan en memoria. Las películas más vistas leen además todas las
-`Compras`, porque una entrada del rango se pudo comprar antes (preventa).
+### 4.8 Detalles del bloque del empleado (sin cambios desde el resumen anterior)
 
-**Riesgo:** Supabase devuelve como máximo 1000 filas por consulta si no se configura otra
-cosa. Con más de 1000 entradas los reportes quedarían incompletos sin avisar.
-
-**Propuesta:** para el TP alcanza. Si se quiere cerrar, filtrar por los ids de las compras
-con `.in()`, que es 🟡 y no está aprobado.
-
-### 3.4 Reglas que agregué al rango de fechas del reporte
-
-`validaciones.md` 3.13 pide solo "desde no posterior a hasta". Sumé dos, por el principio 3
-(toda fecha tiene rango):
-
-- Ninguna de las dos fechas puede ser posterior a hoy.
-- El rango no puede superar los 366 días. El validador `rangoDeFechas` que ya existía exige
-  un máximo.
-
-Los desplegables de año ofrecen el año pasado y el actual. Si te parecen bien, falta
-agregarlas a `validaciones.md` 3.13.
-
-### 3.5 La tarjeta "Compras" cuenta las no canceladas
-
-D-56 no la define. Usé el mismo criterio que "Entradas vendidas". "Facturado" sí incluye las
-canceladas, así que en un rango con cancelaciones las dos tarjetas no hablan de las mismas
-compras.
-
-### 3.6 Detalles del bloque del empleado
-
-- **`ResultadoValidacion`:** el pedido decía que `validar()` devuelve `ResultadoAccion`, pero
-  la pantalla necesita el detalle. Devuelve `ResultadoValidacion`, que extiende
-  `ResultadoAccion` con `detalle`.
+- **`ResultadoValidacion`:** `validar()` devuelve un `ResultadoAccion` extendido con
+  `detalle`, porque la pantalla lo necesita.
 - **Candy sumado por producto:** si un producto está pagado y además canjeado, el empleado
   ve una sola línea con la cantidad total a entregar.
-- **`--color-exito`:** agregué esa variable a `:root` en `src/styles.css` para la tarjeta
-  verde. Es el único color nuevo.
-- **`pausar()` y `reanudar()` en `Escaner`:** el pedido nombraba `iniciar` y `detener`; la
-  pausa después de leer necesitaba esos dos métodos.
+- **`--color-exito`:** variable nueva en `:root` de `src/styles.css`, para la tarjeta verde.
+- **`pausar()` y `reanudar()` en `Escaner`**, además de `iniciar` y `detener`.
 - **Sin recuadro de enfoque:** la cámara lee el QR en toda la imagen. No configuré `qrbox`.
 - **SQL (ya corrido):** `validar_compra` usa `es_empleado() is not true`, tiene un
   `revoke execute ... from public, anon` antes del `grant` y un mensaje extra para un
   `p_tipo` inválido.
 
-### 3.7 Autor de los commits
+### 4.9 Autor de los commits
 
 Git no tiene `user.name` ni `user.email` configurados y usa una identidad automática
 (`migueljosecaputo@buenosaires.gob.ar`). Todos los commits de hoy salieron con ese autor.
