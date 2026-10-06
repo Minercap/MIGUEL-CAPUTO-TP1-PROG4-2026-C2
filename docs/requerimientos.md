@@ -384,6 +384,7 @@ adelante sin cambios estructurales.
 | D-52 | Alerta de Próximamente | Notificación push el día que abre la venta, enviada por una Edge Function programada; aviso en la app para quien no dio permiso |
 | D-56 | Facturación por día | Lo cobrado con el medio de pago (total − crédito usado), por día de compra en hora argentina. Incluye las compras canceladas: la cancelación da crédito, no devuelve dinero |
 | D-56 | Entradas vendidas por día | Entradas de compras no canceladas, por día de compra |
+| D-56 | Compras del reporte | Compras no canceladas, igual que las entradas vendidas |
 | D-56 | Películas más vistas | Entradas de compras no canceladas cuya función ya ocurrió, por semana (lunes a domingo) o mes de la función |
 | D-56 | Producto más vendido | Suma de cantidades en compras no canceladas, sin los canjes. Un combo cuenta como un producto |
 | R-02 | Comprador anónimo | Sin cupón, sin crédito y sin puntos |

@@ -1458,6 +1458,9 @@ ids de las compras del rango, con `.in()` (D-57).
   la cancelación no devuelve dinero (R-30): la plata entró ese día. El crédito usado no
   cuenta, porque esa plata ya se facturó en la compra original.
 - **Entradas vendidas por día:** entradas de compras no canceladas, por día de compra.
+- **Compras (la tarjeta de totales y la columna de la tabla):** cuenta las compras no
+  canceladas, con el mismo criterio que las entradas vendidas. En un rango con
+  cancelaciones, "Facturado" incluye plata de compras que "Compras" no cuenta.
 - **Películas más vistas por semana y por mes:** entradas de compras no canceladas cuya
   función ya ocurrió, agrupadas por la semana (lunes a domingo) o el mes de la función.
 - **Producto más vendido:** suma de `cantidad` en `ItemsCandy` de compras no canceladas, sin

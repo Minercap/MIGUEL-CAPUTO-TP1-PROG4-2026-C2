@@ -200,7 +200,7 @@ descartan. En la base solo queda el medio de pago elegido.
 | Campo | Reglas |
 |---|---|
 | Texto del buscador | Opcional · máximo 100 · `trim` |
-| Rango de fechas del reporte | `fecha` · desde no posterior a hasta |
+| Rango de fechas del reporte | `fecha` · desde no posterior a hasta · ninguna de las dos posterior a hoy · rango máximo de 366 días |
 
 ---
 
