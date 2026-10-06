@@ -382,6 +382,10 @@ adelante sin cambios estructurales.
 | D-47 | Orden del total | Precios, canjes, un solo cupón (el de mayor porcentaje), crédito y el resto con el medio de pago. Los puntos se generan por lo pagado con el medio. Si no queda nada para pagar, no se pide medio de pago |
 | D-48 | Cancelación | Hasta 2 horas antes, sin la entrada validada y sin el candy retirado. Acredita el total como crédito, devuelve los puntos canjeados y descuenta los generados |
 | D-52 | Alerta de Próximamente | Notificación push el día que abre la venta, enviada por una Edge Function programada; aviso en la app para quien no dio permiso |
+| D-56 | Facturación por día | Lo cobrado con el medio de pago (total − crédito usado), por día de compra en hora argentina. Incluye las compras canceladas: la cancelación da crédito, no devuelve dinero |
+| D-56 | Entradas vendidas por día | Entradas de compras no canceladas, por día de compra |
+| D-56 | Películas más vistas | Entradas de compras no canceladas cuya función ya ocurrió, por semana (lunes a domingo) o mes de la función |
+| D-56 | Producto más vendido | Suma de cantidades en compras no canceladas, sin los canjes. Un combo cuenta como un producto |
 | R-02 | Comprador anónimo | Sin cupón, sin crédito y sin puntos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.

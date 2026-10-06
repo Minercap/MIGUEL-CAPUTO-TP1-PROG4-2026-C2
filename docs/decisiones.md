@@ -1426,3 +1426,48 @@ simples, y se aparta del estilo propio de la app (R-39).
 máximo. Usa el bindeo de estilo de la clase 8.
 
 **Clase de origen:** 2 (`@for`) + 8 (`[style]`). **Requisito:** R-37.
+
+---
+
+## D-55 · Los reportes se calculan en el front · 06/10
+
+**Elegido:** `services/reportes.ts` trae Compras, Entradas, ItemsCandy y Funciones con
+`select` y los filtros `.gte()` / `.lt()` (ya aprobados en D-29) y agrupa en TypeScript. El
+admin tiene lectura por RLS (D-24). Las cuentas son funciones sueltas (`agruparFacturacion`,
+`agruparMasVistas`, `agruparProductos`), probadas en `reportes.spec.ts`.
+
+**Descartado:** vistas de Postgres por reporte. Son 🟡 aunque ya se usó una en D-31; con el
+volumen del TP, agrupar en memoria alcanza, y cada cuenta se lee en un solo archivo.
+
+**Cómo lo explico en el oral:** el admin puede leer las compras; el servicio filtra el rango
+y agrupa por día, por semana o por producto.
+
+**Lo que cuesta:** el filtro de fechas va sobre `Compras` (por `creado_en`) y sobre
+`Funciones` (por `fecha_hora`). `Entradas` e `ItemsCandy` no tienen fecha, así que se leen
+enteras y se cruzan en memoria con las compras del rango.
+
+**Clase de origen:** 3 (servicios) + 6 (select con filtros). **Requisito:** R-35 a R-37.
+
+---
+
+## D-56 · Qué cuenta cada reporte · 06/10
+
+**Elegido:**
+- **Facturación por día:** lo cobrado con el medio de pago (`total − credito_usado`),
+  agrupado por el día de la compra en hora argentina. Incluye las compras canceladas, porque
+  la cancelación no devuelve dinero (R-30): la plata entró ese día. El crédito usado no
+  cuenta, porque esa plata ya se facturó en la compra original.
+- **Entradas vendidas por día:** entradas de compras no canceladas, por día de compra.
+- **Películas más vistas por semana y por mes:** entradas de compras no canceladas cuya
+  función ya ocurrió, agrupadas por la semana (lunes a domingo) o el mes de la función.
+- **Producto más vendido:** suma de `cantidad` en `ItemsCandy` de compras no canceladas, sin
+  contar los canjes (`es_canje`), porque un canje no es una venta. Los combos cuentan como
+  un producto (D-40).
+
+**Descartado:** restar de la facturación las compras canceladas. Mostraría menos plata de
+la que entró, y el crédito que se acreditó se descuenta solo cuando se usa en otra compra.
+
+**Cómo lo explico en el oral:** facturar es cobrar. Una compra cancelada se cobró y se
+convirtió en crédito; cuando ese crédito paga otra compra, esa parte no se vuelve a contar.
+
+**Clase de origen:** interpretación adoptada. **Requisito:** R-35 a R-37.
