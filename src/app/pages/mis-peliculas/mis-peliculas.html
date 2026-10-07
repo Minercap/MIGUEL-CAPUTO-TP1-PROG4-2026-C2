@@ -1,0 +1,34 @@
+<h1>Mis películas</h1>
+
+@if (cargando()) {
+  <p>Cargando tus películas…</p>
+} @else if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+} @else {
+  <!-- Una tarjeta por función vista, la más reciente primero (D-58). -->
+  <ul class="grilla">
+    @for (v of vistas(); track v.funcion_id) {
+      <li class="tarjeta">
+        <a [routerLink]="['/pelicula', v.pelicula_id]">
+          <img class="poster" [src]="v.imagen_url" [alt]="'Póster de ' + v.nombre" />
+        </a>
+        <strong class="nombre">{{ v.nombre }}</strong>
+        <!-- '-0300': en hora argentina (D-35). -->
+        <span class="dato">
+          {{ v.fecha_hora | date: 'dd/MM/yyyy' : '-0300' }} ·
+          {{ v.fecha_hora | date: 'HH:mm' : '-0300' }} hs
+        </span>
+        @if (v.estrellas !== null) {
+          <span class="estrellas" [attr.aria-label]="'Tu calificación: ' + v.estrellas + ' de 5'">
+            {{ v.estrellas | estrellas }}
+          </span>
+        } @else {
+          <!-- Lleva al detalle, donde está el formulario de la reseña. -->
+          <a class="calificar" [routerLink]="['/pelicula', v.pelicula_id]">Calificar</a>
+        }
+      </li>
+    } @empty {
+      <li class="vacio">Todavía no viste ninguna película en Olympia.</li>
+    }
+  </ul>
+}

@@ -1,0 +1,73 @@
+/* Solo estructura. Todos los colores y las fuentes salen de las variables
+   de :root (src/styles.css, D-33). */
+
+h1 {
+  font-family: var(--fuente-titulos);
+}
+
+.error {
+  color: var(--color-error);
+}
+
+/* Grilla de pósters: 4 columnas en escritorio, 2 en el celular. */
+.grilla {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tarjeta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+/* Todos los pósters con la misma proporción, como en la cartelera. */
+.poster {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 0.25rem;
+}
+
+.nombre {
+  font-family: var(--fuente-titulos);
+  font-size: 1.1rem;
+}
+
+.dato {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.estrellas {
+  color: var(--color-acento-dorado);
+  letter-spacing: 0.1rem;
+}
+
+/* Un link con forma de botón. */
+.calificar {
+  align-self: flex-start;
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--color-acento-dorado);
+  border-radius: 1rem;
+  text-decoration: none;
+}
+
+.vacio {
+  grid-column: 1 / -1;
+  color: var(--color-texto-suave);
+}
+
+@media (max-width: 600px) {
+  .grilla {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

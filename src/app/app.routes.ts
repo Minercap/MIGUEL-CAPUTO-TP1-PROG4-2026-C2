@@ -39,6 +39,13 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/mi-cuenta/mi-cuenta').then((m) => m.MiCuenta),
   },
   {
+    path: 'mis-peliculas',
+    title: 'Mis películas · Olympia Cinema',
+    canActivate: [logueadoGuard],
+    loadComponent: () =>
+      import('./pages/mis-peliculas/mis-peliculas').then((m) => m.MisPeliculas),
+  },
+  {
     path: 'empleado',
     title: 'Validación · Olympia Cinema',
     canActivate: [empleadoGuard],
