@@ -182,3 +182,14 @@ h2 {
     max-width: none;
   }
 }
+
+/* ---------- Promedio de reseñas (R-09) ---------- */
+
+.calificacion {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+.estrellas {
+  color: var(--color-acento-dorado);
+}

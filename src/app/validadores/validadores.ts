@@ -436,6 +436,13 @@ export function diaParaMostrar(fecha: Date): string {
   return `${dia}/${mes}/${fecha.getFullYear()}`;
 }
 
+// Un promedio con un decimal y coma, como se escribe en castellano: 4.25
+// pasa a '4,3'. El pipe number de Angular pondría punto, porque la app no
+// tiene cargado el idioma español.
+export function unDecimal(numero: number): string {
+  return numero.toFixed(1).replace('.', ',');
+}
+
 // El camino inverso, para cargar un formulario de edición: de 'AAAA-MM-DD'
 // a las tres partes. Number saca los ceros de adelante ('05' pasa a '5').
 export function textoAFecha(texto: string): FechaPartes {

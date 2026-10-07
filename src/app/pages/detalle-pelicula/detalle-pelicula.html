@@ -123,10 +123,112 @@
     }
   </section>
 
+  <!-- Reseñas (R-08, R-09, D-59): el promedio, el formulario o la reseña
+       propia, y la lista. Se ven sin sesión, antes de comprar. -->
   <section class="resenias">
     <h2>Reseñas</h2>
-    <!-- Se construye mañana, con el bloque de reseñas (R-08, R-09): el
-         promedio de estrellas, la lista de comentarios y el formulario
-         para dejar una. -->
+
+    @if (errorResenias()) {
+      <p class="error" role="alert">{{ errorResenias() }}</p>
+    } @else {
+      @if (promedio(); as pr) {
+        <!-- El pipe estrellas (clase 8) redondea el promedio; el número va
+             con un decimal. -->
+        <p class="promedio">
+          <span class="estrellas" aria-hidden="true">{{ pr.promedio | estrellas }}</span>
+          <strong>{{ unDecimal(pr.promedio) }}</strong>
+          <span class="cantidad">
+            ({{ pr.cantidad }} {{ pr.cantidad === 1 ? 'reseña' : 'reseñas' }})
+          </span>
+        </p>
+      }
+
+      @if (!auth.usuarioActual()) {
+        <p><a routerLink="/login">Iniciá sesión</a> para dejar tu reseña.</p>
+      } @else if (miResenia(); as mia) {
+        <div class="mia">
+          <h3>Tu reseña</h3>
+          <p class="estrellas" [attr.aria-label]="mia.estrellas + ' de 5 estrellas'">
+            {{ mia.estrellas | estrellas }}
+          </p>
+          @if (mia.comentario) {
+            <p class="comentario">{{ mia.comentario }}</p>
+          }
+          @if (avisoResenia()) {
+            <p class="error" role="alert">{{ avisoResenia() }}</p>
+          }
+        </div>
+      } @else {
+        <form class="form-resenia" [formGroup]="formResenia" (ngSubmit)="enviarResenia()">
+          <h3>Dejá tu reseña</h3>
+
+          <!-- Cinco botones en lugar de un input: cada uno escribe su
+               número en el control "estrellas". Se prenden hasta el
+               elegido. -->
+          <div class="elegir-estrellas" role="group" aria-label="Calificación">
+            @for (n of [1, 2, 3, 4, 5]; track n) {
+              <button
+                type="button"
+                class="estrella"
+                [class.prendida]="(estrellas?.value ?? 0) >= n"
+                [attr.aria-label]="n + (n === 1 ? ' estrella' : ' estrellas')"
+                [attr.aria-pressed]="estrellas?.value === n"
+                (click)="elegirEstrellas(n)"
+              >
+                ★
+              </button>
+            }
+          </div>
+          @if (estrellas?.touched && estrellas?.errors) {
+            <small class="error">Elegí de 1 a 5 estrellas.</small>
+          }
+
+          <label for="comentario">Comentario (opcional)</label>
+          <textarea
+            id="comentario"
+            rows="3"
+            formControlName="comentario"
+            [attr.maxlength]="maximoComentario"
+          ></textarea>
+          <!-- Contador: el largo de lo escrito sobre el máximo. -->
+          <small>{{ comentario?.value?.length ?? 0 }} / {{ maximoComentario }}</small>
+          @if (comentario?.touched) {
+            @if (comentario?.errors?.['largo']) {
+              <small class="error">
+                El comentario puede tener hasta {{ maximoComentario }} caracteres.
+              </small>
+            } @else if (comentario?.errors?.['textoLibre']) {
+              <small class="error">El comentario tiene caracteres que no se pueden mostrar.</small>
+            }
+          }
+
+          @if (errorResenia()) {
+            <p class="error" role="alert">{{ errorResenia() }}</p>
+          }
+
+          <button type="submit" [disabled]="formResenia.invalid || enviandoResenia()">
+            {{ enviandoResenia() ? 'Guardando…' : 'Publicar reseña' }}
+          </button>
+        </form>
+      }
+
+      <!-- De la más nueva a la más vieja. Sin autor (D-59). '-0300': la
+           fecha en hora argentina (D-35). -->
+      <ul class="lista-resenias">
+        @for (r of resenias(); track r.id) {
+          <li>
+            <span class="estrellas" [attr.aria-label]="r.estrellas + ' de 5 estrellas'">
+              {{ r.estrellas | estrellas }}
+            </span>
+            <small class="fecha">{{ r.creado_en | date: 'dd/MM/yyyy' : '-0300' }}</small>
+            @if (r.comentario) {
+              <p class="comentario">{{ r.comentario }}</p>
+            }
+          </li>
+        } @empty {
+          <li class="sin-resenias">Todavía no hay reseñas.</li>
+        }
+      </ul>
+    }
   </section>
 }

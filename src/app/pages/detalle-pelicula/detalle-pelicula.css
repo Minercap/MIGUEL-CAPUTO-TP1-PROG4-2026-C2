@@ -156,3 +156,114 @@ h2 {
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+/* ---------- Reseñas ---------- */
+
+.resenias {
+  margin-top: 2rem;
+}
+
+.estrellas {
+  color: var(--color-acento-dorado);
+  letter-spacing: 0.1rem;
+}
+
+.promedio {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 1.25rem;
+}
+
+.cantidad,
+.fecha {
+  color: var(--color-texto-suave);
+  font-size: 0.9rem;
+}
+
+/* El formulario y "Tu reseña" van en una caja, como la alerta. */
+.form-resenia,
+.mia {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 32rem;
+  margin: 1rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+.form-resenia h3,
+.mia h3 {
+  margin: 0;
+  font-family: var(--fuente-titulos);
+}
+
+.mia p {
+  margin: 0;
+}
+
+.elegir-estrellas {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.estrella {
+  padding: 0 0.25rem;
+  border: none;
+  background: transparent;
+  color: var(--color-texto-suave);
+  font-size: 1.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Las estrellas hasta la elegida. */
+.estrella.prendida {
+  color: var(--color-acento-dorado);
+}
+
+.form-resenia textarea {
+  padding: 0.5rem;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: 0.25rem;
+  background: var(--color-fondo);
+  color: var(--color-texto);
+  font-family: var(--fuente-texto);
+  resize: vertical;
+}
+
+.form-resenia button[type='submit'] {
+  align-self: flex-start;
+}
+
+.lista-resenias {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lista-resenias li {
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--color-superficie);
+}
+
+.lista-resenias .fecha {
+  margin-left: 0.5rem;
+}
+
+/* pre-line respeta los saltos de línea del comentario. */
+.comentario {
+  margin: 0.25rem 0 0;
+  white-space: pre-line;
+  overflow-wrap: anywhere;
+}
+
+.sin-resenias {
+  color: var(--color-texto-suave);
+}

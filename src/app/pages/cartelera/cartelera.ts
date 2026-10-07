@@ -2,8 +2,12 @@ import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Cartelera as CarteleraSrv } from '../../services/cartelera';
+import { Resenias } from '../../services/resenias';
+import { EstrellasPipe } from '../../pipes/estrellas-pipe';
+import { unDecimal } from '../../validadores/validadores';
 import { PeliculaDeCartelera } from '../../interfaces/cartelera';
 import { Genero, Pelicula } from '../../interfaces/pelicula';
+import { PromedioResenias } from '../../interfaces/resenia';
 
 // Página principal (R-05): la cartelera, sin login. Arriba las 3 más
 // vendidas (R-06) y abajo todas las películas en cartelera, con buscador
@@ -11,13 +15,14 @@ import { Genero, Pelicula } from '../../interfaces/pelicula';
 // El servicio y la página se llaman igual, así que el servicio se importa
 // con otro nombre (CarteleraSrv).
 @Component({
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, EstrellasPipe],
   selector: 'app-cartelera',
   styleUrl: './cartelera.css',
   templateUrl: './cartelera.html',
 })
 export class Cartelera implements OnInit {
   private carteleraSrv = inject(CarteleraSrv);
+  private reseniasSrv = inject(Resenias);
 
   // Estado que lee el template: va en signals (D-03).
   cargando = signal(true);
@@ -44,7 +49,17 @@ export class Cartelera implements OnInit {
   proximamente = signal<Pelicula[]>([]);
   errorProximamente = signal<string | null>(null);
 
+  // El promedio de reseñas de cada película que tiene alguna (R-09). Si
+  // falla, las tarjetas se muestran sin promedio: no es un error que
+  // impida usar la cartelera.
+  promedios = signal<PromedioResenias[]>([]);
+  // El formato del promedio ('4,3'), para usarlo en el template.
+  unDecimal = unDecimal;
+
   async ngOnInit() {
+    const promedios = await this.reseniasSrv.traerPromedios();
+    if (promedios.datos) this.promedios.set(promedios.datos);
+
     // Próximamente se carga primero y por separado: se muestra aunque no
     // haya ninguna película en cartelera, o aunque la cartelera falle.
     const proximas = await this.carteleraSrv.traerProximamente();
@@ -75,6 +90,11 @@ export class Cartelera implements OnInit {
     }
 
     this.cargando.set(false);
+  }
+
+  // El promedio de una película, o null si no tiene reseñas.
+  promedioDe(peliculaId: number): PromedioResenias | null {
+    return this.promedios().find((p) => p.pelicula_id === peliculaId) ?? null;
   }
 
   // Se ejecuta con cada tecla en el buscador. El texto se toma del evento,

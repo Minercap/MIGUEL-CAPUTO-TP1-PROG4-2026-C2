@@ -28,6 +28,8 @@
 --  14. Validación del empleado: la función validar_compra (D-51)
 --  15. Notificaciones de Próximamente: SuscripcionesPush, permiso para
 --      marcar la alerta propia y programación diaria (D-52)
+--  16. Reseñas: largo del comentario, sin edición ni borrado, y el log
+--      de la reseña del cliente (D-59)
 -- ============================================================
 
 -- ============================================================
@@ -4034,6 +4036,77 @@ select jobid, status, return_message, start_time
 from cron.job_run_details
 order by start_time desc
 limit 5;
+
+
+-- ============================================================
+-- 16. RESEÑAS  (R-08, R-09, decisión D-59)
+-- ============================================================
+-- La tabla Resenias y sus políticas existen desde la sección 1 y 3:
+-- lectura pública y escritura solo de la propia (usuario_id = auth.uid()).
+-- Eso alcanza para la pantalla. Esta sección suma lo que falta para que
+-- la base cumpla lo mismo que el formulario:
+--
+--   16.1 Largo del comentario (docs/validaciones.md, 3.9)
+--   16.2 Sin edición ni borrado (D-59)
+--   16.3 El cliente registra su reseña en el log (R-38)
+--   16.4 Verificación
+--
+-- SIN CORRER. Se corre entera, de una vez.
+
+-- ---------- 16.1 Largo del comentario ----------
+-- Opcional: null, o de 1 a 280 caracteres sin contar los espacios de los
+-- extremos. El front guarda null cuando queda vacío, así que un texto de
+-- solo espacios no puede llegar por la app; el check lo frena si llega
+-- desde la consola.
+--
+-- Antes de agregarlo: si alguna reseña ya lo rompe, el alter falla. Esta
+-- consulta tiene que devolver 0 filas.
+select id, char_length(comentario) as largo
+from public."Resenias"
+where comentario is not null
+  and char_length(trim(comentario)) not between 1 and 280;
+
+alter table public."Resenias"
+  add constraint resenias_comentario_largo
+    check (comentario is null or char_length(trim(comentario)) between 1 and 280);
+
+-- ---------- 16.2 Sin edición ni borrado ----------
+-- D-59: una reseña no se edita ni se borra. Las políticas de update y de
+-- delete de la sección 3 lo permitían; sin política, RLS no deja hacerlo
+-- a nadie desde la app.
+drop policy if exists "resenias: edita la propia" on public."Resenias";
+drop policy if exists "resenias: borra la propia" on public."Resenias";
+
+-- ---------- 16.3 Log de la reseña ----------
+-- Hasta acá el log lo escribían solo el admin y el empleado. El cliente
+-- ahora registra "crear Resenias", así que la política lo suma, con dos
+-- condiciones: la fila es a su nombre (usuario_id = auth.uid()) y es solo
+-- esa acción sobre esa tabla. No puede escribir ninguna otra cosa en el
+-- log.
+alter policy "log: escritura admin y empleado"
+  on public."LogActividad"
+  with check (
+    public.es_admin()
+    or public.es_empleado()
+    or (usuario_id = auth.uid() and accion = 'crear' and entidad = 'Resenias')
+  );
+
+-- ---------- 16.4 Verificación ----------
+-- Tiene que mostrar resenias_comentario_largo.
+select conname
+from pg_constraint
+where conrelid = 'public."Resenias"'::regclass and contype = 'c';
+
+-- Tiene que mostrar solo "resenias: lectura publica" y
+-- "resenias: escribe la propia".
+select policyname, cmd
+from pg_policies
+where tablename = 'Resenias';
+
+-- La condición nueva de la política del log.
+select policyname, with_check
+from pg_policies
+where tablename = 'LogActividad' and cmd = 'INSERT';
 
 
 -- ============================================================

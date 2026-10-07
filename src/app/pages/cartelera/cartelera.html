@@ -76,6 +76,12 @@
                 {{ genero.nombre }}{{ $last ? '' : ' · ' }}
               }
             </span>
+            @if (promedioDe(pelicula.id); as pr) {
+              <span class="calificacion">
+                <span class="estrellas" aria-hidden="true">{{ pr.promedio | estrellas }}</span>
+                {{ unDecimal(pr.promedio) }} ({{ pr.cantidad }})
+              </span>
+            }
             @if (pelicula.restriccion_edad) {
               <span class="edad">+{{ pelicula.restriccion_edad }}</span>
             }
@@ -116,6 +122,12 @@
                 Estreno:
                 {{ pelicula.fecha_estreno + 'T12:00:00-03:00' | date: 'dd/MM/yyyy' : '-0300' }}
               </span>
+              @if (promedioDe(pelicula.id); as pr) {
+                <span class="calificacion">
+                  <span class="estrellas" aria-hidden="true">{{ pr.promedio | estrellas }}</span>
+                  {{ unDecimal(pr.promedio) }} ({{ pr.cantidad }})
+                </span>
+              }
             </a>
           </li>
         }
