@@ -30,6 +30,7 @@
 --      marcar la alerta propia y programación diaria (D-52)
 --  16. Reseñas: largo del comentario, sin edición ni borrado, y el log
 --      de la reseña del cliente (D-59)
+--  17. Textos: mensajes de validar_compra con "Candy Shop" (D-62)
 -- ============================================================
 
 -- ============================================================
@@ -4107,6 +4108,125 @@ where tablename = 'Resenias';
 select policyname, with_check
 from pg_policies
 where tablename = 'LogActividad' and cmd = 'INSERT';
+
+
+-- ============================================================
+-- 17. TEXTOS: CANDY SHOP EN LA VALIDACIÓN  (decisión D-62)
+-- ============================================================
+-- En pantalla, los productos del cine se llaman "Candy Shop" (D-62). Los
+-- mensajes de validar_compra le llegan tal cual al empleado (código
+-- P0001), así que se cambian acá. Es la misma función de la 14.1, con
+-- tres mensajes distintos y nada más: la lógica, los parámetros ('entrada'
+-- o 'candy') y las columnas no cambian.
+--
+-- SIN CORRER. Se corre sola, de una vez.
+--
+--   Antes                                     Ahora
+--   Solo se puede validar una entrada o un    Solo se puede validar una entrada o los
+--   candy                                     productos del Candy Shop
+--   Esta compra no incluye candy              Esta compra no incluye productos del
+--                                             Candy Shop
+--   El candy ya se entregó el %               Los productos del Candy Shop ya se
+--                                             entregaron el %
+--
+-- create or replace mantiene los permisos de la 14.1 (revoke a public y
+-- anon, grant a authenticated): no hace falta volver a darlos.
+
+create or replace function public.validar_compra(p_codigo text, p_tipo text)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_codigo     text;
+  v_id         bigint;
+  v_estado     text;
+  v_validada   timestamptz;
+  v_entregado  timestamptz;
+begin
+  -- ----- 1. Quién llama -----
+  -- "is not true" y no "not es_empleado()": sin sesión, es_empleado()
+  -- devuelve null, y "not null" también es null, así que el if no
+  -- entraría y la función seguiría de largo.
+  if public.es_empleado() is not true then
+    raise exception 'Solo un empleado puede validar';
+  end if;
+
+  -- ----- 2. Los parámetros -----
+  if p_tipo is null or p_tipo not in ('entrada', 'candy') then
+    raise exception 'Solo se puede validar una entrada o los productos del Candy Shop';
+  end if;
+
+  -- El código se guarda en mayúsculas y sin espacios. Se normaliza acá
+  -- también, aunque el formulario ya lo haga: la función se puede llamar
+  -- sin pasar por el formulario. El coalesce cubre un código null.
+  v_codigo := upper(replace(trim(coalesce(p_codigo, '')), ' ', ''));
+
+  -- ----- 3. La compra, con la fila bloqueada -----
+  -- "for update" bloquea la fila hasta que termina la función. Si otro
+  -- empleado valida el mismo código en ese momento, su select se queda
+  -- esperando; cuando le toca, ya lee la fila marcada y recibe "ya se
+  -- validó". Así el "un solo uso" lo garantiza la base (D-51).
+  select c.id, c.estado, c.entrada_validada_en, c.candy_entregado_en
+    into v_id, v_estado, v_validada, v_entregado
+  from public."Compras" c
+  where c.codigo = v_codigo
+  for update;
+
+  if not found then
+    raise exception 'No hay ninguna compra con el código %', v_codigo;
+  end if;
+
+  if v_estado = 'cancelada' then
+    raise exception 'La compra % está cancelada', v_codigo;
+  end if;
+
+  -- ----- 4. La entrada -----
+  if p_tipo = 'entrada' then
+    -- La fecha se escribe en hora argentina, igual que en la 9.5 y en
+    -- cancelar_compra: sin "at time zone" saldría en UTC, tres horas
+    -- adelantada.
+    if v_validada is not null then
+      raise exception 'Esta entrada ya se validó el %',
+        to_char(v_validada at time zone 'America/Argentina/Buenos_Aires', 'DD/MM "a las" HH24:MI');
+    end if;
+
+    -- El "quién" es auth.uid(), el empleado con la sesión iniciada: no
+    -- llega como parámetro, así nadie valida a nombre de otro.
+    update public."Compras"
+    set entrada_validada_en  = now(),
+        entrada_validada_por = auth.uid()
+    where id = v_id;
+
+  -- ----- 5. Los productos del Candy Shop -----
+  else
+    -- Una compra puede ser solo de entradas: no hay nada que entregar.
+    if not exists (select 1 from public."ItemsCandy" i where i.compra_id = v_id) then
+      raise exception 'Esta compra no incluye productos del Candy Shop';
+    end if;
+
+    if v_entregado is not null then
+      raise exception 'Los productos del Candy Shop ya se entregaron el %',
+        to_char(v_entregado at time zone 'America/Argentina/Buenos_Aires', 'DD/MM "a las" HH24:MI');
+    end if;
+
+    update public."Compras"
+    set candy_entregado_en  = now(),
+        candy_entregado_por = auth.uid()
+    where id = v_id;
+  end if;
+
+  -- El id de Compras es bigint; se devuelve como int, que alcanza de sobra.
+  return v_id::int;
+end;
+$$;
+
+-- Verificación: tiene que devolver una fila con los textos nuevos.
+select proname,
+       prosrc like '%productos del Candy Shop ya se entregaron%' as textos_nuevos
+from pg_proc
+where proname = 'validar_compra';
 
 
 -- ============================================================

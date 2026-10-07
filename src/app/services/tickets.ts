@@ -115,8 +115,11 @@ export class Tickets {
         }
       }
       // El candy, con el canje de un producto justo debajo del mismo
-      // producto pagado (D-45), igual que en la pantalla.
-      for (const linea of lineasDeCandy(compra.candy)) {
+      // producto pagado (D-45), igual que en la pantalla. Va bajo el
+      // título "Candy Shop" (D-62).
+      const lineasCandy = lineasDeCandy(compra.candy);
+      if (lineasCandy.length > 0) renglon('Candy Shop', '');
+      for (const linea of lineasCandy) {
         const marca = linea.es_canje ? ' (canje)' : linea.es_combo ? ' (combo)' : '';
         renglon(`${linea.nombre} x ${linea.cantidad}${marca}`, `$${linea.importe}`);
       }
@@ -172,7 +175,13 @@ export class Tickets {
       pdf.setFont('helvetica', 'normal');
       pdf.setFontSize(10);
       y += 8;
-      pdf.text('Presentá este código en el ingreso a la sala.', margen, y);
+      pdf.text(
+        compra.candy.length > 0
+          ? 'Presentá este código en el ingreso a la sala y en el Candy Shop.'
+          : 'Presentá este código en el ingreso a la sala.',
+        margen,
+        y,
+      );
 
       // save() arma el archivo y dispara la descarga en el navegador.
       pdf.save(`entrada-${compra.codigo}.pdf`);

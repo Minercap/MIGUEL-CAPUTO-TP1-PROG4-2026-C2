@@ -52,3 +52,13 @@
 .canje {
   color: var(--color-texto-suave);
 }
+
+/* El título "Candy Shop" sobre los productos (D-62): un renglón sin monto. */
+.detalle li.seccion {
+  padding-top: 0.75rem;
+  color: var(--color-texto-suave);
+  font-size: 0.85rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.05rem;
+}

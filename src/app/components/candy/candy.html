@@ -1,5 +1,5 @@
 <section class="candy">
-  <h2>Candy bar</h2>
+  <h2>Candy Shop</h2>
   <p>Agregá pochoclos, bebidas o un combo. Es opcional: si no querés nada, seguí al pago.</p>
 
   @if (aviso()) {
@@ -82,11 +82,11 @@
   }
 
   @if (productos().length === 0) {
-    <p>Por ahora no hay productos del candy bar a la venta.</p>
+    <p>Por ahora no hay productos del Candy Shop a la venta.</p>
   }
 
   <p class="total">
-    <span>Candy</span>
+    <span>Candy Shop</span>
     <strong>${{ subtotal() }}</strong>
   </p>
 

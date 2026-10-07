@@ -83,6 +83,12 @@ section h2 {
   color: var(--color-acento-dorado);
 }
 
+/* La aclaración de "Operaciones", en letra chica. */
+.aclaracion {
+  color: var(--color-texto-suave);
+  font-size: 0.8rem;
+}
+
 /* El scroll de costado es de este div, no de la página. */
 .tabla {
   overflow-x: auto;

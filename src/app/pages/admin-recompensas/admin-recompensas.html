@@ -10,7 +10,7 @@
   <select id="tipo" formControlName="tipo" (change)="alCambiarTipo()">
     <option value="" disabled>Elegí una opción</option>
     <option value="entrada">Una entrada</option>
-    <option value="producto">Un producto del candy bar</option>
+    <option value="producto">Un producto del Candy Shop</option>
   </select>
   @if (tipo?.touched) {
     @if (tipo?.errors?.['required']) {
@@ -32,7 +32,7 @@
       }
     </select>
     @if (opcionesProducto().length === 0) {
-      <small class="error">No hay productos activos. Cargalos primero en el candy bar.</small>
+      <small class="error">No hay productos activos. Cargalos primero en el Candy Shop.</small>
     }
     @if (productoId?.touched) {
       @if (formulario.errors?.['productoObligatorio']) {
