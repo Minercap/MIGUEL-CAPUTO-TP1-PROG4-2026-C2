@@ -1516,3 +1516,90 @@ de esas compras. Si alguna respuesta llega al tope, aviso que el reporte puede e
 incompleto en lugar de mostrar un número que parece bueno.
 
 **Clase de origen:** 6 (select con filtros) + `.in()` 🟡. **Requisito:** R-35 a R-37.
+---
+
+## D-58 · Qué cuenta como "vio la película" · 07/10
+
+**Elegido:** el cliente vio una película si tiene una compra **no cancelada** de una función
+que **ya ocurrió**. Es la misma regla que usa el reporte de películas más vistas (D-56), así
+que Mis películas y los reportes cuentan lo mismo y `services/reportes.ts` no se toca.
+
+**Descartado:** "vio la película" = entrada validada por un empleado. Es más exacto, pero
+obliga a validar entradas para tener datos: sin pasar por el empleado, Mis películas queda
+vacía.
+
+**Cómo lo explico en el oral:** si compró y la función ya pasó, la vio. Cancelar devuelve
+el crédito, así que una compra cancelada no cuenta.
+
+**Clase de origen:** interpretación adoptada. **Requisito:** R-12.
+
+---
+
+## D-59 · Reseñas: una por película, sin autor visible · 07/10
+
+**Elegido:** cualquier usuario logueado puede reseñar una película, una sola vez (la
+`unique (usuario_id, pelicula_id)` de `Resenias`). La lista muestra estrellas, comentario y
+fecha, **sin el autor**. Las reseñas no se editan ni se borran desde la app.
+
+**Por qué sin autor:** el nombre vive en `Usuarios`, que no es de lectura pública (cada uno
+lee la suya, el admin y el empleado las demás). Abrirla para mostrar nombres expondría datos
+personales (fecha de nacimiento, tipo de sangre) o pediría una vista solo para eso.
+
+**Descartado:**
+- Exigir haber visto la película (D-58) para reseñar: ningún mail lo pide, y las reseñas
+  se tienen que poder ver antes de comprar (mail 16/01).
+- Editar y borrar la reseña propia: ningún mail lo pide.
+
+**Lo que cuesta:** si alguien se equivoca, no puede corregir su reseña.
+
+**Cómo lo explico en el oral:** la unicidad la garantiza la base. Si alguien intenta una
+segunda reseña, Postgres devuelve el error 23505 (violación de unique) y la pantalla dice
+"Ya dejaste tu reseña de esta película".
+
+**Clase de origen:** 6 (insert, RLS). **Requisito:** R-08, R-09.
+
+---
+
+## D-60 · El empleado no rechaza entradas por la fecha · 07/10
+
+**Elegido:** `validar_compra` rechaza una entrada ya usada o de una compra cancelada, pero
+no una de otro día ni de otro horario. La tarjeta del resultado muestra la fecha y la hora
+de la función para que el empleado lo controle.
+
+**Por qué:** los mails piden un solo uso (R-33, mail 06/02: una vez validado, el QR deja de
+funcionar), no un control de horario. Rechazar por fecha obliga a decidir con cuánto margen
+antes y después de la función se acepta, y nadie lo pidió.
+
+**Descartado:** rechazar fuera de una ventana alrededor de la función. Inventa una regla de
+negocio.
+
+**Cómo lo explico en el oral:** el sistema garantiza lo que pidió el cliente, que el QR
+sirva una vez. Que la entrada sea de esa función lo decide la persona en la puerta, con la
+fecha y la hora a la vista.
+
+**Clase de origen:** interpretación adoptada. **Requisito:** R-31 a R-33.
+
+---
+
+## D-61 · Log paginado en Supabase con `.range()` · 07/10
+
+**Elegido:** la pantalla del log pide de a **10 filas** con `.range(desde, hasta)` y
+`select('*', { count: 'exact' })`, que además devuelve el total de filas para calcular
+"Página X de Y". El filtro por acción va en la misma consulta con `.eq('accion', ...)`.
+
+**Lo que no se vio en clase (🟡, aprobado):**
+- `.range(desde, hasta)` es un filtro de Supabase como `.eq()`: pide las filas de la
+  posición `desde` a la `hasta`, las dos incluidas, empezando en 0.
+- `{ count: 'exact' }` es una opción del `select` que hace que Supabase cuente cuántas filas
+  cumplen el filtro y lo devuelva en `count`, además de los datos.
+
+**Por qué:** el log crece con cada acción del admin y del empleado. Supabase devuelve como
+máximo 1000 filas por consulta (D-57): traer todo y paginar en el front deja de funcionar,
+sin aviso, cuando se pasan las 1000.
+
+**Descartado:** traer todas las filas y paginar con un `slice` en el componente.
+
+**Cómo lo explico en el oral:** la página 3 son las filas 20 a 29. Se las pido a Supabase y
+me trae solo esas, con el total para saber cuántas páginas hay.
+
+**Clase de origen:** 6 (select con filtros) + `.range()` y `count` 🟡. **Requisito:** R-38.

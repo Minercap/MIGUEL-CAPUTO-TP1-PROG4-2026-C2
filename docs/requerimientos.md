@@ -387,6 +387,10 @@ adelante sin cambios estructurales.
 | D-56 | Compras del reporte | Compras no canceladas, igual que las entradas vendidas |
 | D-56 | Películas más vistas | Entradas de compras no canceladas cuya función ya ocurrió, por semana (lunes a domingo) o mes de la función |
 | D-56 | Producto más vendido | Suma de cantidades en compras no canceladas, sin los canjes. Un combo cuenta como un producto |
+| D-58 | Vio la película | Compra no cancelada con la función ya ocurrida, igual que las más vistas (D-56) |
+| D-59 | Reseñas | Cualquier usuario logueado, una por película, sin autor visible. No se editan ni se borran |
+| D-60 | Validación y fecha | El empleado no rechaza por la fecha: un solo uso. La tarjeta muestra fecha y hora de la función |
+| D-61 | Log de actividad | Paginado en Supabase de a 10 filas, con `.range()` y el total con `count: 'exact'` |
 | R-02 | Comprador anónimo | Sin cupón, sin crédito y sin puntos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
