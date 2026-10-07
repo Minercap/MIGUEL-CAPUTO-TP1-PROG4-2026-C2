@@ -1,4 +1,128 @@
-# Pendientes de revisión — 06/10
+# Pendientes de revisión — 07/10
+
+## Bloque final del cliente y del admin (`feat/cliente`, 07/10)
+
+Rama `feat/cliente`, salida de `main`, **sin mergear**. `ng build` sin errores ni avisos
+antes de cada commit; `ng test`: 43 archivos, 66 tests, todos pasan. Nada se probó en el
+navegador ni contra Supabase.
+
+| Commit | Qué |
+|---|---|
+| `07906c4` | `docs/preguntas-consulta.md` (respuestas del 06/10), D-58 a D-61 y la sección 11 de `requerimientos.md` |
+| `e7c6706` | Reseñas y promedio (R-08, R-09): `services/resenias.ts`, `interfaces/resenia.ts`, pipe `estrellas`, detalle de la película, promedio en la cartelera y Próximamente, **sección 16 de `schema.sql`** |
+| `0d6d0c2` | Pantalla del log (R-38): `pages/admin-log`, ruta `/admin/log`, acceso "Log" del panel activo, `traerPagina()` en `services/log-actividad.ts` |
+| `9f8cf8d` | Mis películas (R-12): `pages/mis-peliculas`, `services/mis-peliculas.ts`, ruta `/mis-peliculas` con `logueadoGuard` y link en el menú del cliente |
+| `46f3c9a` | Historial de canjes en Mi cuenta (R-03): `canjesDeCompras()` en `services/compras.ts` |
+| `ee61a4e` | `provideServiceWorker` con `enabled: !isDevMode()` |
+
+### SQL que tenés que correr
+
+**Sección 16 de `supabase/schema.sql`** (desde `-- 16. RESEÑAS` hasta antes de
+`PUNTOS ABIERTOS`), entera y de una vez. Antes del `alter table`, la consulta de 16.1 tiene
+que devolver 0 filas. Hace tres cosas:
+
+1. **16.1** · `check` del comentario: null, o de 1 a 280 caracteres (validaciones.md 3.9,
+   principio 7). La tabla no tenía ningún control de largo.
+2. **16.2** · Borra las políticas `resenias: edita la propia` y `resenias: borra la
+   propia`, para que la base cumpla D-59 (no se editan ni se borran). **Confirmalo:** la de
+   borrado también dejaba borrar al admin; si querés que el admin pueda moderar, hay que
+   dejarla con solo `public.es_admin()`.
+3. **16.3** · La política de insert de `LogActividad` suma al cliente, solo para
+   `crear` / `Resenias` y a su propio nombre. **Sin esto, cada reseña se guarda igual pero
+   la pantalla avisa que no se pudo registrar en el log**: hasta hoy solo el admin y el
+   empleado podían escribir el log.
+
+Lo que **no** hizo falta: el admin ya lee `LogActividad` (`log: lectura admin`) y
+`Usuarios` (por eso el log muestra el mail); las políticas de `Resenias` de lectura pública
+e insert propio ya estaban; el cliente ya lee sus `Compras`, `Entradas` y `Canjes`.
+
+### Para confirmar
+
+- **`.order()` en el log (🟡).** D-61 aprobó `.range()` y `count`, pero para paginar hace
+  falta un orden fijo en la base: `.order('creado_en', { ascending: false })` y
+  `.order('id', ...)` para los empates. Sin eso, una misma fila puede aparecer en dos
+  páginas. Lo agregué y lo anoté en D-61.
+- **Promedios con una sola consulta.** La cartelera lee **todas** las reseñas y promedia en
+  el front, como los reportes (D-55). Tiene el mismo límite de 1000 filas de D-57, sin
+  aviso: si un día hay más de 1000 reseñas, los promedios de la cartelera saldrían de una
+  parte. El detalle de la película no tiene ese problema (pide solo las suyas). La
+  alternativa es una vista de Postgres como la de las más vendidas (D-31).
+- **Pipe propio `estrellas`** (clase 8): convierte 1 a 5 en `★★★★☆`. Es el segundo pipe
+  propio del TP.
+- **El promedio con coma** (`4,3`) sale de `unDecimal()` en `validadores.ts`, porque el pipe
+  `number` pondría punto: la app no tiene cargado el idioma español.
+- **"Mis películas" en el menú** aparece solo con rol `cliente` (`@case ('cliente')`). La
+  ruta la protege `logueadoGuard`, así que admin y empleado pueden entrar escribiendo la
+  dirección, pero no la ven en el menú.
+- **"Mis canjes" no hace otra consulta:** sale de las compras que Mi cuenta ya carga. La
+  fecha del canje es la de su compra (los canjes se hacen dentro de una compra, D-45).
+- **El filtro del log** ofrece las cuatro acciones que existen en el código (`crear`,
+  `modificar`, `eliminar`, `validar`, el tipo `AccionLog`). No hay `comprar` ni
+  `cancelar`: la compra y la cancelación no se registran en el log (R-38 pide funciones,
+  precios y validaciones).
+- **Node:** el CLI de Angular 22 pide Node 22.22.3 o más nuevo. En la compu de la nube
+  compilé con Node 24.
+
+### Qué probar a mano (en Vercel, después de correr la sección 16)
+
+**Reseñas (detalle de una película)**
+
+- [ ] Sin sesión: se ven el promedio y la lista, y "Iniciá sesión para dejar tu reseña".
+- [ ] Película sin reseñas: "Todavía no hay reseñas" y sin promedio.
+- [ ] Con sesión y sin reseña: el formulario. "Publicar reseña" deshabilitado hasta elegir
+      estrellas; las estrellas se prenden hasta la elegida.
+- [ ] Contador del comentario: llega a 280 y no deja escribir más.
+- [ ] Publicar con comentario → aparece "Tu reseña", la reseña queda primera en la lista y
+      el promedio y la cantidad se actualizan.
+- [ ] Publicar sin comentario → se guarda con `comentario` null.
+- [ ] Recargar → sigue "Tu reseña", sin formulario.
+- [ ] Segunda reseña desde otra pestaña abierta antes → "Ya dejaste tu reseña de esta
+      película".
+- [ ] `LogActividad` tiene la fila `crear` / `Resenias` con "Película N: X estrellas".
+- [ ] Desde la consola, `update` o `delete` de una reseña propia → 0 filas (después de 16.2).
+- [ ] La cartelera y Próximamente muestran estrellas, promedio y cantidad en las tarjetas
+      de las películas con reseñas, y nada en las que no tienen.
+
+**Log de actividad (admin)**
+
+- [ ] El panel muestra "Log" activo y lleva a `/admin/log`.
+- [ ] La tabla sale de la más nueva a la más vieja, con fecha y hora argentina, el mail del
+      usuario, acción, tabla y detalle.
+- [ ] Con más de 10 filas: "Página 1 de N", "Anterior" deshabilitado en la 1 y "Siguiente"
+      en la última.
+- [ ] Filtrar por `validar` → solo validaciones, vuelve a la página 1 y recalcula el total.
+- [ ] Un filtro sin filas → "No hay actividad registrada" y "Página 1 de 1".
+- [ ] Logueado como cliente o empleado, `/admin/log` no entra (adminGuard).
+- [ ] En el celular la tabla se desliza hacia el costado.
+
+**Mis películas (cliente)**
+
+- [ ] El menú del cliente tiene "Mis películas"; el de admin y empleado no.
+- [ ] Sin sesión, `/mis-peliculas` manda al login.
+- [ ] Una compra de una función que ya pasó aparece con póster, nombre, fecha y hora.
+- [ ] Una compra de una función futura no aparece; tampoco una compra cancelada.
+- [ ] Sin reseña: botón "Calificar", que lleva al detalle. Después de reseñar, la tarjeta
+      muestra las estrellas.
+- [ ] Sin funciones vistas: "Todavía no viste ninguna película en Olympia".
+- [ ] En el celular, dos columnas.
+
+**Historial de canjes (Mi cuenta)**
+
+- [ ] Una compra con canjes muestra un renglón por canje: fecha, "Entrada" o el producto,
+      puntos y código.
+- [ ] Cancelar esa compra → el canje pasa a "Devuelto" sin recargar.
+- [ ] Sin canjes: "Todavía no canjeaste puntos".
+
+**PWA**
+
+- [ ] Con `ng serve` no se registra el service worker; activar notificaciones dice "Las
+      notificaciones funcionan con la app instalada o desde el sitio publicado".
+- [ ] En Vercel el service worker sigue registrándose y el push sigue llegando.
+
+---
+
+## Lo de abajo es del 06/10
+
 
 ## Traspaso para seguir en otra compu (06/10, tarde)
 
