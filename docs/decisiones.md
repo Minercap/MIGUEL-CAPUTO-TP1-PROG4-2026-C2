@@ -1349,6 +1349,17 @@ dispositivos) para el mismo resultado.
 resuelve la librería. La carga manual sigue estando, porque el mail del 06/02 la pide.
 La cámara solo funciona con HTTPS, y Vercel ya lo tiene.
 
+**`::ng-deep` en el visor (07/10, 🟡 aprobado):** los estilos de un componente de Angular
+están encapsulados: solo se aplican a los elementos que escribe su template. El `<video>` de
+la cámara no está en el template de `empleado-validacion`: lo inserta `html5-qrcode` dentro
+del `<div>` del lector, así que una regla común del `.css` del componente no le llega. Por
+eso la regla del video usa `.visor ::ng-deep video`: `::ng-deep` deja pasar el estilo a ese
+elemento, y `.visor` adelante lo limita al recuadro de esta pantalla, sin afectar a ningún
+otro video de la app. La regla hace que el video ocupe todo el recuadro (`object-fit:
+cover`), con `!important` para pisar el ancho en píxeles que la librería le escribe en el
+atributo `style`. Sin ella, el video tomaba el ancho que medía el `<div>` al abrir la cámara;
+con la cámara apagada ese ancho era 0 y en producción no se veía el visor.
+
 **Clase de origen:** 🔴 librería justificada (cátedra 01/10, punto 3). **Requisito:** R-31, R-32.
 
 ---
