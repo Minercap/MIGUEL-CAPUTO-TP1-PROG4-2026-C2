@@ -1,7 +1,11 @@
 # Requerimientos — Olympia Cinema
 
 **TP 1 · Programación IV · 2026 C2**
-Documento de requerimientos v1 · 20/09/2026
+**Versión final · 07/10/2026** (primera versión: 20/09/2026)
+
+**Estado:** todos los requisitos (R-01 a R-41) y las aclaraciones de la cátedra (A-01 a
+A-03) están hechos. Cada uno dice debajo de su título dónde está. El mapa del cine (P-01)
+queda pendiente de aprobación del cliente.
 
 Este documento resume todo lo pedido por el cliente en el intercambio de diez mails de la
 consigna. Cada requisito tiene un identificador (`R-nn`) que se usa como referencia en los
@@ -39,6 +43,8 @@ arquitectura y las decisiones técnicas.
 
 ### R-01 · Registro de clientes
 
+**Estado final:** Hecho · `pages/registro/`, `services/auth.ts`.
+
 Datos que se piden al registrarse, tal como los enumeró el cliente:
 
 mail, nombre, apellido, fecha de nacimiento, tipo de sangre, color de ojos y cantidad de
@@ -46,6 +52,8 @@ días de vacaciones por año.
 
 
 ### R-02 · Compra anónima
+
+**Estado final:** Hecho · `pages/compra/`, `components/pago/`, `realizar_compra` en `supabase/schema.sql`.
 
 Se puede comprar sin cuenta, indicando un mail al que llega la entrada. El comprador
 anónimo no acumula puntos, no usa crédito y no accede al cupón de bienvenida.
@@ -56,6 +64,8 @@ anónimo no acumula puntos, no usa crédito y no accede al cupón de bienvenida.
 
 ### R-03 · Perfil del cliente
 
+**Estado final:** Hecho · `pages/mi-cuenta/`: puntos, crédito, historial de canjes y compras. De los datos personales muestra nombre y apellido.
+
 El cliente ve en su perfil sus datos, sus puntos acumulados, el historial de canjes y su
 crédito disponible.
 
@@ -64,6 +74,8 @@ crédito disponible.
 ## 3. Películas y cartelera
 
 ### R-04 · Datos de la película
+
+**Estado final:** Hecho · `pages/admin-pelicula-formulario/`; obligatorios también en la base (`schema.sql`, sección 7).
 
 Nombre, sinopsis, imagen, duración, uno o **varios** géneros, restricción de edad, formato
 y idioma.
@@ -78,10 +90,14 @@ y idioma.
 
 ### R-05 · Control de cartelera
 
+**Estado final:** Hecho · `pages/admin-peliculas/` (columna `visible`), `pages/cartelera/`, pipe `estadoPelicula` (D-27).
+
 El administrador decide qué películas aparecen al entrar a la página, y en qué horarios
 está cada una.
 
 ### R-06 · Orden de la página principal
+
+**Estado final:** Hecho · `pages/cartelera/`, `services/cartelera.ts`, vista `PeliculasMasVendidas` (D-31).
 
 Las **3 películas más vendidas** se muestran primero.
 
@@ -91,6 +107,8 @@ Las **3 películas más vendidas** se muestran primero.
 
 ### R-07 · Buscador
 
+**Estado final:** Hecho · `pages/cartelera/` (`filtrar()`, D-32).
+
 El listado de películas incluye un buscador con **filtro por género**, contemplando que una
 película puede tener varios.
 
@@ -99,20 +117,28 @@ película puede tener varios.
 
 ### R-08 · Reseñas
 
+**Estado final:** Hecho · `pages/detalle-pelicula/`, `services/resenias.ts` (D-59).
+
 Cada persona puede calificar una película con estrellas y dejar un comentario corto. Las
 reseñas se pueden ver **antes** de sacar la entrada.
 
 ### R-09 · Puntuación promedio
 
+**Estado final:** Hecho · promedio en `pages/detalle-pelicula/` y en las tarjetas de `pages/cartelera/`, pipe `estrellas`.
+
 Se muestra el promedio de calificación de cada película.
 
 ### R-10 · Próximamente
+
+**Estado final:** Hecho · sección Próximamente en `pages/cartelera/`, alerta en `pages/detalle-pelicula/`, `services/alertas.ts`, `services/notificaciones.ts`, `supabase/functions/enviar-alertas/` (D-52).
 
 Sección con las películas que se estrenan en las próximas semanas. El usuario puede
 activar una alerta para ser notificado cuando las entradas de esa película estén
 disponibles para la venta.
 
 ### R-11 · Preventa
+
+**Estado final:** Hecho · `pages/admin-pelicula-formulario/`, `ventaAbierta()` y `precioDe()` en `services/compras.ts`, `realizar_compra`.
 
 La venta puede abrirse **7 días antes del estreno** con un precio especial de preventa.
 Pasada la fecha de preventa, el precio vuelve al normal. Es configurable película por
@@ -125,6 +151,8 @@ película.
 
 ### R-12 · Mis películas
 
+**Estado final:** Hecho · `pages/mis-peliculas/`, `services/mis-peliculas.ts` (D-58).
+
 Historial visual de todo lo que el cliente vio, con pósters, fechas y su propia
 calificación.
 
@@ -133,6 +161,8 @@ calificación.
 ## 4. Salas, butacas y funciones
 
 ### R-13 · Distribución de la sala
+
+**Estado final:** Hecho · `armarSala()` en `services/compras.ts`, mapa en `pages/compra/` (D-04, D-07).
 
 Todas las salas tienen la misma forma: **20 filas** identificadas con letras (A a T) y
 **3 columnas** de 4, 20 y 4 butacas, es decir 28 butacas por fila.
@@ -153,6 +183,8 @@ es decir 14 por fila.
 
 ### R-14 · Butacas VIP
 
+**Estado final:** Hecho · `pages/compra/` (marca VIP en el mapa y en el resumen), `precioDe()` en `services/compras.ts`.
+
 Las últimas 3 filas de cada sala (**R, S y T**) son VIP: tienen un precio más alto y se
 marcan visualmente distinto en el mapa. El usuario debe saber claramente que está
 comprando una butaca VIP **antes de pagar**.
@@ -162,14 +194,20 @@ comprando una butaca VIP **antes de pagar**.
 
 ### R-15 · Butacas accesibles
 
+**Estado final:** Hecho · `pages/compra/`.
+
 Las butacas de las filas J y K se resaltan visualmente de forma diferente en el mapa.
 
 ### R-16 · Mapa de butacas en tiempo real
+
+**Estado final:** Hecho · Realtime en `services/compras.ts`, tabla `ButacasOcupadas` (D-38).
 
 Mientras un usuario selecciona butacas, ve cuáles ya están ocupadas por otra compra **en
 ese mismo momento**.
 
 ### R-17 · Asignación automática de sala
+
+**Estado final:** Hecho · `pages/admin-funcion-formulario/`, `services/funciones.ts` (D-29, D-30).
 
 El administrador define película, días y horario (por ejemplo, lunes, martes y viernes a
 las 18 hs) y **el sistema asigna la sala automáticamente**, eligiendo una que no tenga otra
@@ -177,9 +215,13 @@ función proyectándose en ese horario.
 
 ### R-18 · Sin superposición
 
+**Estado final:** Hecho · `services/funciones.ts` y trigger `funciones_sin_superposicion` en `schema.sql` (D-29).
+
 Bajo ningún concepto dos funciones pueden estar en la misma sala al mismo tiempo.
 
 ### R-19 · Separación de 30 minutos
+
+**Estado final:** Hecho · mismo trigger y `services/funciones.ts`, con la duración de la película (D-29).
 
 No puede haber una función antes de que pasen **30 minutos** desde que terminó la función
 anterior en esa sala. La duración de la película es el dato que determina el fin de la
@@ -191,10 +233,14 @@ función.
 
 ### R-20 · Entrada con QR y PDF
 
+**Estado final:** Hecho · `components/entrada/`, `services/tickets.ts` (D-36, D-37). También desde Mis compras en `pages/mi-cuenta/`.
+
 La compra genera un **PDF** con los datos de la entrada y el **QR** que el cliente presenta
 para ver la película.
 
 ### R-21 · Candy bar
+
+**Estado final:** Hecho · `pages/admin-productos/`, `pages/admin-producto-formulario/`, `components/candy/`; retiro con el mismo QR en `pages/empleado-validacion/`.
 
 El administrador crea los productos del candy bar (pochoclos, bebidas, etc.) y los organiza
 en **categorías**. El cliente los compra junto con la entrada, y los retira con **el mismo
@@ -202,15 +248,21 @@ QR** de la entrada.
 
 ### R-22 · Combos
 
+**Estado final:** Hecho · combos en `pages/admin-producto-formulario/`, destacados en `components/candy/` (D-40, D-46).
+
 Combos especiales de entrada + pochoclos + bebida a un precio fijo configurable por el
 administrador. Aparecen **destacados** en la página de compra.
 
 ### R-23 · Cupón de bienvenida
 
+**Estado final:** Hecho · `pages/admin-cupones/`, `realizar_compra` (D-05, D-41).
+
 El cliente que se registra recibe un cupón de descuento para su primera compra. El
 porcentaje es **configurable** por el administrador.
 
 ### R-24 · Cupones por edad
+
+**Estado final:** Hecho · `pages/admin-cupones/`, `realizar_compra` (D-05, D-41).
 
 El administrador puede crear cupones que apliquen solo a usuarios de **más de 50 años**.
 
@@ -227,6 +279,8 @@ El administrador puede crear cupones que apliquen solo a usuarios de **más de 5
 
 ### R-25 · Restricción de edad en la compra
 
+**Estado final:** Hecho · `components/pago/` y `realizar_compra` (D-06).
+
 A los usuarios menores de 18 o de 13 años no se les permite comprar entradas para las
 películas con esa restricción.
 
@@ -242,6 +296,8 @@ de nacimiento del comprador y se valida contra ella.
 
 ### R-26 · Aviso de acompañante adulto
 
+**Estado final:** Hecho · `pages/compra/`, `components/entrada/`, `services/tickets.ts` (`LEYENDA_ADULTO`).
+
 Toda entrada comprada para una película con restricción de edad debe aclarar que **debe ir
 un adulto**.
 
@@ -250,10 +306,14 @@ un adulto**.
 
 ### R-27 · Programa de puntos
 
+**Estado final:** Hecho · `realizar_compra` (D-47).
+
 Cada compra de un usuario registrado acumula **1 punto por cada peso gastado**. Los puntos
 no se pueden transferir entre usuarios.
 
 ### R-28 · Canje de puntos
+
+**Estado final:** Hecho · `pages/admin-recompensas/`, canje en `components/pago/` (D-42, D-45).
 
 Los puntos se canjean por entradas gratis o productos del candy bar. El administrador
 configura cuántos puntos cuesta cada recompensa (por ejemplo, una entrada 500 puntos, un
@@ -261,9 +321,13 @@ pochoclo grande 150).
 
 ### R-29 · Cancelación
 
+**Estado final:** Hecho · `pages/mi-cuenta/`, `cancelar_compra` en `schema.sql` (D-48).
+
 El cliente puede cancelar una compra hasta **2 horas antes** de la función.
 
 ### R-30 · Crédito
+
+**Estado final:** Hecho · `cancelar_compra`; saldo en `pages/mi-cuenta/`, uso en `components/pago/` (D-47, D-48).
 
 La cancelación **no devuelve dinero**: acredita el monto como crédito en la cuenta del
 usuario. El crédito se ve en el perfil y se puede usar junto con otros métodos de pago.
@@ -274,13 +338,19 @@ usuario. El crédito se ve en el perfil y se puede usar junto con otros métodos
 
 ### R-31 · Validación por QR
 
+**Estado final:** Hecho · `pages/empleado-validacion/`, `services/escaner.ts` (D-50).
+
 Los empleados escanean el QR para validar las entradas, tanto del cine como del candy bar.
 
 ### R-32 · Carga manual del código
 
+**Estado final:** Hecho · `pages/empleado-validacion/`, `services/validacion.ts`.
+
 Se puede ingresar el código a mano, por si el lector no funciona ese día.
 
 ### R-33 · Un solo uso
+
+**Estado final:** Hecho · `validar_compra` en `schema.sql` (D-51, D-60).
 
 Una vez que una entrada se valida o se entrega la comida, **el QR deja de funcionar**.
 
@@ -290,23 +360,33 @@ Una vez que una entrada se valida o se entrega la comida, **el QR deja de funcio
 
 ### R-34 · Panel de administración
 
+**Estado final:** Hecho · `pages/admin/` y las pantallas `pages/admin-*`.
+
 El administrador controla salas, funciones, distribución de butacas, películas, productos,
 combos, cupones y recompensas.
 
 ### R-35 · Reporte de facturación
 
+**Estado final:** Hecho · `pages/admin-reportes/`, `services/reportes.ts` (D-55, D-56).
+
 Cuánto se facturó **por día** y cuántas entradas se vendieron.
 
 ### R-36 · Exportación
+
+**Estado final:** Hecho · `services/exportaciones.ts` (D-37, D-53).
 
 El reporte de facturación se exporta a **PDF** y a **Excel**.
 
 ### R-37 · Gráficos
 
+**Estado final:** Hecho · `components/grafico-barras/`, `pages/admin-reportes/` (D-54, D-56).
+
 - Películas más vistas **por semana** y **por mes**.
 - Producto del candy bar que más se vende.
 
 ### R-38 · Log de actividad
+
+**Estado final:** Hecho · registro en `services/log-actividad.ts`; pantalla en `pages/admin-log/` (D-14, D-61).
 
 Queda registrado, con **fecha y hora**, quién creó qué función, quién modificó un precio y
 quién validó un QR.
@@ -317,13 +397,19 @@ quién validó un QR.
 
 ### R-39 · Estilo visual único y producido
 
+**Estado final:** Hecho · `src/styles.css` y el CSS de cada componente, sin librerías de UI (D-33).
+
 Exigido por la consigna. CSS propio, sin apariencia de plantilla.
 
 ### R-40 · Interfaces fáciles de navegar
 
+**Estado final:** Hecho · menú por rol en `app.html`, panel del admin con accesos, pantalla del empleado en una sola vista.
+
 Tanto para clientes como para empleados.
 
 ### R-41 · Carga de fechas y horas
+
+**Estado final:** Hecho · `components/campo-fecha/` para fechas y desplegables de hora en `pages/admin-funcion-formulario/` (D-23).
 
 El cliente rechazó expresamente el selector de calendario con scroll de la imagen adjunta
 al mail del 28/02. La carga de fechas **y horas** debe ser rápida y sin scroll extenso.
@@ -333,6 +419,8 @@ al mail del 28/02. La carga de fechas **y horas** debe ser rápida y sin scroll 
 ## 9. Pendiente de aprobación (no se construye)
 
 ### P-01 · Mapa del cine
+
+**Estado final:** **Pendiente de aprobación del cliente.** No se construye.
 
 El cliente planteó una pantalla con un mapa de todo el cine indicando en qué sala es la
 función de la entrada comprada, pero en el mismo mail del 30/01 aclaró que **no tenían luz
@@ -391,6 +479,16 @@ adelante sin cambios estructurales.
 | D-59 | Reseñas | Cualquier usuario logueado, una por película, sin autor visible. No se editan ni se borran |
 | D-60 | Validación y fecha | El empleado no rechaza por la fecha: un solo uso. La tarjeta muestra fecha y hora de la función |
 | D-61 | Log de actividad | Paginado en Supabase de a 10 filas, con `.range()` y el total con `count: 'exact'` |
+| D-14 | Log de actividad | Lo escribe cada servicio después de una acción que salió bien: altas, ediciones y bajas del admin, validaciones del empleado y reseñas |
+| D-23 | Fechas y horas sin calendario | Tres desplegables (día, mes, año) y desplegables de hora y minutos |
+| D-24 | Admin y empleado | Roles separados: el admin no valida entradas ni entrega candy |
+| D-27 | Cartelera y Próximamente | El admin decide si la película es visible; en qué sección aparece lo dice la fecha de estreno |
+| D-28 | Precio de la entrada | Lo fija cada función (base y VIP); la entrada guarda lo que se cobró |
+| D-29 | Asignación de sala | Primera sala libre con 30 minutos de margen; un trigger de la base impide la superposición |
+| D-30 | Funciones recurrentes | Días de la semana, rango de fechas y hora; una función por fecha, todas o ninguna |
+| D-35 | Hora de las funciones | Siempre en hora argentina, sin importar la zona del navegador |
+| D-43 | Cupón de bienvenida | Un solo cupón de primera compra activo a la vez |
+| D-51 | Un solo uso del QR | La validación es una función de la base: marca la entrada o el candy una sola vez |
 | R-02 | Comprador anónimo | Sin cupón, sin crédito y sin puntos |
 
 El detalle de cada una, con las opciones descartadas, está en `docs/decisiones.md`.
@@ -405,6 +503,8 @@ en `docs/correccion-01-10.md`.
 
 ### A-01 · Pago simulado (aclara R-20 a R-30)
 
+**Estado final:** Hecho · `components/pago/`, `components/resumen-compra/`, `services/tickets.ts`.
+
 No se integra ninguna pasarela real, pero el flujo de pago tiene que estar completo:
 
 - **Resumen detallado** de todo lo que se compra: cada entrada con su fila, su butaca y si
@@ -416,6 +516,8 @@ No se integra ninguna pasarela real, pero el flujo de pago tiene que estar compl
 
 ### A-02 · Accesos rápidos en el login
 
+**Estado final:** Hecho · `pages/login/`.
+
 Debajo del formulario de login hay tres botones, **Admin**, **Empleado** y **Cliente**, que
 **autocompletan** el mail y la contraseña de la cuenta de prueba de cada rol, sin enviar el
 formulario. Son para agilizar la evaluación.
@@ -424,6 +526,8 @@ Las contraseñas de esas tres cuentas quedan visibles en el código del front. E
 porque son cuentas de demostración, y no coinciden con ninguna contraseña personal.
 
 ### A-03 · Admin y empleado son roles separados (aclara R-31 a R-34)
+
+**Estado final:** Hecho · `es_empleado()` en `schema.sql`, `guards/empleado-guard.ts`, menú en `app.html` (D-24).
 
 El administrador **no** valida entradas ni entrega candy: eso lo hace solo el empleado.
 Coincide con el mail del 06/02, que describe dos tipos de usuario distintos. El
