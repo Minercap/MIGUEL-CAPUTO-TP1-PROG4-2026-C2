@@ -34,6 +34,10 @@
       </li>
     }
 
+    <!-- Los productos van bajo el nombre del Candy Shop (D-62). -->
+    @if (lineas().length > 0) {
+      <li class="seccion">Candy Shop</li>
+    }
     @for (linea of lineas(); track $index) {
       <li [class.canje]="linea.es_canje">
         <span>

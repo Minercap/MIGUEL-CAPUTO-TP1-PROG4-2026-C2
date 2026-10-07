@@ -680,7 +680,7 @@ export class Compras {
   motivoSinCancelar(compra: MiCompra): string | null {
     if (compra.estado === 'cancelada') return 'Esta compra está cancelada.';
     if (compra.entrada_validada_en) return 'La entrada ya se usó.';
-    if (compra.candy_entregado_en) return 'El candy de esta compra ya se retiró.';
+    if (compra.candy_entregado_en) return 'Los productos del Candy Shop de esta compra ya se retiraron.';
     const inicio = new Date(compra.funcion_fecha_hora).getTime();
     if (Date.now() > inicio - HORAS_PARA_CANCELAR * MS_POR_HORA) {
       return 'Solo se puede cancelar hasta 2 horas antes de la función.';

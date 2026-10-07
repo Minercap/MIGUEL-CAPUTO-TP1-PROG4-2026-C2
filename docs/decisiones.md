@@ -1619,3 +1619,34 @@ sin aviso, cuando se pasan las 1000.
 me trae solo esas, con el total para saber cuántas páginas hay.
 
 **Clase de origen:** 6 (select con filtros) + `.range()` y `count` 🟡. **Requisito:** R-38.
+
+---
+
+## D-62 · Nombres en pantalla: "Operaciones" y "Candy Shop" · 07/10
+
+**Elegido:**
+- **"Operaciones"** es la cantidad de pagos: cada compra cuenta una vez, lleve entradas,
+  productos del Candy Shop o las dos cosas. Se usa en el admin, donde antes decía
+  "Compras": la tarjeta de totales y la tabla por día de los reportes, el PDF y el Excel
+  exportados. Debajo de la tarjeta, una aclaración en letra chica: "Cada pago; puede
+  incluir entradas, Candy Shop o ambos".
+- **"Candy Shop"** nombra los productos del cine: el menú y el ABM del admin, el título del
+  reporte de más vendidos, el paso de la compra, el detalle de la compra (en Mi cuenta, en
+  la entrada y en su PDF), la pestaña del empleado y los mensajes de la validación.
+
+**Por qué:** en los reportes, "Compras" al lado de "Entradas" se leía como si fueran cosas
+del mismo tipo, y una compra puede no tener productos del candy, o tener varias entradas.
+"Operaciones" deja claro que se cuentan pagos. "Candy bar" y "candy" convivían en distintas
+pantallas; "Candy Shop" es un solo nombre para la sección.
+
+**Lo que no cambia:** en el código y en la base los nombres siguen igual (`compras`,
+`candy`, `ItemsCandy`, `ProductosCandy`, `candy_entregado_en`, el tipo `'candy'` de
+`validar_compra`). "Mis compras" del cliente tampoco cambia: ahí una compra es el pedido
+completo, que es lo que el cliente entiende por compra. Los mensajes de `validar_compra`
+están en la base: cambian con la sección 17 de `supabase/schema.sql`.
+
+**Cómo lo explico en el oral:** son nombres para el usuario, no para el modelo. En la base
+una compra es una compra; en el reporte del admin la muestro como "operación" porque lo que
+cuenta ahí es cuántos pagos hubo.
+
+**Clase de origen:** textos de la interfaz. **Requisito:** R-21, R-35, R-40.

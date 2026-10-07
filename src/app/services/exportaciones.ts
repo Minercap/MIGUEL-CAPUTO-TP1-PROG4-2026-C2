@@ -8,15 +8,17 @@ import { fechaParaMostrar } from '../validadores/validadores';
 // Medidas de la hoja del PDF, en milímetros (A4 mide 210 × 297).
 const MARGEN = 20;
 const BORDE_DERECHO = 190;
-const COLUMNA_ENTRADAS = 95; // donde se escriben las entradas
-const COLUMNA_FACTURADO = 140; // donde se escribe lo facturado
+const COLUMNA_OPERACIONES = 75; // donde se escriben las operaciones
+const COLUMNA_ENTRADAS = 110; // donde se escriben las entradas
+const COLUMNA_FACTURADO = 145; // donde se escribe lo facturado
 const ALTO_UTIL = 275; // si un renglón pasa de acá, va a una hoja nueva
 
 // Un renglón de la hoja de Excel. Los nombres de las propiedades son los
 // títulos de las columnas, por eso van con mayúscula y con tilde.
+// "Operaciones" es la cantidad de pagos (D-62).
 interface RenglonDeExcel {
   Día: string;
-  Compras: number;
+  Operaciones: number;
   Entradas: number;
   Facturado: number;
 }
@@ -44,7 +46,7 @@ export class Exportaciones {
     try {
       const renglones: RenglonDeExcel[] = filas.map((fila) => ({
         Día: fechaParaMostrar(fila.dia),
-        Compras: fila.compras,
+        Operaciones: fila.compras,
         Entradas: fila.entradas,
         Facturado: fila.facturado,
       }));
@@ -53,7 +55,7 @@ export class Exportaciones {
       const totales = totalesDe(filas);
       renglones.push({
         Día: 'Total',
-        Compras: totales.compras,
+        Operaciones: totales.compras,
         Entradas: totales.entradas,
         Facturado: totales.facturado,
       });
@@ -98,10 +100,11 @@ export class Exportaciones {
       pdf.setFontSize(12);
       pdf.text(`Del ${fechaParaMostrar(desde)} al ${fechaParaMostrar(hasta)}`, MARGEN, y);
 
-      // Un renglón de la tabla: tres textos a la misma altura, cada uno en
-      // su columna.
-      const renglon = (dia: string, entradas: string, facturado: string) => {
+      // Un renglón de la tabla: cuatro textos a la misma altura, cada uno
+      // en su columna.
+      const renglon = (dia: string, operaciones: string, entradas: string, facturado: string) => {
         pdf.text(dia, MARGEN, y);
+        pdf.text(operaciones, COLUMNA_OPERACIONES, y);
         pdf.text(entradas, COLUMNA_ENTRADAS, y);
         pdf.text(facturado, COLUMNA_FACTURADO, y);
       };
@@ -110,7 +113,7 @@ export class Exportaciones {
       // una función porque se repiten al empezar cada hoja.
       const encabezado = () => {
         pdf.setFont('helvetica', 'bold');
-        renglon('Día', 'Entradas', 'Facturado');
+        renglon('Día', 'Operaciones', 'Entradas', 'Facturado');
         pdf.setFont('helvetica', 'normal');
         y += 2;
         pdf.line(MARGEN, y, BORDE_DERECHO, y);
@@ -128,7 +131,12 @@ export class Exportaciones {
           encabezado();
           y += 7;
         }
-        renglon(fechaParaMostrar(fila.dia), String(fila.entradas), pesos(fila.facturado));
+        renglon(
+          fechaParaMostrar(fila.dia),
+          String(fila.compras),
+          String(fila.entradas),
+          pesos(fila.facturado),
+        );
       }
 
       // La fila de totales: una raya arriba y el renglón en negrita.
@@ -142,7 +150,12 @@ export class Exportaciones {
       pdf.line(MARGEN, y, BORDE_DERECHO, y);
       y += 7;
       pdf.setFont('helvetica', 'bold');
-      renglon('Total', String(totales.entradas), pesos(totales.facturado));
+      renglon(
+        'Total',
+        String(totales.compras),
+        String(totales.entradas),
+        pesos(totales.facturado),
+      );
 
       // save() arma el archivo y dispara la descarga en el navegador.
       pdf.save(`facturacion-${desde}-a-${hasta}.pdf`);

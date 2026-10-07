@@ -230,7 +230,7 @@
 
     <div class="botones">
       <button type="button" [disabled]="enviando()" (click)="volver.emit()">
-        Volver al candy
+        Volver al Candy Shop
       </button>
       <button type="submit" class="principal" [disabled]="!formulario.valid || enviando()">
         {{ enviando() ? 'Procesando…' : hayQuePagar() ? 'Pagar $' + (resumen()?.a_pagar ?? 0) : 'Confirmar' }}

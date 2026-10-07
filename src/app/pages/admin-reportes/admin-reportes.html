@@ -74,8 +74,11 @@
       <strong>{{ totales().entradas }}</strong>
     </li>
     <li>
-      <span>Compras</span>
+      <!-- "Operaciones" y no "Compras" (D-62): cada pago, que puede llevar
+           entradas, Candy Shop o las dos cosas. -->
+      <span>Operaciones</span>
       <strong>{{ totales().compras }}</strong>
+      <small class="aclaracion">Cada pago; puede incluir entradas, Candy Shop o ambos</small>
     </li>
   </ul>
 
@@ -101,7 +104,7 @@
           <thead>
             <tr>
               <th scope="col">Día</th>
-              <th scope="col" class="numero">Compras</th>
+              <th scope="col" class="numero">Operaciones</th>
               <th scope="col" class="numero">Entradas</th>
               <th scope="col" class="numero">Facturado</th>
             </tr>
@@ -168,10 +171,10 @@
 
   <!-- 5. Los productos del candy más vendidos. El primero va destacado. -->
   <section>
-    <h2>Productos más vendidos</h2>
+    <h2>Candy Shop: productos más vendidos</h2>
 
     @if (productos().length === 0) {
-      <p>No se vendieron productos del candy en este período.</p>
+      <p>No se vendieron productos del Candy Shop en este período.</p>
     } @else {
       <app-grafico-barras [datos]="productos()" [destacarPrimero]="true" />
     }

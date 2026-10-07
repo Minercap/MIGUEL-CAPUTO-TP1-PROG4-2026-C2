@@ -76,7 +76,7 @@ const rutas: Routes = [
   },
   {
     path: 'productos',
-    title: 'Candy bar · Administración',
+    title: 'Candy Shop · Administración',
     loadComponent: () =>
       import('./admin-productos/admin-productos').then((m) => m.AdminProductos),
   },

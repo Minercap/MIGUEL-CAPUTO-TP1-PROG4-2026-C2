@@ -19,7 +19,7 @@
     [disabled]="enviando()"
     (click)="elegirTipo('candy')"
   >
-    Candy
+    Candy Shop
   </button>
 </div>
 
@@ -83,7 +83,7 @@
 
   <div class="botones">
     <button type="submit" [disabled]="!formulario.valid || enviando()">
-      {{ enviando() ? 'Validando…' : tipo() === 'entrada' ? 'Validar entrada' : 'Validar candy' }}
+      {{ enviando() ? 'Validando…' : tipo() === 'entrada' ? 'Validar entrada' : 'Validar Candy Shop' }}
     </button>
   </div>
 </form>
@@ -96,7 +96,7 @@
 @if (resultado(); as r) {
   @if (r.hecho) {
     <section class="resultado ok" role="alert">
-      <h2>{{ tipo() === 'entrada' ? 'Entrada válida' : 'Candy para entregar' }}</h2>
+      <h2>{{ tipo() === 'entrada' ? 'Entrada válida' : 'Candy Shop para entregar' }}</h2>
 
       @if (r.detalle; as d) {
         <p class="codigo">{{ d.codigo }}</p>
