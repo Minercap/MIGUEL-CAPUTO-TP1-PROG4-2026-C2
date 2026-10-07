@@ -10,6 +10,7 @@ function compra(id: number, estado: 'pagada' | 'cancelada' = 'pagada'): CompraGu
   return {
     id,
     usuario_id: 'u',
+    email: 'prueba@ejemplo.test',
     codigo: `OLY-TEST-000${id}`,
     total: 1000,
     cupon_id: null,

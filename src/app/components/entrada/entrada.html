@@ -1,11 +1,13 @@
 @if (compra(); as c) {
   @if (datos(); as d) {
     <section class="entrada">
-      <h2>¡Compra confirmada!</h2>
-      <p>
-        La compra quedó registrada con el mail <strong>{{ c.email }}</strong>. Descargá tu
-        entrada y presentala en el ingreso a la sala.
-      </p>
+      @if (!enMisCompras()) {
+        <h2>¡Compra confirmada!</h2>
+        <p>
+          La compra quedó registrada con el mail <strong>{{ c.email }}</strong>. Descargá tu
+          entrada y presentala en el ingreso a la sala.
+        </p>
+      }
 
       <div class="ticket">
         <!-- El QR es una imagen generada en el navegador: [src] recibe la
@@ -47,10 +49,14 @@
         <p class="error" role="alert">{{ error() }}</p>
       }
 
-      <div class="botones">
-        <button type="button" class="principal" (click)="descargarPdf()">Descargar PDF</button>
-        <a routerLink="/">Volver a la cartelera</a>
-      </div>
+      <!-- En Mi cuenta, la tarjeta de la compra tiene su propio botón para el
+           PDF. -->
+      @if (!enMisCompras()) {
+        <div class="botones">
+          <button type="button" class="principal" (click)="descargarPdf()">Descargar PDF</button>
+          <a routerLink="/">Volver a la cartelera</a>
+        </div>
+      }
     </section>
   }
 }

@@ -33,7 +33,8 @@ export class Tickets {
   //   margin  el borde blanco alrededor, medido en cuadraditos del QR.
   async generarQr(codigo: string): Promise<Resultado<string>> {
     try {
-      const imagen = await toDataURL(codigo, { width: 240, margin: 2 });
+      // 480 px: se ve nítido en la pantalla aunque se muestre grande.
+      const imagen = await toDataURL(codigo, { width: 480, margin: 2 });
       return { datos: imagen, error: null };
     } catch {
       return { datos: null, error: 'No se pudo generar el código QR.' };

@@ -10,8 +10,13 @@ import { ResumenCompra } from '../resumen-compra/resumen-compra';
 // con el código, los datos de la función, el detalle de la compra, el
 // medio de pago y el botón para descargar el PDF.
 //
-// Es un componente hijo de la pantalla de compra (clase 3): recibe por
-// input() la compra que devolvió la base y los datos de la función.
+// Es un componente hijo (clase 3) de dos pantallas, que le pasan los mismos
+// datos por input():
+//   - la de compra, con la compra que devolvió la base;
+//   - Mi cuenta, con una compra de "Mis compras" (MiCompra tiene todos los
+//     campos de CompraConfirmada). Ahí va con enMisCompras en true: sin el
+//     título de confirmación ni sus botones, porque la tarjeta de la compra
+//     ya tiene los suyos.
 @Component({
   imports: [RouterLink, DatePipe, TitleCasePipe, ResumenCompra],
   selector: 'app-entrada',
@@ -25,6 +30,7 @@ export class Entrada implements OnInit {
   // pantalla de compra siempre los manda.
   compra = input<CompraConfirmada | null>(null);
   datos = input<FuncionParaComprar | null>(null);
+  enMisCompras = input(false);
 
   leyendaAdulto = LEYENDA_ADULTO;
   // "Tarjeta de crédito" en lugar de 'credito', para que no se confunda con

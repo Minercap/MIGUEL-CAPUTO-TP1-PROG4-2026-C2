@@ -199,10 +199,15 @@ export interface CancelacionConfirmada {
 
 // ---------- Mis compras (R-12, R-29) ----------
 
-// Una compra del cliente, con lo que muestra la lista del perfil.
+// Una compra del cliente, con lo que muestra la lista del perfil. Tiene
+// todos los campos de CompraConfirmada (codigo, email, requiere_adulto,
+// medio_pago y el resumen), así que se le puede pasar tal cual al
+// componente Entrada y al PDF, igual que la confirmación de la compra.
 export interface MiCompra extends ResumenDeCompra {
   id: number;
   codigo: string;
+  email: string;
+  requiere_adulto: boolean; // la película tiene restricción de edad (R-26)
   creado_en: string;
   estado: 'pagada' | 'cancelada';
   medio_pago: MedioGuardado;
@@ -210,6 +215,9 @@ export interface MiCompra extends ResumenDeCompra {
   candy_entregado_en: string | null;
   pelicula_nombre: string;
   funcion_fecha_hora: string;
+  // La función, su película y su sala, para la entrada y el PDF. null si
+  // la función o la película ya no existen.
+  datos: FuncionParaComprar | null;
 }
 
 // Un renglón del historial de canjes de Mi cuenta (R-03). El canje se hace
@@ -227,6 +235,7 @@ export interface CanjeDelHistorial {
 export interface CompraGuardada {
   id: number;
   usuario_id: string | null;
+  email: string;
   codigo: string;
   total: number; // después del cupón (D-47)
   cupon_id: number | null;

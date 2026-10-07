@@ -29,10 +29,17 @@ h3 {
   gap: 0.5rem;
 }
 
+/* El QR grande y sobre blanco, para que el lector del empleado lo lea
+   desde otra pantalla: con el fondo oscuro de la app, los cuadraditos
+   negros no tendrían contraste. El padding blanco es el margen que necesita
+   el lector alrededor del código. */
 .qr {
-  width: 12rem;
-  height: 12rem;
+  width: min(100%, 18rem);
+  height: auto;
+  aspect-ratio: 1;
+  padding: 0.75rem;
   border-radius: 0.25rem;
+  background: var(--color-fondo-qr);
 }
 
 .texto-codigo {

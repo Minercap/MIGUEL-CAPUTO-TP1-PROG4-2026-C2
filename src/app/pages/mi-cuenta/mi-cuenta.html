@@ -73,9 +73,36 @@
         </header>
         <p class="codigo">Código {{ compra.codigo }}</p>
 
-        <!-- El mismo detalle que se vio al pagar (A-01). -->
-        <app-resumen-compra [resumen]="compra" />
-        <p>Medio de pago: {{ nombreDelMedio(compra.medio_pago) }}</p>
+        @if (idEntradaAbierta() === compra.id && compra.datos) {
+          <!-- La entrada con el QR (R-20): el mismo componente de la
+               confirmación de compra, con los mismos datos. Ya trae el
+               detalle de la compra, así que el de abajo no se repite. -->
+          <app-entrada [compra]="compra" [datos]="compra.datos" [enMisCompras]="true" />
+        } @else {
+          <!-- El mismo detalle que se vio al pagar (A-01). -->
+          <app-resumen-compra [resumen]="compra" />
+          <p>Medio de pago: {{ nombreDelMedio(compra.medio_pago) }}</p>
+        }
+
+        <!-- Entrada y PDF: solo si la compra no está cancelada. Una
+             entrada ya validada se sigue pudiendo ver. -->
+        @if (compra.estado === 'pagada' && compra.datos) {
+          <div class="acciones">
+            <button type="button" (click)="alternarEntrada(compra.id)">
+              {{ idEntradaAbierta() === compra.id ? 'Ocultar entrada' : 'Ver entrada' }}
+            </button>
+            <button
+              type="button"
+              [disabled]="idDescargando() === compra.id"
+              (click)="descargarPdf(compra)"
+            >
+              {{ idDescargando() === compra.id ? 'Generando…' : 'Descargar PDF' }}
+            </button>
+          </div>
+          @if (errorPdf()?.id === compra.id) {
+            <p class="error" role="alert">{{ errorPdf()?.mensaje }}</p>
+          }
+        }
 
         <div class="acciones">
           @if (comprasSrv.motivoSinCancelar(compra); as motivo) {

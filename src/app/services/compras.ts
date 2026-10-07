@@ -535,9 +535,10 @@ export class Compras {
   //
   // Entradas, ItemsCandy y Canjes se leen enteras: RLS ya deja ver solo
   // las de las compras propias. Se filtran igual por compra, porque el
-  // admin y el empleado pueden leer todas. Funciones, películas, productos,
-  // recompensas y cupones son tablas públicas y chicas: se leen enteras
-  // para buscar los nombres.
+  // admin y el empleado pueden leer todas. Funciones, películas, salas,
+  // productos, recompensas y cupones son tablas públicas y chicas: se leen
+  // enteras para buscar los nombres. Salas está por la entrada (sala de la
+  // función): es una consulta para todas las compras, no una por compra.
   async traerMisCompras(usuarioId: string): Promise<Resultado<MiCompra[]>> {
     const error = 'No se pudieron cargar tus compras.';
 
@@ -558,7 +559,8 @@ export class Compras {
     const { data: dProductos, error: e7 } = await this.sup.Sup.from('ProductosCandy').select('*');
     const { data: dRecompensas, error: e8 } = await this.sup.Sup.from('Recompensas').select('*');
     const { data: dCupones, error: e9 } = await this.sup.Sup.from('Cupones').select('*');
-    if (e2 || e3 || e4 || e5 || e6 || e7 || e8 || e9) return { datos: null, error };
+    const { data: dSalas, error: e10 } = await this.sup.Sup.from('Salas').select('*');
+    if (e2 || e3 || e4 || e5 || e6 || e7 || e8 || e9 || e10) return { datos: null, error };
 
     const entradas: EntradaGuardada[] = dEntradas;
     const items: ItemCandyGuardado[] = dItems;
@@ -568,6 +570,7 @@ export class Compras {
     const productos: Producto[] = dProductos;
     const recompensas: Recompensa[] = dRecompensas;
     const cupones: Cupon[] = dCupones;
+    const salas: Sala[] = dSalas;
 
     const nombreDeProducto = (id: number | null) =>
       productos.find((p) => p.id === id)?.nombre ?? 'Producto';
@@ -616,9 +619,25 @@ export class Compras {
       let puntosUsados = 0;
       for (const c of canjesDeLaCompra) puntosUsados += c.puntos;
 
+      // Lo que necesita la entrada (componente Entrada y PDF): la función
+      // con su película y el nombre de su sala, como en la compra.
+      const datos: FuncionParaComprar | null =
+        funcion && pelicula
+          ? {
+              funcion,
+              pelicula,
+              sala_nombre: salas.find((s) => s.id === funcion.sala_id)?.nombre ?? 'Sala',
+            }
+          : null;
+
       return {
         id: compra.id,
         codigo: compra.codigo,
+        email: compra.email,
+        // La leyenda del adulto (R-26) depende de la película, como en
+        // realizar_compra.
+        requiere_adulto: pelicula ? pelicula.restriccion_edad !== null : false,
+        datos,
         creado_en: compra.creado_en,
         estado: compra.estado,
         medio_pago: compra.medio_pago,

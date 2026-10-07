@@ -23,6 +23,7 @@ function compra(
   return {
     id,
     usuario_id: null,
+    email: 'prueba@ejemplo.test',
     codigo: `OLY-TEST-000${id}`,
     total,
     cupon_id: null,
