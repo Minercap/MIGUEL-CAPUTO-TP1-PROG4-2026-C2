@@ -212,6 +212,17 @@ export interface MiCompra extends ResumenDeCompra {
   funcion_fecha_hora: string;
 }
 
+// Un renglón del historial de canjes de Mi cuenta (R-03). El canje se hace
+// dentro de una compra (D-45), así que su fecha y su código son los de esa
+// compra. devuelto: la compra se canceló y los puntos volvieron (D-48).
+export interface CanjeDelHistorial {
+  fecha: string;
+  recompensa: string; // "Entrada" o el nombre del producto
+  puntos: number;
+  codigo: string;
+  devuelto: boolean;
+}
+
 // Una fila de la tabla Compras, con las columnas que lee Mis compras.
 export interface CompraGuardada {
   id: number;

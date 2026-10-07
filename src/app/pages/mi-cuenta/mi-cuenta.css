@@ -85,3 +85,34 @@ h2 {
   gap: 0.5rem;
   margin-top: 0.5rem;
 }
+
+/* ---------- Historial de canjes (R-03) ---------- */
+
+.canjes {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 40rem;
+  padding: 0;
+  list-style: none;
+}
+
+/* Un renglón por canje; en el celular, los datos bajan de renglón. */
+.canje {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 1rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.5rem;
+  background: var(--color-superficie);
+}
+
+.canje .fecha {
+  color: var(--color-texto-suave);
+}
+
+/* Canje de una compra cancelada: apagado, como la compra. */
+.devuelto {
+  color: var(--color-texto-suave);
+}

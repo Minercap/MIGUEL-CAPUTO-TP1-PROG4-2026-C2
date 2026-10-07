@@ -9,6 +9,7 @@ import {
   CancelacionConfirmada,
   CandyComprado,
   CanjeComprado,
+  CanjeDelHistorial,
   CanjeGuardado,
   CompraGuardada,
   EntradaComprada,
@@ -132,6 +133,26 @@ export function nombreDelMedio(medio: MedioGuardado): string {
     case 'sin_cargo':
       return 'Sin cargo';
   }
+}
+
+// El historial de canjes de Mi cuenta (R-03), armado con las compras que
+// ya trajo traerMisCompras: cada compra trae sus canjes con el nombre y los
+// puntos. No hace falta otra consulta. Las compras llegan de la más nueva a
+// la más vieja, así que el historial queda en el mismo orden.
+export function canjesDeCompras(compras: MiCompra[]): CanjeDelHistorial[] {
+  const historial: CanjeDelHistorial[] = [];
+  for (const compra of compras) {
+    for (const canje of compra.canjes) {
+      historial.push({
+        fecha: compra.creado_en,
+        recompensa: canje.nombre,
+        puntos: canje.puntos,
+        codigo: compra.codigo,
+        devuelto: compra.estado === 'cancelada',
+      });
+    }
+  }
+  return historial;
 }
 
 // Con preventa habilitada, la venta abre esta cantidad de días antes del

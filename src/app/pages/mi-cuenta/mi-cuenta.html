@@ -22,6 +22,29 @@
   <p class="error" role="alert">{{ auth.errorPerfil() }}</p>
 }
 
+<!-- Historial de canjes (R-03). Sale de las mismas compras de abajo, así
+     que se muestra cuando terminan de cargar. -->
+<h2>Mis canjes</h2>
+
+@if (!cargando() && !error()) {
+  <ul class="canjes">
+    @for (canje of canjes(); track $index) {
+      <li class="canje" [class.devuelto]="canje.devuelto">
+        <span class="fecha">{{ canje.fecha | date: 'dd/MM/yyyy' : '-0300' }}</span>
+        <strong>{{ canje.recompensa }}</strong>
+        <span>{{ canje.puntos }} puntos</span>
+        <span class="codigo">{{ canje.codigo }}</span>
+        @if (canje.devuelto) {
+          <!-- La compra se canceló: los puntos volvieron (D-48). -->
+          <span class="etiqueta">Devuelto</span>
+        }
+      </li>
+    } @empty {
+      <li>Todavía no canjeaste puntos.</li>
+    }
+  </ul>
+}
+
 <h2>Mis compras</h2>
 
 @if (aviso()) {

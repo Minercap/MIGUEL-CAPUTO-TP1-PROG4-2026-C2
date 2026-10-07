@@ -1,12 +1,13 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { Auth } from '../../services/auth';
-import { Compras, nombreDelMedio } from '../../services/compras';
-import { MiCompra } from '../../interfaces/compra';
+import { Compras, canjesDeCompras, nombreDelMedio } from '../../services/compras';
+import { CanjeDelHistorial, MiCompra } from '../../interfaces/compra';
 import { ResumenCompra } from '../../components/resumen-compra/resumen-compra';
 
-// Perfil del cliente (R-03): sus datos, sus puntos y su crédito, y la lista
-// de sus compras con el botón para cancelar (R-29, D-48).
+// Perfil del cliente (R-03): sus datos, sus puntos y su crédito, el
+// historial de canjes y la lista de sus compras con el botón para cancelar
+// (R-29, D-48).
 @Component({
   imports: [DatePipe, ResumenCompra],
   selector: 'app-mi-cuenta',
@@ -46,6 +47,13 @@ export class MiCuenta implements OnInit {
       return;
     }
     this.compras.set(resultado.datos);
+  }
+
+  // El historial de canjes sale de las compras cargadas. Es un método y no
+  // un signal aparte: al cancelar una compra, compras cambia y el canje
+  // pasa solo a "Devuelto".
+  canjes(): CanjeDelHistorial[] {
+    return canjesDeCompras(this.compras());
   }
 
   pedirConfirmacion(id: number) {

@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { Compras, lineasDeCandy } from './compras';
-import { FuncionParaComprar } from '../interfaces/compra';
+import { Compras, canjesDeCompras, lineasDeCandy } from './compras';
+import { FuncionParaComprar, MiCompra } from '../interfaces/compra';
 import { Producto } from '../interfaces/producto';
 
 describe('Compras', () => {
@@ -135,5 +135,40 @@ describe('Compras', () => {
       'Pochoclo x 1 canje $0',
       'Agua x 1 $800',
     ]);
+  });
+});
+
+// El historial de canjes de Mi cuenta (R-03) sale de las compras ya
+// cargadas. Solo importan el código, la fecha, el estado y los canjes.
+describe('canjesDeCompras', () => {
+  function compra(
+    codigo: string,
+    estado: 'pagada' | 'cancelada',
+    canjes: MiCompra['canjes'],
+  ): MiCompra {
+    return { codigo, estado, creado_en: '2026-10-05T15:00:00+00:00', canjes } as MiCompra;
+  }
+
+  it('arma un renglón por canje, con el código de su compra', () => {
+    const historial = canjesDeCompras([
+      compra('OLY-AAAA-0001', 'pagada', [
+        { recompensa_id: 1, nombre: 'Entrada', tipo: 'entrada', puntos: 500 },
+        { recompensa_id: 2, nombre: 'Pochoclo grande', tipo: 'producto', puntos: 150 },
+      ]),
+      compra('OLY-AAAA-0002', 'pagada', []),
+    ]);
+    expect(historial.map((c) => [c.recompensa, c.puntos, c.codigo])).toEqual([
+      ['Entrada', 500, 'OLY-AAAA-0001'],
+      ['Pochoclo grande', 150, 'OLY-AAAA-0001'],
+    ]);
+  });
+
+  it('marca como devueltos los canjes de una compra cancelada (D-48)', () => {
+    const historial = canjesDeCompras([
+      compra('OLY-AAAA-0003', 'cancelada', [
+        { recompensa_id: 1, nombre: 'Entrada', tipo: 'entrada', puntos: 500 },
+      ]),
+    ]);
+    expect(historial[0].devuelto).toBe(true);
   });
 });
