@@ -1,0 +1,68 @@
+<p><a routerLink="/admin">← Administración</a></p>
+
+<h1>Log de actividad</h1>
+
+<!-- Filtro por acción. No hay formulario: cada cambio vuelve a pedir la
+     página 1, igual que el buscador de la cartelera. -->
+<div class="filtro">
+  <label for="accion">Acción</label>
+  <select id="accion" [disabled]="cargando()" (change)="filtrar($event)">
+    <option value="">Todas</option>
+    @for (a of acciones; track a) {
+      <option [value]="a" [selected]="accion() === a">{{ a }}</option>
+    }
+  </select>
+</div>
+
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+} @else if (cargando() && registros().length === 0) {
+  <p>Cargando el log…</p>
+} @else if (registros().length === 0) {
+  <p>No hay actividad registrada.</p>
+} @else {
+  <!-- La tabla tiene su propio scroll horizontal en el celular. -->
+  <div class="tabla">
+    <table>
+      <thead>
+        <tr>
+          <th scope="col">Fecha y hora</th>
+          <th scope="col">Usuario</th>
+          <th scope="col">Acción</th>
+          <th scope="col">Tabla</th>
+          <th scope="col">Detalle</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of registros(); track r.id) {
+          <tr>
+            <!-- '-0300': en hora argentina (D-35). -->
+            <td>{{ r.creado_en | date: 'dd/MM/yyyy HH:mm' : '-0300' }}</td>
+            <td>{{ r.usuario }}</td>
+            <td>{{ r.accion }}</td>
+            <td>{{ r.entidad }}</td>
+            <td class="detalle">{{ r.detalle ?? '—' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+}
+
+<!-- Paginado (D-61). Los botones se apagan en los extremos y mientras se
+     carga una página. -->
+@if (!error()) {
+  <nav class="paginas" aria-label="Páginas del log">
+    <button type="button" [disabled]="pagina() <= 1 || cargando()" (click)="anterior()">
+      Anterior
+    </button>
+    <span>Página {{ pagina() }} de {{ totalPaginas() }}</span>
+    <button
+      type="button"
+      [disabled]="pagina() >= totalPaginas() || cargando()"
+      (click)="siguiente()"
+    >
+      Siguiente
+    </button>
+  </nav>
+}

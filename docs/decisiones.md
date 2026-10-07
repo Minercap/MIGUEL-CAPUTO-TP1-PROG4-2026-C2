@@ -1592,6 +1592,11 @@ fecha y la hora a la vista.
   posición `desde` a la `hasta`, las dos incluidas, empezando en 0.
 - `{ count: 'exact' }` es una opción del `select` que hace que Supabase cuente cuántas filas
   cumplen el filtro y lo devuelva en `count`, además de los datos.
+- `.order('creado_en', { ascending: false })`, más `.order('id', ...)` para los empates:
+  pide las filas ya ordenadas, de la más nueva a la más vieja. Lo exige `.range()`: sin un
+  orden fijo, Postgres puede devolver las filas en cualquier orden y una misma fila podría
+  aparecer en dos páginas. Se agregó al implementar; **queda para confirmar** en
+  `docs/pendientes-revision.md`.
 
 **Por qué:** el log crece con cada acción del admin y del empleado. Supabase devuelve como
 máximo 1000 filas por consulta (D-57): traer todo y paginar en el front deja de funcionar,

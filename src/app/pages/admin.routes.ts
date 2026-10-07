@@ -114,6 +114,11 @@ const rutas: Routes = [
     loadComponent: () =>
       import('./admin-reportes/admin-reportes').then((m) => m.AdminReportes),
   },
+  {
+    path: 'log',
+    title: 'Log de actividad · Administración',
+    loadComponent: () => import('./admin-log/admin-log').then((m) => m.AdminLog),
+  },
 ];
 
 export default rutas;

@@ -27,6 +27,6 @@ export class Admin {
     { nombre: 'Cupones', descripcion: 'Descuentos y condiciones', ruta: '/admin/cupones' },
     { nombre: 'Recompensas', descripcion: 'Canje de puntos', ruta: '/admin/recompensas' },
     { nombre: 'Reportes', descripcion: 'Facturación y más vendidos', ruta: '/admin/reportes' },
-    { nombre: 'Log', descripcion: 'Quién hizo qué y cuándo', ruta: null },
+    { nombre: 'Log', descripcion: 'Quién hizo qué y cuándo', ruta: '/admin/log' },
   ];
 }
