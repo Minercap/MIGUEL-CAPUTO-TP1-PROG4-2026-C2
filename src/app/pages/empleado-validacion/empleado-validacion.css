@@ -54,21 +54,55 @@ form,
   background: var(--color-superficie);
 }
 
-/* El recuadro del video. La librería pone el video adentro del div y le
-   da el alto según la cámara; apagado, se le deja un alto para que el
-   recuadro no desaparezca. */
+/* El recuadro del video, con tamaño propio aunque la cámara esté
+   apagada: todo el ancho y un alto fijo. relative es la referencia para
+   ubicar el cartel de cámara apagada encima. */
 .visor {
+  position: relative;
+  width: 100%;
+  height: 280px;
   overflow: hidden;
   border: 1px solid var(--color-texto-suave);
   border-radius: 0.5rem;
+  background: var(--color-fondo);
 }
 
-.visor.apagado {
+/* El div que recibe el video. La librería mide su ancho al abrir la
+   cámara y se lo pone al video: si mide 0, el video queda invisible. */
+.lector {
+  width: 100%;
+  height: 100%;
+}
+
+/* El video lo crea la librería, no este template, así que los estilos del
+   componente no le llegan: ::ng-deep los deja pasar, y .visor adelante
+   los limita a este recuadro. Los !important pisan el ancho en píxeles
+   que la librería le escribe en el atributo style. object-fit: cover
+   llena el recuadro sin deformar la imagen. */
+.visor ::ng-deep video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
+}
+
+/* El cartel, centrado encima del recuadro. Solo existe con la cámara
+   apagada o abriéndose. */
+.apagada {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 10rem;
+  margin: 0;
   color: var(--color-texto-suave);
+}
+
+/* En pantallas más anchas, un poco más alto y sin estirarse de más. */
+@media (min-width: 600px) {
+  .visor {
+    max-width: 32rem;
+    height: 360px;
+  }
 }
 
 .botones {

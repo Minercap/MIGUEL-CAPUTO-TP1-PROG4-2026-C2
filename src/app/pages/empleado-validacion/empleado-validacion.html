@@ -27,12 +27,16 @@
   <h2>Escanear el QR</h2>
 
   <!-- El video lo pone acá adentro la librería del lector (D-50). El div
-       está siempre en la página, aunque la cámara esté apagada: el lector
-       lo busca por su id cuando se activa. -->
-  <div class="visor" [class.apagado]="!camaraActiva()">
-    <div [id]="idLector"></div>
+       del lector está siempre en la página y nunca dentro de un @if: la
+       librería lo busca por su id y mide su ancho al abrir la cámara, y
+       Angular no tiene que borrarlo ni recrearlo. El cartel de cámara
+       apagada es otro elemento, encima del recuadro. -->
+  <div class="visor">
+    <div class="lector" [id]="idLector"></div>
     @if (!camaraActiva()) {
-      <p>{{ abriendoCamara() ? 'Abriendo la cámara…' : 'La cámara está apagada.' }}</p>
+      <p class="apagada">
+        {{ abriendoCamara() ? 'Abriendo la cámara…' : 'La cámara está apagada.' }}
+      </p>
     }
   </div>
 
