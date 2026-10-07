@@ -367,7 +367,8 @@ combos, cupones y recompensas.
 
 ### R-35 · Reporte de facturación
 
-**Estado final:** Hecho · `pages/admin-reportes/`, `services/reportes.ts` (D-55, D-56).
+**Estado final:** Hecho · `pages/admin-reportes/`, `services/reportes.ts` (D-55, D-56). La
+cantidad de pagos se muestra como "Operaciones" (D-62).
 
 Cuánto se facturó **por día** y cuántas entradas se vendieron.
 
@@ -479,6 +480,7 @@ adelante sin cambios estructurales.
 | D-59 | Reseñas | Cualquier usuario logueado, una por película, sin autor visible. No se editan ni se borran |
 | D-60 | Validación y fecha | El empleado no rechaza por la fecha: un solo uso. La tarjeta muestra fecha y hora de la función |
 | D-61 | Log de actividad | Paginado en Supabase de a 10 filas, con `.range()` y el total con `count: 'exact'` |
+| D-62 | Nombres en pantalla | "Operaciones" es la cantidad de pagos en los reportes del admin; "Candy Shop" nombra los productos del cine. En el código y la base los nombres no cambian |
 | D-14 | Log de actividad | Lo escribe cada servicio después de una acción que salió bien: altas, ediciones y bajas del admin, validaciones del empleado y reseñas |
 | D-23 | Fechas y horas sin calendario | Tres desplegables (día, mes, año) y desplegables de hora y minutos |
 | D-24 | Admin y empleado | Roles separados: el admin no valida entradas ni entrega candy |

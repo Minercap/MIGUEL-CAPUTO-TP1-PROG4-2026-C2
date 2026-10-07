@@ -3,11 +3,18 @@
 Aplicación web de un cine de un solo edificio con varias salas. TP 1 de Programación IV,
 2026 C2.
 
-- Los **clientes** ven la cartelera, reseñan películas, compran entradas y candy, reciben la
+- Los **clientes** ven la cartelera, reseñan películas, compran entradas y productos del
+  Candy Shop, reciben la
   entrada con QR y en PDF, acumulan y canjean puntos, y cancelan con crédito.
-- Los **empleados** validan entradas y retiros de candy, con la cámara o con el código.
-- El **administrador** gestiona películas, salas, funciones, candy, cupones y recompensas, y
-  ve los reportes y el log de actividad.
+- Los **empleados** validan entradas y retiros del Candy Shop, con la cámara o con el
+  código.
+- El **administrador** gestiona películas, salas, funciones, el Candy Shop (productos y
+  combos), cupones y recompensas, y ve los reportes y el log de actividad.
+
+En pantalla, los productos del cine se llaman **Candy Shop**, y en los reportes del admin la
+cantidad de pagos se llama **Operaciones** (cada una puede llevar entradas, Candy Shop o
+ambos), para no confundirla con las entradas vendidas (D-62). En el código y en la base los
+nombres no cambian (`compras`, `candy`, `ItemsCandy`).
 
 También se puede comprar sin cuenta. La app es una PWA y avisa con notificaciones push
 cuando sale a la venta una película de Próximamente.
@@ -127,7 +134,8 @@ flowchart LR
     crédito, calcula los precios en el servidor y guarda todo junto (D-39, D-47).
   - `cancelar_compra`: hasta 2 horas antes, acredita el total como crédito y libera las
     butacas (D-48).
-  - `validar_compra`: solo el empleado; la entrada o el candy se usan una sola vez (D-51).
+  - `validar_compra`: solo el empleado; la entrada o los productos del Candy Shop se
+    entregan una sola vez (D-51).
 - **Trigger** `funciones_sin_superposicion`: dos funciones no pueden estar en la misma
   sala a menos de 30 minutos, ni antes del estreno (D-29).
 - **Constraints `check`** con las mismas reglas que los formularios (D-25).
@@ -187,6 +195,7 @@ El detalle de cada una, con lo descartado y el porqué, está en
 | [D-58](docs/decisiones.md) | "Vio la película" = compra no cancelada y función ya ocurrida |
 | [D-59](docs/decisiones.md) | Una reseña por película, sin autor visible |
 | [D-61](docs/decisiones.md) | El log se pagina en la base con `.range()` |
+| [D-62](docs/decisiones.md) | En pantalla, "Operaciones" es la cantidad de pagos y "Candy Shop" los productos; el código no cambia |
 
 ---
 
@@ -240,7 +249,8 @@ pantalla muestre algo. La sección 3 de `supabase/seed.sql` carga:
 - 5 clientes de prueba, además de `cliente@olympia.test`.
 - 30 funciones pasadas, del 07/09 al 06/10, en distintos horarios y salas.
 - Unas 160 compras con códigos `OLY-SEED-…`: algunas canceladas, muchas con la entrada
-  validada, un 40 % con candy, y unas cuantas sobre las funciones futuras.
+  validada, un 40 % con productos del Candy Shop, y unas cuantas sobre las funciones
+  futuras.
 - 26 reseñas con estrellas y comentarios.
 
 Con eso los reportes de facturación y de más vistas tienen meses de historia, la cartelera

@@ -572,6 +572,10 @@ las suscripciones vencidas. Quien no dio permiso ve un aviso dentro de la app (D
 
 ## Decisiones que más probablemente pregunten
 
+Ojo con los nombres: en pantalla los productos del cine se llaman **Candy Shop** y en los
+reportes la cantidad de pagos se llama **Operaciones** (D-62). En el código siguen siendo
+`candy` y `compras`.
+
 **1. ¿Por qué la compra es una función de Postgres y no varios inserts desde Angular? (D-39)**
 Porque toca compra, entradas, butacas, candy, canjes y saldos, y no puede quedar a medias:
 en una función todo va en una transacción. Además los precios los calcula la base, así que
@@ -636,6 +640,12 @@ dentro de la app.
 **15. ¿Por qué el log se pagina en la base? (D-61, D-57)**
 Supabase devuelve como máximo 1000 filas por consulta y no avisa cuando corta. Con
 `.range()` pido solo las 10 de la página y con `count: 'exact'` sé cuántas hay en total.
+
+**16. ¿Qué diferencia hay entre Operaciones y Entradas? (D-62)**
+Una operación es un pago: una compra cuenta una vez, aunque lleve 4 entradas y productos del
+Candy Shop. Entradas son las butacas vendidas. Por eso en el reporte las operaciones son
+menos que las entradas. Las operaciones se cuentan en `Compras` y las entradas en
+`Entradas`; el nombre "Operaciones" es solo de la pantalla.
 
 ---
 
