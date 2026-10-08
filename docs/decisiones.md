@@ -1817,3 +1817,44 @@ que calcule en qué página estoy.
 
 **Clase de origen:** 2 (rutas y `routerLink`) + `routerLinkActive`,
 `routerLinkActiveOptions` y `ariaCurrentWhenActive` 🟡. **Requisito:** R-39.
+
+---
+
+## D-67 · Pipe `precio`: montos con punto de miles · 08/10
+
+**Elegido:** un pipe propio, `precio` (`src/app/pipes/precio-pipe.ts`), que muestra un monto
+como `$18.000`. Los centavos se muestran solo si el monto los tiene: `$1.498,50`. Se usa en
+el detalle de la película y en toda la compra: el mapa, el Candy Shop, el pago, el resumen y
+la entrada confirmada. El PDF de la entrada usa el mismo pipe, para que diga lo mismo que la
+pantalla.
+
+**Lo que no se vio en clase (🟡, aprobado por Miguel el 08/10):**
+- `numero.toLocaleString('es-AR', opciones)` es un método de JavaScript que tienen todos los
+  números: lo escribe como se usa en un país. Con `'es-AR'`, el punto separa los miles y la
+  coma los decimales. Las opciones `minimumFractionDigits` y `maximumFractionDigits` dicen
+  cuántos decimales mostrar.
+- `Number.isInteger(numero)`, también de JavaScript: dice si el número no tiene decimales.
+
+**Por qué no el pipe `number` de la clase 8:** `number` y `currency` escriben el número según
+el idioma de la app, que sale de `LOCALE_ID`. Sin configurarlo es inglés de Estados Unidos, y
+18000 sale "18,000", con coma. Para que salga con punto hay que registrar los datos del
+idioma (`registerLocaleData`) y cambiar `LOCALE_ID` en la configuración de la app: dos cosas
+que tampoco se vieron y que afectan a todos los pipes de la app. `toLocaleString` lo resuelve
+en una línea y solo donde se usa.
+
+**Por qué los centavos solo cuando los hay:** los precios del cine son enteros, y "$18.000,00"
+ensucia la pantalla. Pero el descuento de un cupón es un porcentaje y puede dar centavos (15 %
+de $9.990 es $1.498,50), y el crédito también se guarda con dos decimales. Si se redondearan,
+el resumen de la compra podría no cerrar.
+
+**Descartado:** redondear siempre a pesos enteros.
+
+**Lo que no cambia:** los montos de Mi cuenta, del admin y de los reportes siguen como
+estaban. Los reportes usan `currency` (clase 8).
+
+**Cómo lo explico en el oral:** es un pipe propio como el de las estrellas: recibe un número y
+devuelve un texto. Adentro, el formato lo hace `toLocaleString`, que ya viene con JavaScript.
+En el PDF no hay template, así que el servicio crea el pipe con `new` y llama a `transform`.
+
+**Clase de origen:** 8 (pipes propios) + `toLocaleString` y `Number.isInteger` 🟡.
+**Requisito:** R-39.

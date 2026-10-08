@@ -113,7 +113,7 @@
                   {{ funcion.idioma | titlecase }}
                 </strong>
                 <span class="precios">
-                  Base ${{ funcion.precio_base }} · VIP ${{ funcion.precio_vip }}
+                  Base {{ funcion.precio_base | precio }} · VIP {{ funcion.precio_vip | precio }}
                 </span>
               </a>
             }

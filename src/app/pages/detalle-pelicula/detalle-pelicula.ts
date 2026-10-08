@@ -9,6 +9,7 @@ import { Alertas } from '../../services/alertas';
 import { Notificaciones } from '../../services/notificaciones';
 import { Resenias } from '../../services/resenias';
 import { EstrellasPipe } from '../../pipes/estrellas-pipe';
+import { PrecioPipe } from '../../pipes/precio-pipe';
 import {
   diaParaMostrar,
   entero,
@@ -36,7 +37,7 @@ const MAXIMO_COMENTARIO = 280;
 // funciones futuras, agrupadas por día. Tocar un horario lleva a la compra
 // de esa función. Abajo, las reseñas con su promedio (R-08, R-09).
 @Component({
-  imports: [RouterLink, DatePipe, TitleCasePipe, ReactiveFormsModule, EstrellasPipe],
+  imports: [RouterLink, DatePipe, TitleCasePipe, ReactiveFormsModule, EstrellasPipe, PrecioPipe],
   selector: 'app-detalle-pelicula',
   styleUrl: './detalle-pelicula.css',
   templateUrl: './detalle-pelicula.html',
