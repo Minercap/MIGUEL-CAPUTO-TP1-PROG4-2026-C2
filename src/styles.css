@@ -260,10 +260,11 @@ fieldset {
   border-radius: var(--radio);
 }
 
+/* El título del grupo se ve como la etiqueta de un campo. */
 legend {
   padding: 0 6px;
-  color: var(--color-texto-suave);
-  font-size: var(--texto-14);
+  color: var(--color-texto);
+  font-size: var(--texto-16);
 }
 
 /* Las casillas: más grandes y con el tilde en el rojo del cine. */
