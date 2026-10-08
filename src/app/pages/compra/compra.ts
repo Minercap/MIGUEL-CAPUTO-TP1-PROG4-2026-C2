@@ -21,6 +21,7 @@ import {
 import { Cupon } from '../../interfaces/cupon';
 import { Categoria, ComboItem, Producto } from '../../interfaces/producto';
 import { diaParaMostrar } from '../../validadores/validadores';
+import { PrecioPipe } from '../../pipes/precio-pipe';
 
 // Los cuatro pasos de la compra, en orden.
 type PasoDeCompra = 'mapa' | 'candy' | 'pago' | 'entrada';
@@ -35,7 +36,7 @@ type PasoDeCompra = 'mapa' | 'candy' | 'pago' | 'entrada';
 // los componentes hijos solo muestran y avisan (clase 3).
 // No lleva guard: se puede comprar sin cuenta (R-02).
 @Component({
-  imports: [RouterLink, DatePipe, TitleCasePipe, Pago, Entrada, Candy],
+  imports: [RouterLink, DatePipe, TitleCasePipe, PrecioPipe, Pago, Entrada, Candy],
   selector: 'app-compra',
   styleUrl: './compra.css',
   templateUrl: './compra.html',

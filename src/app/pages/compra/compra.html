@@ -181,7 +181,7 @@
                 <span class="marca">Accesible</span>
               }
             </span>
-            <span>${{ elegida.precio }}</span>
+            <span>{{ elegida.precio | precio }}</span>
           </li>
         } @empty {
           <li>Todavía no elegiste ninguna butaca. Podés elegir hasta {{ maximo }}.</li>
@@ -189,7 +189,7 @@
       </ul>
       <p class="total">
         <span>Total ({{ elegidas().length }} de {{ maximo }} butacas)</span>
-        <strong>${{ total() }}</strong>
+        <strong>{{ total() | precio }}</strong>
       </p>
       <button
         type="button"

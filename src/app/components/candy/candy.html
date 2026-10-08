@@ -21,7 +21,7 @@
               <!-- El combo cubre una de las butacas elegidas (D-46). -->
               <small class="marca">Incluye una entrada: cubre una de tus butacas</small>
             }
-            <span>${{ combo.precio }}</span>
+            <span>{{ combo.precio | precio }}</span>
           </div>
           <div class="cantidad">
             <!-- La clase boton-cantidad deja a − y + afuera del estilo
@@ -59,7 +59,7 @@
         <li class="producto">
           <div class="datos">
             <strong>{{ producto.nombre }}</strong>
-            <span>${{ producto.precio }}</span>
+            <span>{{ producto.precio | precio }}</span>
           </div>
           <div class="cantidad">
             <button
@@ -93,7 +93,7 @@
 
   <p class="total">
     <span>Candy Shop</span>
-    <strong>${{ subtotal() }}</strong>
+    <strong>{{ subtotal() | precio }}</strong>
   </p>
 
   <div class="botones">

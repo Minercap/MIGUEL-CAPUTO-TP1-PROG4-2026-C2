@@ -2,6 +2,7 @@ import { Component, input, output, signal } from '@angular/core';
 import { MAXIMO_POR_PRODUCTO } from '../../services/compras';
 import { Categoria, ComboItem, Producto } from '../../interfaces/producto';
 import { ProductoElegido } from '../../interfaces/compra';
+import { PrecioPipe } from '../../pipes/precio-pipe';
 
 // Paso del candy en la compra (R-21, R-22). Arriba, los combos destacados
 // (mail 03/03); abajo, los productos sueltos agrupados por categoría. Cada
@@ -11,7 +12,7 @@ import { ProductoElegido } from '../../interfaces/compra';
 // input() el catálogo y lo que ya está elegido, y avisa por output() cada
 // cambio. No llama a la base ni guarda el pedido: eso lo hace la pantalla.
 @Component({
-  imports: [],
+  imports: [PrecioPipe],
   selector: 'app-candy',
   styleUrl: './candy.css',
   templateUrl: './candy.html',
