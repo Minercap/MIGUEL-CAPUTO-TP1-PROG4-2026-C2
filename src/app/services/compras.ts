@@ -73,6 +73,14 @@ const BLOQUES_ACCESIBLES = [2, 10, 2];
 const FILAS_ACCESIBLES = ['J', 'K'];
 const FILAS_VIP = ['R', 'S', 'T'];
 
+// Dice si una fila es de butacas accesibles (R-15). Lo usan el mapa de la
+// sala, el resumen de la compra y el PDF: la entrada que devuelve la base
+// trae la fila pero no si es accesible, así que se saca de la letra. Al
+// estar en un solo lugar, los tres dicen siempre lo mismo.
+export function esFilaAccesible(fila: string): boolean {
+  return FILAS_ACCESIBLES.includes(fila);
+}
+
 // Hasta cuántas butacas se pueden llevar en una compra.
 export const MAXIMO_BUTACAS = 10;
 
@@ -342,7 +350,7 @@ export class Compras {
   // último de la 25 a la 28.
   armarSala(): FilaDeSala[] {
     return LETRAS_DE_FILAS.map((letra) => {
-      const esAccesible = FILAS_ACCESIBLES.includes(letra);
+      const esAccesible = esFilaAccesible(letra);
       const esVip = FILAS_VIP.includes(letra);
       const tamanios = esAccesible ? BLOQUES_ACCESIBLES : BLOQUES_COMUNES;
 

@@ -41,6 +41,12 @@
   font-size: 0.85rem;
 }
 
+/* "Accesible" va en gris, como en "Tu selección" de la compra: es un dato
+   de la butaca, no un beneficio como las otras marcas. */
+.marca.accesible {
+  color: var(--color-texto-suave);
+}
+
 .puntos {
   display: flex;
   flex-direction: column;

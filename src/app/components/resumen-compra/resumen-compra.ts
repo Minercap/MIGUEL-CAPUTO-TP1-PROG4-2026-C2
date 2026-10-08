@@ -1,6 +1,6 @@
 import { Component, input } from '@angular/core';
 import { EntradaComprada, LineaDeCandy, ResumenDeCompra } from '../../interfaces/compra';
-import { lineasDeCandy } from '../../services/compras';
+import { esFilaAccesible, lineasDeCandy } from '../../services/compras';
 import { PrecioPipe } from '../../pipes/precio-pipe';
 
 // El detalle de una compra, renglón por renglón (A-01): cada entrada con su
@@ -30,6 +30,12 @@ export class ResumenCompra {
   // propio renglón (D-46).
   conDiferenciaVip(): EntradaComprada[] {
     return this.resumen()?.entradas.filter((e) => e.cubierta_por !== null && e.es_vip) ?? [];
+  }
+
+  // Si la entrada es de una butaca accesible (R-15). La entrada no lo trae:
+  // lo dice el servicio a partir de la fila, con la misma regla del mapa.
+  esAccesible(entrada: EntradaComprada): boolean {
+    return esFilaAccesible(entrada.fila);
   }
 
   // Lo que se muestra al lado de cada entrada: una cubierta no se cobra

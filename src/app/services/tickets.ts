@@ -3,7 +3,7 @@ import { toDataURL } from 'qrcode';
 import { jsPDF } from 'jspdf';
 import { CompraConfirmada, EntradaComprada, FuncionParaComprar } from '../interfaces/compra';
 import { Resultado } from '../interfaces/resultado';
-import { lineasDeCandy, nombreDelMedio } from './compras';
+import { esFilaAccesible, lineasDeCandy, nombreDelMedio } from './compras';
 import { PrecioPipe } from '../pipes/precio-pipe';
 
 // Argentina está tres horas atrás de UTC todo el año (D-35).
@@ -215,11 +215,12 @@ export class Tickets {
     return `${dia}/${mes}/${f.getUTCFullYear()} ${hora}:${minutos}`;
   }
 
-  // El renglón de una entrada: la butaca, si es VIP, y por qué no se cobra
+  // El renglón de una entrada: la butaca, si es VIP o accesible, y por qué no se cobra
   // o si va a precio de preventa.
   private textoDeEntrada(entrada: EntradaComprada, enPreventa: boolean): string {
     let texto = `Fila ${entrada.fila}, butaca ${entrada.numero}`;
     if (entrada.es_vip) texto += ' (Butaca VIP)';
+    if (esFilaAccesible(entrada.fila)) texto += ' (Accesible)';
     if (entrada.cubierta_por === 'combo') texto += ' - incluida en el combo';
     else if (entrada.cubierta_por === 'canje') texto += ' - entrada gratis con puntos';
     else if (enPreventa && !entrada.es_vip) texto += ' - precio de preventa';

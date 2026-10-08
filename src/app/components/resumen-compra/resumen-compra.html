@@ -9,6 +9,9 @@
           @if (entrada.es_vip) {
             <strong class="marca-vip">Butaca VIP</strong>
           }
+          @if (esAccesible(entrada)) {
+            <span class="marca accesible">Accesible</span>
+          }
           @switch (entrada.cubierta_por) {
             @case ('combo') {
               <span class="marca">Incluida en el combo</span>
