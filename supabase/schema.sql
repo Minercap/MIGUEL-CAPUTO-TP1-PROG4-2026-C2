@@ -4231,6 +4231,131 @@ where proname = 'validar_compra';
 
 
 -- ============================================================
+-- 18. TEXTOS: CANDY SHOP EN LA CANCELACIÓN  (decisión D-62)
+-- ============================================================
+-- Lo mismo que la sección 17, para cancelar_compra: su mensaje le llega
+-- tal cual al cliente en Mi cuenta. Es la misma función de la 13.4, con
+-- un mensaje distinto y nada más: la lógica, el parámetro y lo que
+-- devuelve no cambian.
+--
+-- SIN CORRER. Se corre sola, de una vez.
+--
+--   Antes                                     Ahora
+--   El candy de esta compra ya se retiró:     Los productos del Candy Shop de esta
+--   la compra no se puede cancelar.           compra ya se retiraron: la compra no
+--                                             se puede cancelar.
+--
+-- create or replace mantiene el permiso de la 13.4 (grant a
+-- authenticated): no hace falta volver a darlo.
+
+create or replace function public.cancelar_compra(p_compra_id bigint)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_usuario      uuid;
+  v_dueno        uuid;
+  v_estado       text;
+  v_validada     timestamptz;
+  v_entregado    timestamptz;
+  v_total        numeric(12,2);
+  v_generados    int;
+  v_fecha_hora   timestamptz;
+  v_devueltos    int;
+  v_puntos       int;
+  v_credito      numeric(12,2);
+begin
+  v_usuario := auth.uid();
+  if v_usuario is null then
+    raise exception 'Iniciá sesión para cancelar una compra.';
+  end if;
+
+  perform pg_advisory_xact_lock(1, hashtext(v_usuario::text));
+
+  select c.usuario_id, c.estado, c.entrada_validada_en, c.candy_entregado_en,
+         c.total, c.puntos_generados
+    into v_dueno, v_estado, v_validada, v_entregado, v_total, v_generados
+  from public."Compras" c
+  where c.id = p_compra_id;
+
+  -- El mismo mensaje si no existe o si es de otro: no se le confirma a
+  -- nadie que existe una compra ajena con ese id.
+  if not found or v_dueno is null or v_dueno <> v_usuario then
+    raise exception 'No encontramos esa compra entre las tuyas.';
+  end if;
+
+  if v_estado = 'cancelada' then
+    raise exception 'Esta compra ya está cancelada.';
+  end if;
+
+  if v_validada is not null then
+    raise exception 'La entrada ya se usó: la compra no se puede cancelar.';
+  end if;
+
+  -- Tampoco si ya retiró los productos del Candy Shop: se los llevaría y
+  -- cobraría todo en crédito.
+  if v_entregado is not null then
+    raise exception 'Los productos del Candy Shop de esta compra ya se retiraron: la compra no se puede cancelar.';
+  end if;
+
+  -- Todas las entradas de una compra son de la misma función.
+  select min(f.fecha_hora) into v_fecha_hora
+  from public."Entradas" e
+  join public."Funciones" f on f.id = e.funcion_id
+  where e.compra_id = p_compra_id;
+
+  if v_fecha_hora - interval '2 hours' < now() then
+    raise exception 'Solo se puede cancelar hasta 2 horas antes de la función, que empieza el %.',
+      to_char(v_fecha_hora at time zone 'America/Argentina/Buenos_Aires', 'DD/MM/YYYY "a las" HH24:MI');
+  end if;
+
+  select coalesce(sum(cj.puntos_gastados), 0) into v_devueltos
+  from public."Canjes" cj
+  where cj.compra_id = p_compra_id;
+
+  select u.puntos, u.credito into v_puntos, v_credito
+  from public."Usuarios" u
+  where u.id = v_usuario;
+
+  if v_puntos + v_devueltos - v_generados < 0 then
+    raise exception 'Ya usaste los % puntos que te dio esta compra, así que no se puede cancelar.',
+      v_generados;
+  end if;
+
+  update public."Usuarios"
+  set puntos  = puntos + v_devueltos - v_generados,
+      credito = credito + v_total
+  where id = v_usuario;
+
+  delete from public."ButacasOcupadas" b
+  where exists (
+    select 1 from public."Entradas" e
+    where e.compra_id = p_compra_id
+      and e.funcion_id = b.funcion_id
+      and e.fila = b.fila
+      and e.numero = b.numero
+  );
+
+  update public."Compras" set estado = 'cancelada' where id = p_compra_id;
+
+  return jsonb_build_object(
+    'credito_acreditado', v_total,
+    'credito', v_credito + v_total,
+    'puntos', v_puntos + v_devueltos - v_generados
+  );
+end;
+$$;
+
+-- Verificación: tiene que devolver una fila con el texto nuevo.
+select proname,
+       prosrc like '%productos del Candy Shop de esta compra ya se retiraron%' as texto_nuevo
+from pg_proc
+where proname = 'cancelar_compra';
+
+
+-- ============================================================
 -- PUNTOS ABIERTOS — leer antes de seguir
 -- ============================================================
 --
