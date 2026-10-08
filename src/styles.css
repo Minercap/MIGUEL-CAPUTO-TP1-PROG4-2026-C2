@@ -55,12 +55,21 @@
   --alto-toque: 44px; /* mínimo para tocar con el dedo */
 }
 
+/* En una pantalla muy ancha el contenido no se estira: llega hasta 1200px
+   y margin: 0 auto lo centra, con el fondo oscuro a los costados. */
 body {
-  margin: 0;
+  max-width: 1200px;
+  margin: 0 auto;
   padding: 1rem;
   background: var(--color-fondo);
   color: var(--color-texto);
   font-family: var(--fuente-texto);
+}
+
+@media (min-width: 768px) {
+  body {
+    padding: 1.5rem;
+  }
 }
 
 a {
