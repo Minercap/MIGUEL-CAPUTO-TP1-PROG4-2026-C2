@@ -27,6 +27,57 @@ h2 {
   background: var(--color-superficie);
 }
 
+/* ---------- Salir de la compra ---------- */
+
+/* La pregunta que aparece en lugar del botón "← película". */
+.salida {
+  max-width: 32rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem;
+  border-left: 0.25rem solid var(--color-acento-dorado);
+  background: var(--color-superficie);
+}
+
+.salida p {
+  margin: 0.25rem 0 0.75rem;
+}
+
+.salida .botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+/* ---------- Pasos ---------- */
+
+/* Tres columnas iguales, una por paso. Cada paso tiene una raya arriba:
+   dorada si ya se hizo o es el actual, gris si todavía falta. */
+.pasos {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.pasos li {
+  padding-top: 8px;
+  border-top: 4px solid var(--color-apagado-texto);
+  color: var(--color-texto-suave);
+  font-size: var(--texto-14);
+}
+
+.pasos li.hecho,
+.pasos li.actual {
+  border-top-color: var(--color-acento-dorado);
+}
+
+.pasos li.actual {
+  color: var(--color-texto);
+  font-weight: 600;
+}
+
 /* ---------- Mapa ---------- */
 
 .leyenda {

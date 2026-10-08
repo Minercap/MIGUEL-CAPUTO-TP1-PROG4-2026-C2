@@ -4,7 +4,37 @@
   <p><a routerLink="/">← Cartelera</a></p>
   <p class="error" role="alert">{{ error() }}</p>
 } @else if (datos(); as d) {
-  <p><a [routerLink]="['/pelicula', d.pelicula.id]">← {{ d.pelicula.nombre }}</a></p>
+  <!-- Salir de la compra. Sin butacas elegidas es un link común. Con
+       butacas, es un botón que primero pregunta, porque al salir se pierde
+       la selección. Es el mismo patrón que "¿Borrar este cupón?" del admin:
+       un signal dice si se está preguntando, y el @if cambia el botón por
+       la pregunta. -->
+  @if (elegidas().length === 0) {
+    <p><a [routerLink]="['/pelicula', d.pelicula.id]">← {{ d.pelicula.nombre }}</a></p>
+  } @else if (confirmandoSalida()) {
+    <div class="salida">
+      <strong>¿Salir de la compra?</strong>
+      <p>
+        @if (elegidas().length === 1) {
+          Se pierde la butaca que elegiste.
+        } @else {
+          Se pierden las {{ elegidas().length }} butacas que elegiste.
+        }
+      </p>
+      <div class="botones">
+        <button type="button" class="principal" (click)="seguirComprando()">
+          Seguir comprando
+        </button>
+        <button type="button" (click)="salir()">Salir</button>
+      </div>
+    </div>
+  } @else {
+    <p>
+      <button type="button" class="de-texto" (click)="pedirSalida()">
+        ← {{ d.pelicula.nombre }}
+      </button>
+    </p>
+  }
 
   <!-- Encabezado: qué se está comprando. Las fechas van con '-0300' para
        que se vean siempre en hora argentina (D-35). -->
@@ -27,6 +57,35 @@
     <!-- No se puede comprar: el motivo va en lugar del mapa. -->
     <p class="sin-venta" role="alert">{{ motivoSinVenta() }}</p>
   } @else {
+    <!-- En qué paso está la compra y cuáles faltan. Sale del mismo signal
+         paso() que elige qué se muestra más abajo. aria-current le dice al
+         lector de pantalla cuál es el actual; con null, el atributo no se
+         pone. En la entrada confirmada ya no hay pasos que mostrar. -->
+    @if (paso() !== 'entrada') {
+      <ol class="pasos" aria-label="Pasos de la compra">
+        <li
+          [class.actual]="paso() === 'mapa'"
+          [class.hecho]="paso() !== 'mapa'"
+          [attr.aria-current]="paso() === 'mapa' ? 'step' : null"
+        >
+          Butacas
+        </li>
+        <li
+          [class.actual]="paso() === 'candy'"
+          [class.hecho]="paso() === 'pago'"
+          [attr.aria-current]="paso() === 'candy' ? 'step' : null"
+        >
+          Candy Shop
+        </li>
+        <li
+          [class.actual]="paso() === 'pago'"
+          [attr.aria-current]="paso() === 'pago' ? 'step' : null"
+        >
+          Pago
+        </li>
+      </ol>
+    }
+
     <!-- Avisos de la selección: se llegó al máximo, o alguien compró una
          butaca que estaba elegida. Va arriba de los pasos porque puede
          aparecer tanto en el mapa como en el pago. -->

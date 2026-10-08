@@ -1,6 +1,6 @@
 import { Component, OnDestroy, OnInit, inject, signal } from '@angular/core';
 import { DatePipe, TitleCasePipe } from '@angular/common';
-import { ActivatedRoute, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Compras, MAXIMO_BUTACAS } from '../../services/compras';
 import { Productos } from '../../services/productos';
 import { Recompensas } from '../../services/recompensas';
@@ -46,6 +46,7 @@ export class Compra implements OnInit, OnDestroy {
   private recompensasSrv = inject(Recompensas);
   private auth = inject(Auth);
   private ruta = inject(ActivatedRoute);
+  private router = inject(Router);
 
   // El :funcionId de /compra/:funcionId (D-20). No es un signal porque no
   // cambia mientras la pantalla está abierta.
@@ -99,6 +100,11 @@ export class Compra implements OnInit, OnDestroy {
   errorPago = signal<string | null>(null);
   // Lo que devolvió la base cuando la compra salió bien.
   compra = signal<CompraConfirmada | null>(null);
+
+  // Se está preguntando "¿Salir de la compra?". Con butacas elegidas, salir
+  // pide confirmación, porque la selección se pierde. Es el patrón de
+  // idPorBorrar en el admin de cupones.
+  confirmandoSalida = signal(false);
 
   async ngOnInit() {
     const resultado = await this.comprasSrv.traerFuncion(this.funcionId);
@@ -173,6 +179,8 @@ export class Compra implements OnInit, OnDestroy {
     const datos = this.datos();
     if (datos === null || this.estaOcupada(butaca)) return;
     this.aviso.set(null);
+    // Tocar una butaca es seguir comprando: la pregunta de salida se cierra.
+    this.confirmandoSalida.set(false);
 
     if (this.estaElegida(butaca)) {
       // Lista nueva sin esa butaca (inmutable, clase 3).
@@ -190,6 +198,24 @@ export class Compra implements OnInit, OnDestroy {
       this.elegidas.update((prev) => [...prev, { ...butaca, precio }]);
     }
     this.sumar();
+  }
+
+  // ---------- Salir de la compra ----------
+
+  pedirSalida() {
+    this.confirmandoSalida.set(true);
+  }
+
+  seguirComprando() {
+    this.confirmandoSalida.set(false);
+  }
+
+  // Va al detalle de la película, a donde lleva el link cuando no hay
+  // butacas elegidas.
+  salir() {
+    const datos = this.datos();
+    if (datos === null) return;
+    this.router.navigate(['/pelicula', datos.pelicula.id]);
   }
 
   // ---------- Los pasos ----------
