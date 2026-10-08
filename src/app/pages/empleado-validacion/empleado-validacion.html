@@ -1,10 +1,13 @@
 <h1>Validación</h1>
 
 <!-- Qué se valida. El activo va resaltado; aria-pressed le dice lo mismo a
-     un lector de pantalla. -->
+     un lector de pantalla. La clase pestania deja a estos botones afuera
+     del estilo global (D-65): se dibujan con el CSS de esta pantalla. No
+     alcanza con [class.activo], porque Angular la pone y la saca. -->
 <div class="tipos">
   <button
     type="button"
+    class="pestania"
     [class.activo]="tipo() === 'entrada'"
     [attr.aria-pressed]="tipo() === 'entrada'"
     [disabled]="enviando()"
@@ -14,6 +17,7 @@
   </button>
   <button
     type="button"
+    class="pestania"
     [class.activo]="tipo() === 'candy'"
     [attr.aria-pressed]="tipo() === 'candy'"
     [disabled]="enviando()"

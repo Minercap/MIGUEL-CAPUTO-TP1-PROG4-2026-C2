@@ -136,9 +136,13 @@
   <section>
     <h2>Películas más vistas</h2>
 
+    <!-- La clase secundario va escrita porque estos botones también usan
+         [class.activo]: Angular pone y saca esa clase, y el estilo global de
+         los botones sin clase (D-65) se les aplicaría solo a veces. -->
     <div class="selector">
       <button
         type="button"
+        class="secundario"
         [class.activo]="periodo() === 'semana'"
         [attr.aria-pressed]="periodo() === 'semana'"
         [disabled]="cargandoVistas()"
@@ -148,6 +152,7 @@
       </button>
       <button
         type="button"
+        class="secundario"
         [class.activo]="periodo() === 'mes'"
         [attr.aria-pressed]="periodo() === 'mes'"
         [disabled]="cargandoVistas()"

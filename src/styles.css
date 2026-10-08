@@ -12,13 +12,22 @@
    tipografía de Google Fonts, si se usa) se ajustan cambiando solo estas
    líneas. */
 :root {
+  /* Le avisa al navegador que la app es oscura, para que dibuje oscuro lo
+     que dibuja él: las listas desplegables, las barras de desplazamiento y
+     el calendario de los campos de fecha (D-65). */
+  color-scheme: dark;
+
   /* Colores */
   --color-fondo: #111014; /* la sala: detrás de todo */
   --color-superficie: #1d1b22; /* tarjetas y cajas, un poco más claras */
   --color-texto: #f3efe8;
   --color-texto-suave: #a9a39b; /* datos secundarios y bordes */
   --color-acento-rojo: #a81c2b; /* rojo butaca */
+  --color-acento-rojo-hover: #c0283a; /* el rojo, un poco más claro: con el mouse encima */
   --color-acento-dorado: #d9ae52;
+  --color-acento-dorado-hover: #e6c272;
+  --color-apagado-fondo: #2a2730; /* botón deshabilitado */
+  --color-apagado-texto: #77717c;
   --color-accesible: #5b8def; /* azul de accesibilidad: 5,9:1 sobre el fondo; el rojo butaca daba 2,6:1 */
   --color-error: #ff8a8a; /* un rojo claro: el rojo butaca no se lee sobre el fondo */
   --color-exito: #7ed99a; /* un verde claro, para lo que salió bien (entrada validada) */
@@ -40,6 +49,10 @@
   --texto-24: 1.5rem;
   --texto-32: 2rem;
   --texto-40: 2.5rem;
+
+  /* Medidas de los botones y los campos. */
+  --radio: 6px;
+  --alto-toque: 44px; /* mínimo para tocar con el dedo */
 }
 
 body {
@@ -81,4 +94,162 @@ h3 {
   h1 {
     font-size: var(--texto-40);
   }
+}
+
+/* ---------- Links ---------- */
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+/* ---------- Foco ---------- */
+
+/* El contorno dorado aparece cuando se llega a un elemento con el teclado
+   (Tab). :focus-visible no lo muestra al hacer clic con el mouse en un
+   botón (D-65). */
+:focus-visible {
+  outline: 2px solid var(--color-acento-dorado);
+  outline-offset: 2px;
+}
+
+/* ---------- Botones ---------- */
+
+/* Hay tres tipos: secundario, principal y de texto (D-65).
+
+   button:not([class]) son los botones sin ninguna clase: así el secundario
+   es el estilo por defecto, sin escribir nada en el HTML. Los que tienen
+   una clase propia (butacas, estrellas, géneros, días, pestañas, − y +)
+   quedan afuera y se dibujan con el CSS de su pantalla.
+
+   Esta primera regla es lo que comparten el secundario y el principal: la
+   medida y la letra. Los colores son los del secundario. */
+button:not([class]),
+.secundario,
+.principal {
+  min-height: var(--alto-toque);
+  padding: 0 20px;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: var(--radio);
+  background: transparent;
+  color: var(--color-texto);
+  font: 600 var(--texto-16) / 1.2 var(--fuente-texto);
+  cursor: pointer;
+}
+
+button:not([class]):hover:not(:disabled),
+.secundario:hover:not(:disabled) {
+  border-color: var(--color-texto);
+  background: var(--color-superficie);
+}
+
+/* Principal: la acción más importante de la pantalla, en rojo. El botón
+   que envía un formulario (type="submit") lo es sin necesidad de clase. */
+button[type='submit']:not([class]),
+.principal {
+  border-color: var(--color-acento-rojo);
+  background: var(--color-acento-rojo);
+  color: var(--color-texto);
+}
+
+button[type='submit']:not([class]):hover:not(:disabled),
+.principal:hover:not(:disabled) {
+  border-color: var(--color-acento-rojo-hover);
+  background: var(--color-acento-rojo-hover);
+}
+
+/* De texto: una acción menor, que se ve como un link. */
+.de-texto {
+  min-height: var(--alto-toque);
+  padding: 0 12px;
+  border: 0;
+  background: transparent;
+  color: var(--color-acento-dorado);
+  font: var(--texto-16) var(--fuente-texto);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.de-texto:hover:not(:disabled) {
+  color: var(--color-acento-dorado-hover);
+}
+
+/* Deshabilitado: igual para los tres tipos. Va después de las reglas de
+   arriba para ganarles: un principal deshabilitado no se ve rojo. */
+button:not([class]):disabled,
+.secundario:disabled,
+.principal:disabled,
+.de-texto:disabled {
+  border-color: var(--color-apagado-fondo);
+  background: var(--color-apagado-fondo);
+  color: var(--color-apagado-texto);
+  cursor: not-allowed;
+}
+
+/* ---------- Campos ---------- */
+
+/* Todos los campos de texto, las listas y las cajas de texto. Los tres
+   :not() dejan afuera los input que no son una caja: las casillas, las
+   opciones y el selector de archivo. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']),
+select,
+textarea {
+  box-sizing: border-box;
+  min-height: var(--alto-toque);
+  padding: 0 12px;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: var(--radio);
+  background: var(--color-superficie);
+  color: var(--color-texto);
+  font: var(--texto-16) var(--fuente-texto);
+}
+
+textarea {
+  min-height: 96px;
+  padding: 10px 12px;
+}
+
+/* El texto de ayuda que se ve mientras el campo está vacío. */
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-texto-suave);
+}
+
+/* Con el foco del teclado, además del contorno, el borde se pone dorado. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']):focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  border-color: var(--color-acento-dorado);
+}
+
+/* Campo con error. Angular le pone solo estas dos clases a cada campo de
+   un formulario reactivo: ng-invalid si no pasa sus validadores y
+   ng-touched cuando el usuario ya pasó por él. Es la misma condición con
+   la que se muestran los mensajes de error (D-65). Va después del foco:
+   un campo con error sigue rojo aunque tenga el foco. */
+input:not([type='checkbox']):not([type='radio']):not([type='file']).ng-invalid.ng-touched,
+select.ng-invalid.ng-touched,
+textarea.ng-invalid.ng-touched {
+  border: 2px solid var(--color-error);
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Las casillas: más grandes y con el tilde en el rojo del cine. */
+input[type='checkbox'] {
+  width: 20px;
+  height: 20px;
+  accent-color: var(--color-acento-rojo);
+}
+
+/* ---------- Mensajes de error ---------- */
+
+.error {
+  color: var(--color-error);
+  font-size: var(--texto-14);
 }

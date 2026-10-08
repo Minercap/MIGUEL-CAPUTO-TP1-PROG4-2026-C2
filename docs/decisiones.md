@@ -1719,3 +1719,58 @@ lee el lector de pantalla en lugar del número solo.
 
 **Clase de origen:** CSS propio + `:hover` y `:not()` 🟡; `[attr.x]` como en las estrellas
 de la reseña. **Requisito:** R-15, R-39.
+
+---
+
+## D-65 · Estilos base de botones y campos · 08/10
+
+**Elegido:** los botones, los campos, el foco y el mensaje de error se dibujan una sola vez,
+en `src/styles.css`, y valen para toda la app.
+- **Tres tipos de botón.** El **secundario** es el de por defecto: lo toma todo botón sin
+  clase (`button:not([class])`) o con la clase `.secundario`. El **principal**, en rojo, es
+  el botón que envía un formulario (`type="submit"`) o el que lleva la clase `.principal`.
+  El **de texto** (`.de-texto`) se ve como un link. Los tres comparten el aspecto de
+  deshabilitado.
+- **Los botones con clase propia quedan afuera** y se dibujan con el CSS de su pantalla:
+  butacas, estrellas, géneros, días, las pestañas del empleado y los `−` / `+` del Candy
+  Shop.
+- **Campos:** `input`, `select` y `textarea` con fondo oscuro y 44 px de alto. Un campo con
+  error tiene borde rojo claro.
+- **Foco:** un contorno dorado en lo que se alcanza con Tab.
+- **Medidas:** `--alto-toque: 44px`, el mínimo para tocar con el dedo, y `--radio: 6px`.
+
+**Lo que no se vio en clase (🟡, aprobado por Miguel el 08/10):**
+- `color-scheme: dark` le avisa al navegador que la app es oscura, para que dibuje oscuro lo
+  que dibuja él: las listas desplegables, las barras de desplazamiento y el calendario de
+  los campos de fecha.
+- `:focus-visible` es una pseudoclase: la regla se aplica cuando el elemento tiene el foco y
+  hace falta mostrarlo, que es cuando se llega con el teclado. Con un clic del mouse en un
+  botón no aparece.
+- `accent-color` cambia el color con el que el navegador pinta una casilla tildada.
+- `::placeholder` es un pseudoelemento: el texto de ayuda de un campo vacío.
+- `.ng-invalid` y `.ng-touched` son clases que Angular le pone solo a cada campo de un
+  formulario reactivo: la primera si no pasa sus validadores, la segunda cuando el usuario
+  ya pasó por él. Son el mismo estado que `campo.invalid` y `campo.touched` de la clase 4,
+  visto desde el CSS.
+
+**Por qué:** había botones y campos con el estilo del navegador (blancos o grises sobre el
+fondo oscuro), y cada pantalla de la compra repetía sus propias reglas de botón. Con el
+estilo base, una pantalla nueva ya sale bien sin escribir CSS.
+
+**Por qué algunos botones tienen la clase escrita en el HTML:** `[class.activo]` no alcanza
+para dejar un botón afuera de `button:not([class])`. Angular pone el atributo `class` recién
+cuando prende la clase, y al apagarla lo deja vacío: el botón entraría o no en la regla
+según lo que el usuario haya tocado. Por eso las pestañas del empleado llevan
+`class="pestania"`, los `−` / `+` llevan `class="boton-cantidad"`, y Semana / Mes de los
+reportes llevan `class="secundario"`.
+
+**Descartado:** marcar el error con `[class.con-error]` en cada campo, que es lo visto en
+clase. Son unos 60 campos en 13 archivos para repetir una condición que Angular ya publica
+como clase.
+
+**Cómo lo explico en el oral:** un botón sin clase es secundario, el que envía el formulario
+es principal, y el que necesita otra cosa lleva su clase. El borde rojo del campo sale de
+las mismas dos condiciones que el mensaje de error: inválido y ya tocado.
+
+**Clase de origen:** 4 (formularios reactivos, `touched`) y 8 (`[class.x]`) + lo 🟡 de
+arriba. `:hover` y `:not()` están en D-64. **Requisito:** R-39.

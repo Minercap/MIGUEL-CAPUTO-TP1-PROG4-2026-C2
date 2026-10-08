@@ -24,8 +24,11 @@
             <span>${{ combo.precio }}</span>
           </div>
           <div class="cantidad">
+            <!-- La clase boton-cantidad deja a − y + afuera del estilo
+                 global de los botones (D-65): se dibujan con candy.css. -->
             <button
               type="button"
+              class="boton-cantidad"
               [disabled]="cantidadDe(combo) === 0"
               [title]="'Quitar un ' + combo.nombre"
               (click)="restar(combo)"
@@ -35,6 +38,7 @@
             <span aria-live="polite">{{ cantidadDe(combo) }}</span>
             <button
               type="button"
+              class="boton-cantidad"
               [disabled]="cantidadDe(combo) >= maximo"
               [title]="'Agregar un ' + combo.nombre"
               (click)="sumar(combo)"
@@ -60,6 +64,7 @@
           <div class="cantidad">
             <button
               type="button"
+              class="boton-cantidad"
               [disabled]="cantidadDe(producto) === 0"
               [title]="'Quitar un ' + producto.nombre"
               (click)="restar(producto)"
@@ -69,6 +74,7 @@
             <span aria-live="polite">{{ cantidadDe(producto) }}</span>
             <button
               type="button"
+              class="boton-cantidad"
               [disabled]="cantidadDe(producto) >= maximo"
               [title]="'Agregar un ' + producto.nombre"
               (click)="sumar(producto)"
