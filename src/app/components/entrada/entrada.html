@@ -55,6 +55,10 @@
         <div class="botones">
           <button type="button" class="principal" (click)="descargarPdf()">Descargar PDF</button>
           <a routerLink="/">Volver a la cartelera</a>
+          <!-- Solo con sesión: una compra sin cuenta no figura en Mi cuenta. -->
+          @if (auth.usuarioActual()) {
+            <a routerLink="/mi-cuenta" class="secundario">Ver en Mi cuenta</a>
+          }
         </div>
       }
     </section>

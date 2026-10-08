@@ -3,6 +3,7 @@ import { DatePipe, TitleCasePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { LEYENDA_ADULTO, Tickets } from '../../services/tickets';
 import { nombreDelMedio } from '../../services/compras';
+import { Auth } from '../../services/auth';
 import { CompraConfirmada, FuncionParaComprar } from '../../interfaces/compra';
 import { ResumenCompra } from '../resumen-compra/resumen-compra';
 
@@ -25,6 +26,9 @@ import { ResumenCompra } from '../resumen-compra/resumen-compra';
 })
 export class Entrada implements OnInit {
   private tickets = inject(Tickets);
+  // Para saber si hay sesión: el link "Ver en Mi cuenta" se muestra solo a
+  // quien compró con su cuenta. Una compra sin cuenta no queda en Mi cuenta.
+  auth = inject(Auth);
 
   // Los dos arrancan en null porque input() necesita un valor inicial; la
   // pantalla de compra siempre los manda.

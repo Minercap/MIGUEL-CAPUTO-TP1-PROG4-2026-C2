@@ -91,6 +91,15 @@ h3 {
 /* El botón "Descargar PDF" es un principal: su estilo sale de
    src/styles.css (D-65). */
 
+/* "Ver en Mi cuenta" es un link con el aspecto de un botón secundario. La
+   clase le da el borde y la letra, pero un link no es una caja como un
+   botón: con inline-flex toma el alto mínimo y centra su texto. */
+.botones .secundario {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
+
 @media (max-width: 600px) {
   .ticket {
     grid-template-columns: 1fr;
