@@ -22,10 +22,22 @@
   --color-exito: #7ed99a; /* un verde claro, para lo que salió bien (entrada validada) */
   --color-fondo-qr: #ffffff; /* blanco: el QR necesita contraste para que el lector lo lea */
 
-  /* Fuentes. Por ahora son las del sistema: títulos condensados y texto
-     común. */
-  --fuente-titulos: 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
+  /* Fuentes. Los títulos usan Big Shoulders, de Google Fonts (D-63), que se
+     carga en index.html. Si no llega (sin conexión), el navegador sigue con
+     las que vienen después en la lista. El texto común usa la del sistema. */
+  --fuente-titulos: 'Big Shoulders', 'Arial Narrow', 'Helvetica Neue', Arial, sans-serif;
   --fuente-texto: system-ui, 'Segoe UI', Roboto, Arial, sans-serif;
+  --peso-titulos: 800; /* el único peso que se descarga de la fuente */
+
+  /* Escala de tamaños de la app. El número del nombre es el tamaño en
+     píxeles con el texto del navegador en su valor normal (1rem = 16px). */
+  --texto-12: 0.75rem;
+  --texto-14: 0.875rem;
+  --texto-16: 1rem;
+  --texto-20: 1.25rem;
+  --texto-24: 1.5rem;
+  --texto-32: 2rem;
+  --texto-40: 2.5rem;
 }
 
 body {
@@ -38,4 +50,33 @@ body {
 
 a {
   color: var(--color-acento-dorado);
+}
+
+/* Títulos: la misma fuente y el mismo peso en toda la app. Al estar acá, una
+   página nueva los tiene sin escribir nada. Los márgenes no se tocan. */
+h1,
+h2,
+h3 {
+  font-family: var(--fuente-titulos);
+  font-weight: var(--peso-titulos);
+  line-height: 1.1;
+}
+
+h1 {
+  font-size: var(--texto-32);
+}
+
+h2 {
+  font-size: var(--texto-24);
+}
+
+h3 {
+  font-size: var(--texto-20);
+}
+
+/* En pantallas anchas, el título de la página es más grande. */
+@media (min-width: 768px) {
+  h1 {
+    font-size: var(--texto-40);
+  }
 }

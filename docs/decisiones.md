@@ -1650,3 +1650,35 @@ una compra es una compra; en el reporte del admin la muestro como "operación" p
 cuenta ahí es cuántos pagos hubo.
 
 **Clase de origen:** textos de la interfaz. **Requisito:** R-21, R-35, R-40.
+
+---
+
+## D-63 · Fuente de títulos: Big Shoulders (Google Fonts) · 07/10
+
+**Elegido:** **Big Shoulders**, peso 800, de Google Fonts, para la marca, los títulos y la
+hora de las funciones. El texto común sigue con la fuente del sistema. Se carga con un
+`<link>` en `src/index.html` y se usa desde la variable `--fuente-titulos` de
+`src/styles.css`. En el mismo archivo queda la escala de tamaños de la app (`--texto-12` a
+`--texto-40`) y la regla global de `h1`, `h2` y `h3`.
+
+**Lo que no se vio en clase (🔴, aprobado por Miguel el 07/10):** una fuente externa. No es
+una dependencia de npm: no se instala nada, el navegador la descarga de Google Fonts al
+abrir la página. En Google Fonts la familia se llamaba "Big Shoulders Display"; hoy figura
+como "Big Shoulders", que es el nombre que se usa acá.
+
+**Por qué:** D-33 pide títulos condensados. "Arial Narrow" no existe en Android, donde los
+títulos caían a Arial común. Big Shoulders es una fuente de carteles, alta y angosta como
+las letras de una marquesina.
+
+**Descartado:** Antonio (más clásica, menos de cine) y quedarse con las fuentes del sistema
+(no se ve igual en todos los dispositivos).
+
+**Sin conexión:** la PWA cae a "Arial Narrow" o a Arial, que siguen en la lista de
+`--fuente-titulos`, y todo sigue funcionando. El service worker guarda los archivos propios
+de la app, no la fuente.
+
+**Cómo lo explico en el oral:** la fuente se pide en el `index.html` y se nombra una sola
+vez, en una variable de `:root`. Los títulos la toman de ahí. Si Google Fonts no responde,
+el navegador sigue con la próxima fuente de la lista.
+
+**Clase de origen:** CSS propio + Google Fonts 🔴. **Requisito:** R-39.
