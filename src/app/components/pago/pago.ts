@@ -19,6 +19,7 @@ import {
 import { Cupon } from '../../interfaces/cupon';
 import { CampoFecha } from '../campo-fecha/campo-fecha';
 import { ResumenCompra } from '../resumen-compra/resumen-compra';
+import { PrecioPipe } from '../../pipes/precio-pipe';
 import {
   armarFecha,
   codigoDeSeguridad,
@@ -62,7 +63,7 @@ const PATRON_CREDITO = /^\d+([.,]\d{1,2})?$/;
 // comprador confirma o quiere volver. No llama a la base: eso lo hace la
 // pantalla.
 @Component({
-  imports: [ReactiveFormsModule, CampoFecha, ResumenCompra],
+  imports: [ReactiveFormsModule, CampoFecha, ResumenCompra, PrecioPipe],
   selector: 'app-pago',
   styleUrl: './pago.css',
   templateUrl: './pago.html',

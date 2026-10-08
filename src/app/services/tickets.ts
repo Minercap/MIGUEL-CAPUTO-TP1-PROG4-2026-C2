@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf';
 import { CompraConfirmada, EntradaComprada, FuncionParaComprar } from '../interfaces/compra';
 import { Resultado } from '../interfaces/resultado';
 import { lineasDeCandy, nombreDelMedio } from './compras';
+import { PrecioPipe } from '../pipes/precio-pipe';
 
 // Argentina está tres horas atrás de UTC todo el año (D-35).
 const HORAS_DE_ARGENTINA_A_UTC = 3;
@@ -24,6 +25,12 @@ export const LEYENDA_ADULTO = 'Debe asistir acompañado por un adulto.';
 // cambia, se cambia acá y nada más.
 @Service()
 export class Tickets {
+  // El pipe precio (D-67), para escribir los montos del PDF igual que en la
+  // pantalla: '$18.000'. Un pipe se usa con | en un template, y acá no hay
+  // template. Pero es una clase común: se crea con new y se llama a su
+  // método transform(), que es lo que Angular hace por detrás.
+  private precio = new PrecioPipe();
+
   // El QR del código de la compra, como imagen.
   // toDataURL (qrcode) devuelve una promesa con una "data URL": la imagen
   // PNG entera escrita como texto ('data:image/png;base64,...'). Ese texto
@@ -105,13 +112,13 @@ export class Tickets {
       // Las entradas, cada una con su fila, su butaca y si es VIP (R-14).
       for (const entrada of compra.entradas) {
         const monto = entrada.cubierta_por === null ? entrada.precio : 0;
-        renglon(this.textoDeEntrada(entrada, compra.en_preventa), `$${monto}`);
+        renglon(this.textoDeEntrada(entrada, compra.en_preventa), this.precio.transform(monto));
       }
       // La diferencia VIP de una butaca cubierta va en su propio renglón (D-46).
       for (const entrada of compra.entradas) {
         if (entrada.cubierta_por !== null && entrada.es_vip) {
           const butaca = `fila ${entrada.fila}, butaca ${entrada.numero}`;
-          renglon(`Diferencia VIP (${butaca})`, `$${entrada.precio}`);
+          renglon(`Diferencia VIP (${butaca})`, this.precio.transform(entrada.precio));
         }
       }
       // El candy, con el canje de un producto justo debajo del mismo
@@ -121,7 +128,7 @@ export class Tickets {
       if (lineasCandy.length > 0) renglon('Candy Shop', '');
       for (const linea of lineasCandy) {
         const marca = linea.es_canje ? ' (canje)' : linea.es_combo ? ' (combo)' : '';
-        renglon(`${linea.nombre} x ${linea.cantidad}${marca}`, `$${linea.importe}`);
+        renglon(`${linea.nombre} x ${linea.cantidad}${marca}`, this.precio.transform(linea.importe));
       }
       // El detalle de los puntos.
       for (const canje of compra.canjes) {
@@ -130,16 +137,19 @@ export class Tickets {
 
       // Las cuentas (D-47). Cada descuento en su renglón (A-01).
       y += 4;
-      renglon('Subtotal', `$${compra.subtotal}`);
+      renglon('Subtotal', this.precio.transform(compra.subtotal));
       if (compra.cupon) {
-        renglon(`Cupón ${compra.cupon.nombre} (${compra.cupon.porcentaje}%)`, `-$${compra.descuento}`);
+        renglon(
+          `Cupón ${compra.cupon.nombre} (${compra.cupon.porcentaje}%)`,
+          `-${this.precio.transform(compra.descuento)}`,
+        );
       }
-      renglon('Total', `$${compra.total}`);
+      renglon('Total', this.precio.transform(compra.total));
       if (compra.credito_usado > 0) {
-        renglon('Crédito del cine', `-$${compra.credito_usado}`);
+        renglon('Crédito del cine', `-${this.precio.transform(compra.credito_usado)}`);
       }
       pdf.setFont('helvetica', 'bold');
-      renglon('A pagar', `$${compra.a_pagar}`);
+      renglon('A pagar', this.precio.transform(compra.a_pagar));
       pdf.setFont('helvetica', 'normal');
       // 'credito' se escribe "Tarjeta de crédito": no es el crédito del cine.
       renglon(`Medio de pago: ${nombreDelMedio(compra.medio_pago)}`, '');

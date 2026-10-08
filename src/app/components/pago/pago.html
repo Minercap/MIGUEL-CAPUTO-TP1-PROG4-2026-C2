@@ -113,7 +113,7 @@
       @if (saldoCredito() > 0) {
         <!-- Crédito del cine (R-30): de una compra cancelada. -->
         <label for="credito">Crédito del cine a usar</label>
-        <small>Tenés ${{ saldoCredito() }} de crédito.</small>
+        <small>Tenés {{ saldoCredito() | precio }} de crédito.</small>
         <div class="en-linea">
           <input id="credito" type="text" inputmode="decimal" maxlength="12" formControlName="credito" />
           <button type="button" (click)="usarTodoElCredito()">Usar todo</button>
@@ -121,7 +121,7 @@
         @if (credito?.errors?.['creditoFormato']) {
           <small class="error">Escribí un monto en pesos, con dos decimales como mucho.</small>
         } @else if (credito?.errors?.['creditoInsuficiente']; as saldo) {
-          <small class="error">Tenés ${{ saldo }} de crédito: no podés usar más que eso.</small>
+          <small class="error">Tenés {{ saldo | precio }} de crédito: no podés usar más que eso.</small>
         }
       }
     }
@@ -233,7 +233,7 @@
         Volver al Candy Shop
       </button>
       <button type="submit" class="principal" [disabled]="!formulario.valid || enviando()">
-        {{ enviando() ? 'Procesando…' : hayQuePagar() ? 'Pagar $' + (resumen()?.a_pagar ?? 0) : 'Confirmar' }}
+        {{ enviando() ? 'Procesando…' : hayQuePagar() ? 'Pagar ' + ((resumen()?.a_pagar ?? 0) | precio) : 'Confirmar' }}
       </button>
     </div>
   </form>

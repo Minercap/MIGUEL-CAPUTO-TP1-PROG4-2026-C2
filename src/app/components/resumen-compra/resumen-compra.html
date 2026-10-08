@@ -23,14 +23,14 @@
             }
           }
         </span>
-        <span>${{ precioDeEntrada(entrada) }}</span>
+        <span>{{ precioDeEntrada(entrada) | precio }}</span>
       </li>
     }
 
     @for (entrada of conDiferenciaVip(); track entrada.fila + '-' + entrada.numero) {
       <li>
         <span>Diferencia VIP (fila {{ entrada.fila }}, butaca {{ entrada.numero }})</span>
-        <span>${{ entrada.precio }}</span>
+        <span>{{ entrada.precio | precio }}</span>
       </li>
     }
 
@@ -49,7 +49,7 @@
             <span class="marca">Combo</span>
           }
         </span>
-        <span>${{ linea.importe }}</span>
+        <span>{{ linea.importe | precio }}</span>
       </li>
     }
 
@@ -65,29 +65,29 @@
   <ul class="detalle cuentas">
     <li>
       <span>Subtotal</span>
-      <span>${{ r.subtotal }}</span>
+      <span>{{ r.subtotal | precio }}</span>
     </li>
     @if (r.cupon; as cupon) {
       <li class="descuento">
         <span>Cupón {{ cupon.nombre }} ({{ cupon.porcentaje }}%)</span>
-        <span>−${{ r.descuento }}</span>
+        <span>−{{ r.descuento | precio }}</span>
       </li>
     }
     <li>
       <span>Total</span>
-      <span>${{ r.total }}</span>
+      <span>{{ r.total | precio }}</span>
     </li>
     @if (r.credito_usado > 0) {
       <li class="descuento">
         <span>Crédito del cine</span>
-        <span>−${{ r.credito_usado }}</span>
+        <span>−{{ r.credito_usado | precio }}</span>
       </li>
     }
   </ul>
 
   <p class="total">
     <span>A pagar</span>
-    <strong>${{ r.a_pagar }}</strong>
+    <strong>{{ r.a_pagar | precio }}</strong>
   </p>
 
   @if (r.puntos_usados > 0 || r.puntos_generados > 0) {

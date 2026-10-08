@@ -1,6 +1,7 @@
 import { Component, input } from '@angular/core';
 import { EntradaComprada, LineaDeCandy, ResumenDeCompra } from '../../interfaces/compra';
 import { lineasDeCandy } from '../../services/compras';
+import { PrecioPipe } from '../../pipes/precio-pipe';
 
 // El detalle de una compra, renglón por renglón (A-01): cada entrada con su
 // fila, su butaca y si es VIP; el candy y los combos; la diferencia VIP; los
@@ -11,7 +12,7 @@ import { lineasDeCandy } from '../../services/compras';
 // forma que devuelve realizar_compra: así se ve igual antes y después de
 // pagar. Solo muestra; no calcula nada.
 @Component({
-  imports: [],
+  imports: [PrecioPipe],
   selector: 'app-resumen-compra',
   styleUrl: './resumen-compra.css',
   templateUrl: './resumen-compra.html',
