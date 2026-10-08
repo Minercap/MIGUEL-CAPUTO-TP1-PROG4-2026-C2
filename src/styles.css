@@ -249,6 +249,23 @@ textarea:disabled {
   cursor: not-allowed;
 }
 
+/* Los grupos de campos (fieldset) y su título (legend): el mismo borde y
+   el mismo radio que un campo, en lugar del recuadro del navegador. Un
+   componente que necesita otra cosa lo pisa en su CSS, como campo-fecha,
+   que saca el borde. */
+fieldset {
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid var(--color-texto-suave);
+  border-radius: var(--radio);
+}
+
+legend {
+  padding: 0 6px;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-14);
+}
+
 /* Las casillas: más grandes y con el tilde en el rojo del cine. */
 input[type='checkbox'] {
   width: 20px;

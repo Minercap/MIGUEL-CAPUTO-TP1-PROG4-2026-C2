@@ -29,6 +29,13 @@ h2 {
 
 /* ---------- Salir de la compra ---------- */
 
+/* El botón "← película" (el que aparece con butacas elegidas). El margen
+   negativo compensa su padding, para que la flecha quede alineada con el
+   título, igual que el link común. */
+.de-texto {
+  margin-inline-start: -12px;
+}
+
 /* La pregunta que aparece en lugar del botón "← película". */
 .salida {
   max-width: 32rem;

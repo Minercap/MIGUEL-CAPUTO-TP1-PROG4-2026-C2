@@ -30,11 +30,14 @@
   text-decoration: none;
 }
 
-/* margin-left: auto empuja el botón contra el borde derecho. El resto de
-   su aspecto es el de .de-texto, de src/styles.css. */
+/* margin-left: auto empuja el botón contra el borde derecho. El margen
+   negativo del otro lado compensa su padding, para que el texto termine
+   donde termina la línea de la barra. El resto de su aspecto es el de
+   .de-texto, de src/styles.css. */
 .salir {
   order: 2;
   margin-left: auto;
+  margin-inline-end: -12px;
 }
 
 /* Si los destinos no entran, esta fila se desliza hacia los costados sin
