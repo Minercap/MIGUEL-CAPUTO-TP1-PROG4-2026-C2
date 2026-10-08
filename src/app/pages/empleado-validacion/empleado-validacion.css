@@ -15,7 +15,7 @@ h2 {
 
 h2 {
   margin: 0 0 0.5rem;
-  font-size: 1.1rem;
+  font-size: var(--texto-20);
 }
 
 /* Los botones de esta pantalla son más altos que los del resto. */

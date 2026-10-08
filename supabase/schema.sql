@@ -31,6 +31,7 @@
 --  16. Reseñas: largo del comentario, sin edición ni borrado, y el log
 --      de la reseña del cliente (D-59)
 --  17. Textos: mensajes de validar_compra con "Candy Shop" (D-62)
+--  18. Textos: mensaje de cancelar_compra con "Candy Shop" (D-62)
 -- ============================================================
 
 -- ============================================================

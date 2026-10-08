@@ -1,7 +1,7 @@
 {
   "name": "Olympia Cinema",
   "short_name": "Olympia",
-  "description": "Cartelera, entradas y candy bar de Olympia Cinema.",
+  "description": "Cartelera, entradas y Candy Shop de Olympia Cinema.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
