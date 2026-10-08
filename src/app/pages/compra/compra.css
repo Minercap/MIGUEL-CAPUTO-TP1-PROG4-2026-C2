@@ -97,8 +97,16 @@ h2 {
   background: transparent;
   color: var(--color-texto);
   font-family: var(--fuente-texto);
-  font-size: 0.65rem;
+  font-size: var(--texto-12);
   cursor: pointer;
+}
+
+/* Al pasar el mouse por una butaca libre, el borde se aclara (D-64). Cada
+   :not() deja afuera un caso: las ocupadas (están deshabilitadas), las VIP
+   y las accesibles (su borde dice de qué tipo son) y los cuadraditos de la
+   leyenda. */
+.butaca:hover:not(:disabled):not(.vip):not(.accesible):not(.muestra) {
+  border-color: var(--color-texto);
 }
 
 /* VIP y accesible se distinguen por el borde, así se siguen viendo cuando
@@ -108,7 +116,7 @@ h2 {
 }
 
 .accesible {
-  border: 2px solid var(--color-acento-rojo);
+  border: 2px solid var(--color-accesible);
 }
 
 .elegida {

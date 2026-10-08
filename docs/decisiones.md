@@ -1682,3 +1682,40 @@ vez, en una variable de `:root`. Los títulos la toman de ahí. Si Google Fonts 
 el navegador sigue con la próxima fuente de la lista.
 
 **Clase de origen:** CSS propio + Google Fonts 🔴. **Requisito:** R-39.
+
+---
+
+## D-64 · Butacas accesibles en azul y hover en las libres · 08/10
+
+**Elegido:**
+- Un tercer acento, `--color-accesible: #5b8def`, para el borde de las butacas accesibles
+  (filas J y K) y su muestra en la leyenda.
+- Al pasar el mouse por una butaca libre, el borde se aclara. En las VIP y las accesibles
+  el borde no cambia, porque es lo que dice de qué tipo son.
+- Cada butaca tiene un `aria-label` con la fila, el número y el tipo ("Fila J, butaca 5,
+  accesible"), y un `aria-pressed` que dice si está elegida. Las ocupadas no llevan
+  `aria-pressed`: no se pueden elegir.
+
+**Lo que no se vio en clase (🟡, aprobado por Miguel el 08/10):**
+- `:hover` es una pseudoclase de CSS: la regla se aplica mientras el mouse está encima del
+  elemento.
+- `:not(x)` es otra pseudoclase: deja afuera de la regla a los elementos que cumplen `x`.
+  Acá saca las ocupadas (`:disabled`), las VIP, las accesibles y los cuadraditos de la
+  leyenda, que comparten la clase `.butaca`.
+
+**Por qué:** el borde de las accesibles era rojo butaca, que sobre el fondo oscuro da un
+contraste de 2,6:1; para que un borde se distinga hace falta 3:1 o más. El azul da 5,9:1.
+D-33 hablaba de dos acentos: este es el tercero, y se usa solo para la accesibilidad. A la
+vista el tipo de butaca se sabe por el color; el lector de pantalla necesita que se lo
+digan con palabras.
+
+**Descartado:** `@media (hover: hover)` para que el hover no quede marcado en el celular
+después de tocar una butaca. Es otra cosa sin ver en clase, y el efecto se acepta.
+
+**Cómo lo explico en el oral:** el azul sale de una variable de `:root`, como el resto de
+los colores. El hover es una regla de CSS que vale mientras el mouse está encima, y con
+`:not()` le saco los casos donde no tiene que pasar nada. El `aria-label` es el texto que
+lee el lector de pantalla en lugar del número solo.
+
+**Clase de origen:** CSS propio + `:hover` y `:not()` 🟡; `[attr.x]` como en las estrellas
+de la reseña. **Requisito:** R-15, R-39.

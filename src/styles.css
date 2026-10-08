@@ -1,7 +1,8 @@
 /* Estilos globales de Olympia Cinema.
 
    Identidad "Sala oscura" (D-33): fondo oscuro, como la sala con las luces
-   apagadas, y dos acentos: el rojo de las butacas y el dorado.
+   apagadas, y tres acentos: el rojo de las butacas, el dorado y el azul de
+   las butacas accesibles (D-64).
 
    Todos los colores y las fuentes de la app están acá, como variables de
    :root. Las páginas no escriben colores: usan var(--nombre). Así el
@@ -18,6 +19,7 @@
   --color-texto-suave: #a9a39b; /* datos secundarios y bordes */
   --color-acento-rojo: #a81c2b; /* rojo butaca */
   --color-acento-dorado: #d9ae52;
+  --color-accesible: #5b8def; /* azul de accesibilidad: 5,9:1 sobre el fondo; el rojo butaca daba 2,6:1 */
   --color-error: #ff8a8a; /* un rojo claro: el rojo butaca no se lee sobre el fondo */
   --color-exito: #7ed99a; /* un verde claro, para lo que salió bien (entrada validada) */
   --color-fondo-qr: #ffffff; /* blanco: el QR necesita contraste para que el lector lo lea */

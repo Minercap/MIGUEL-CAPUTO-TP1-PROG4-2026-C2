@@ -67,7 +67,12 @@
                 @for (butaca of bloque; track butaca.numero) {
                   <!-- Cada butaca es un botón. Las clases se prenden según
                        su estado con [class.x] (clase 8). Una ocupada queda
-                       deshabilitada: no se puede tocar. -->
+                       deshabilitada: no se puede tocar.
+                       aria-label es lo que dice el lector de pantalla: la
+                       fila, el número y el tipo, que a la vista se sabe por
+                       el color. aria-pressed le avisa si está elegida; en una
+                       ocupada va null, que saca el atributo, porque no se
+                       puede elegir. -->
                   <button
                     type="button"
                     class="butaca"
@@ -77,6 +82,16 @@
                     [class.elegida]="estaElegida(butaca)"
                     [disabled]="estaOcupada(butaca)"
                     [title]="'Fila ' + butaca.fila + ', butaca ' + butaca.numero"
+                    [attr.aria-label]="
+                      'Fila ' +
+                      butaca.fila +
+                      ', butaca ' +
+                      butaca.numero +
+                      (butaca.es_accesible ? ', accesible' : '') +
+                      (butaca.es_vip ? ', VIP' : '') +
+                      (estaOcupada(butaca) ? ', ocupada' : '')
+                    "
+                    [attr.aria-pressed]="estaOcupada(butaca) ? null : estaElegida(butaca)"
                     (click)="alternar(butaca)"
                   >
                     {{ butaca.numero }}
