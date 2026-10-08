@@ -174,20 +174,5 @@ h2 {
   font-size: 1.1rem;
 }
 
-.continuar {
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--color-acento-rojo);
-  border-radius: 0.4rem;
-  background: var(--color-acento-rojo);
-  color: var(--color-texto);
-  font-family: var(--fuente-texto);
-  font-weight: bold;
-  cursor: pointer;
-}
-
-.continuar:disabled {
-  border-color: var(--color-texto-suave);
-  background: transparent;
-  color: var(--color-texto-suave);
-  cursor: not-allowed;
-}
+/* El botón "Continuar" es un principal: su estilo sale de src/styles.css
+   (D-65). */

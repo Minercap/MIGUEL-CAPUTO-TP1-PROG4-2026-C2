@@ -92,18 +92,5 @@ h3 {
   margin-top: 1.25rem;
 }
 
-.botones button {
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--color-texto-suave);
-  border-radius: 0.4rem;
-  background: transparent;
-  color: var(--color-texto);
-  font-family: var(--fuente-texto);
-  cursor: pointer;
-}
-
-.botones .principal {
-  border-color: var(--color-acento-rojo);
-  background: var(--color-acento-rojo);
-  font-weight: bold;
-}
+/* Acá solo se acomodan los botones. Cómo se ven (secundario y principal)
+   sale de src/styles.css (D-65). */

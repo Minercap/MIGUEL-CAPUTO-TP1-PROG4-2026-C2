@@ -63,29 +63,8 @@ fieldset {
   margin-top: 1.25rem;
 }
 
-.botones button {
-  padding: 0.6rem 1rem;
-  border: 1px solid var(--color-texto-suave);
-  border-radius: 0.4rem;
-  background: transparent;
-  color: var(--color-texto);
-  font-family: var(--fuente-texto);
-  cursor: pointer;
-}
-
-/* El botón de pagar es el que resalta. */
-.botones .principal {
-  border-color: var(--color-acento-rojo);
-  background: var(--color-acento-rojo);
-  font-weight: bold;
-}
-
-.botones button:disabled {
-  border-color: var(--color-texto-suave);
-  background: transparent;
-  color: var(--color-texto-suave);
-  cursor: not-allowed;
-}
+/* Acá solo se acomodan los botones. Cómo se ven (secundario, principal y
+   deshabilitado) sale de src/styles.css (D-65). */
 
 /* ---------- Beneficios del cliente registrado ---------- */
 
