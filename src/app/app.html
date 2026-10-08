@@ -1,28 +1,58 @@
-<nav>
-  <a routerLink="/">Cartelera</a>
+<!-- La barra de arriba, en todas las pantallas (D-66). Tiene tres partes:
+     la marca, los destinos y el botón para salir. -->
+<header class="barra">
+  <a routerLink="/" class="marca" aria-label="Olympia Cinema, ir a la cartelera">Olympia</a>
+
+  <!-- routerLinkActive le pone la clase "actual" al link de la página en la
+       que se está, y ariaCurrentWhenActive se lo dice al lector de
+       pantalla. Un link queda marcado si la dirección empieza con su ruta:
+       por eso Administración sigue marcado en /admin/cupones. Cartelera
+       lleva exact: true porque su ruta es "/", y todas empiezan con "/". -->
+  <nav class="destinos" aria-label="Principal">
+    <a
+      routerLink="/"
+      routerLinkActive="actual"
+      [routerLinkActiveOptions]="{ exact: true }"
+      ariaCurrentWhenActive="page"
+    >
+      Cartelera
+    </a>
+
+    @if (auth.usuarioActual()) {
+      <a routerLink="/mi-cuenta" routerLinkActive="actual" ariaCurrentWhenActive="page">
+        Mi cuenta
+      </a>
+
+      <!-- Cada rol ve solo lo suyo: el admin no valida entradas (D-24). -->
+      @switch (auth.perfil()?.rol) {
+        @case ('admin') {
+          <a routerLink="/admin" routerLinkActive="actual" ariaCurrentWhenActive="page">
+            Administración
+          </a>
+        }
+        @case ('empleado') {
+          <a routerLink="/empleado" routerLinkActive="actual" ariaCurrentWhenActive="page">
+            Validación
+          </a>
+        }
+        @case ('cliente') {
+          <a routerLink="/mis-peliculas" routerLinkActive="actual" ariaCurrentWhenActive="page">
+            Mis películas
+          </a>
+        }
+      }
+    } @else {
+      <a routerLink="/login" routerLinkActive="actual" ariaCurrentWhenActive="page">Ingresar</a>
+      <a routerLink="/registro" routerLinkActive="actual" ariaCurrentWhenActive="page">
+        Crear cuenta
+      </a>
+    }
+  </nav>
 
   @if (auth.usuarioActual()) {
-    <a routerLink="/mi-cuenta">Mi cuenta</a>
-
-    <!-- Cada rol ve solo lo suyo: el admin no valida entradas (D-24). -->
-    @switch (auth.perfil()?.rol) {
-      @case ('admin') {
-        <a routerLink="/admin">Administración</a>
-      }
-      @case ('empleado') {
-        <a routerLink="/empleado">Validación</a>
-      }
-      @case ('cliente') {
-        <a routerLink="/mis-peliculas">Mis películas</a>
-      }
-    }
-
-    <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
-  } @else {
-    <a routerLink="/login">Ingresar</a>
-    <a routerLink="/registro">Crear cuenta</a>
+    <button type="button" class="de-texto salir" (click)="cerrarSesion()">Cerrar sesión</button>
   }
-</nav>
+</header>
 
 @if (auth.errorPerfil()) {
   <p class="error" role="alert">{{ auth.errorPerfil() }}</p>

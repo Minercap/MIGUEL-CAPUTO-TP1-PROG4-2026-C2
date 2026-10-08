@@ -1,11 +1,99 @@
-/* Estilo mínimo para que el menú se lea. El estilo visual del cine se
-   trabaja aparte. */
-nav {
+/* La barra de arriba (D-66): marca, destinos y salir.
+
+   En el HTML están en ese orden, que es el que sigue el teclado y el
+   lector de pantalla. En la pantalla el orden lo decide la propiedad
+   order, y cambia con el ancho:
+   - En el celular: marca y salir en la primera fila; los destinos abajo,
+     en una fila propia (flex-basis: 100% los hace ocupar todo el ancho y
+     flex-wrap los manda a la fila siguiente).
+   - Desde 768px: marca, destinos y salir, en una sola fila. */
+.barra {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
-  padding-bottom: 1rem;
+  column-gap: 24px;
+  margin-bottom: 24px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--color-superficie);
+}
+
+.marca {
+  order: 1;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--alto-toque);
+  color: var(--color-texto);
+  font-family: var(--fuente-titulos);
+  font-size: var(--texto-24);
+  font-weight: var(--peso-titulos);
+  line-height: 1;
+  text-decoration: none;
+}
+
+/* margin-left: auto empuja el botón contra el borde derecho. El resto de
+   su aspecto es el de .de-texto, de src/styles.css. */
+.salir {
+  order: 2;
+  margin-left: auto;
+}
+
+/* Si los destinos no entran, esta fila se desliza hacia los costados sin
+   mover la página. El margen negativo compensa el padding del primer link,
+   para que su texto quede alineado con la marca. */
+.destinos {
+  order: 3;
+  flex-basis: 100%;
+  display: flex;
+  gap: 4px;
+  margin-inline-start: -12px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.destinos a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--alto-toque);
+  padding: 0 12px;
+  color: var(--color-texto-suave);
+  font-size: var(--texto-16);
+  text-decoration: none;
+}
+
+.destinos a:hover {
+  color: var(--color-texto);
+}
+
+/* La página en la que se está: la clase la pone routerLinkActive. */
+.destinos a.actual {
+  color: var(--color-texto);
+  text-decoration: underline;
+  text-decoration-color: var(--color-acento-dorado);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 6px;
+}
+
+/* overflow-x recorta lo que sobresale de la fila, y el contorno del foco
+   sobresale: acá se dibuja hacia adentro del link. */
+.destinos a:focus-visible {
+  outline-offset: -2px;
+}
+
+@media (min-width: 768px) {
+  .marca {
+    font-size: var(--texto-32);
+  }
+
+  .destinos {
+    order: 2;
+    flex: 1;
+    flex-basis: auto;
+    margin-inline-start: 0;
+  }
+
+  .salir {
+    order: 3;
+  }
 }
 
 .error {

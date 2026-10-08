@@ -1774,3 +1774,46 @@ las mismas dos condiciones que el mensaje de error: inválido y ya tocado.
 
 **Clase de origen:** 4 (formularios reactivos, `touched`) y 8 (`[class.x]`) + lo 🟡 de
 arriba. `:hover` y `:not()` están en D-64. **Requisito:** R-39.
+
+---
+
+## D-66 · Barra de navegación con la marca y la página actual · 08/10
+
+**Elegido:** la barra de `app.html` tiene tres partes: la **marca** "Olympia", que lleva a
+la cartelera; los **destinos**, que son los mismos links de antes según la sesión y el rol;
+y **salir**, el botón "Cerrar sesión". El link de la página en la que se está queda en texto
+claro con subrayado dorado. En el celular la barra ocupa dos filas: marca y salir arriba,
+destinos abajo.
+
+**Lo que no se vio en clase (🟡, aprobado por Miguel el 08/10):**
+- `routerLinkActive="actual"` es una directiva del router de Angular, como `routerLink`: le
+  pone la clase `actual` al link cuando la dirección de la página empieza con su ruta. Hay
+  que importar `RouterLinkActive` en el componente.
+- `[routerLinkActiveOptions]="{ exact: true }"` hace que el link se marque solo si la
+  dirección es exactamente su ruta. Lo lleva Cartelera, porque su ruta es `/` y todas las
+  direcciones empiezan con `/`.
+- `ariaCurrentWhenActive="page"` es otro input de la misma directiva: cuando el link está
+  marcado le pone `aria-current="page"`, que es como el lector de pantalla sabe cuál es la
+  página actual.
+
+**Por qué:** la marca no aparecía en ninguna pantalla, la barra no decía dónde estaba el
+usuario y los links eran chicos para tocarlos con el dedo. Ahora miden 44 px de alto.
+
+**"Administración" queda marcado en todo el admin:** `/admin/cupones` empieza con `/admin`,
+así que el link sigue marcado en las pantallas de adentro. Es lo que se busca. "Cartelera"
+no queda marcada en el detalle de una película ni en la compra, por el `exact`.
+
+**El orden en el celular:** en el HTML las partes están en el orden marca, destinos, salir,
+que es el que siguen el teclado y el lector de pantalla. En la pantalla el orden lo decide
+la propiedad `order` de CSS, y por eso en el celular salir queda arriba, al lado de la
+marca.
+
+**Descartado:** marcar la página actual a mano, con `[class.actual]` y la dirección leída
+del `Router` en el componente. Es lo que ya hace `routerLinkActive`.
+
+**Cómo lo explico en el oral:** `routerLinkActive` compara la dirección actual con la ruta
+del link y le pone una clase; el subrayado dorado es CSS sobre esa clase. No hay código mío
+que calcule en qué página estoy.
+
+**Clase de origen:** 2 (rutas y `routerLink`) + `routerLinkActive`,
+`routerLinkActiveOptions` y `ariaCurrentWhenActive` 🟡. **Requisito:** R-39.

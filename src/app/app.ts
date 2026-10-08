@@ -1,14 +1,16 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
-import { Router, RouterLink, RouterOutlet } from '@angular/router';
+import { Router, RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import { Auth } from './services/auth';
 import { Alertas } from './services/alertas';
 
 // El App inyecta Auth para mostrar un menú distinto según haya sesión y
 // según el rol (clase 5). Al inyectarlo acá, el servicio arranca con la app
 // y onAuthStateChange empieza a escuchar desde el primer momento.
+// RouterLinkActive es la directiva que marca en la barra el link de la
+// página actual (D-66).
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet, RouterLink],
+  imports: [RouterOutlet, RouterLink, RouterLinkActive],
   templateUrl: './app.html',
   styleUrl: './app.css',
 })
